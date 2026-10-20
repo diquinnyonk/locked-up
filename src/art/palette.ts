@@ -110,7 +110,7 @@ export const HEX = {
   sky: 0x8fdbe4,
   night: 0x3c4a78,
   torch: 0xfff2b0,
-  visionCalm: 0xfff2b0,
+  visionCalm: 0xffc93a,
   visionAlert: 0xe8575a,
   smoke: 0x55595c,
   fire: 0xff9f3a,

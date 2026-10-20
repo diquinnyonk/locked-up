@@ -17,11 +17,14 @@ function check(name: string, ok: boolean, detail = ''): void {
   if (!ok) failures++
 }
 
+let lastTalk: { title: string; line: string; options: { label: string; enabled: boolean; run: () => void }[] } | null = null
 function fresh(): { game: Game; log: string[]; g: any } {
   const log: string[] = []
   const ui: UiPort = {
     toast: (t) => log.push(t),
-    talk: () => {},
+    talk: (title, line, options) => {
+      lastTalk = { title, line, options }
+    },
     phone: () => {},
     card: (t, b) => log.push(`[card] ${t}: ${b}`),
     end: (w, t) => log.push(`[end] ${w} ${t}`),
@@ -79,7 +82,8 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   check('toothpaste: door swings open', door.openness > 0.7, `openness ${door.openness.toFixed(2)}`)
   put(game, door.tx, door.ty - 1)
   run(game, 0.2)
-  check('toothpaste: on the landing at night is an attempt', game.player.attempt === 'toothpaste', `attempt ${game.player.attempt}`)
+  check('toothpaste: on the landing at night is out of bounds', game.player.illegal === 2)
+  check('toothpaste: not an attempt until an officer sees you', game.player.attempt === null || game.guards.some((gu) => gu.seesPlayer), `attempt ${game.player.attempt}`)
   // Walk up and down the landing until the night officer finds us.
   game.input.forced = { x: 1, z: 0 }
   const caught = run(game, 90, () => game.memory.attemptsUsed > 0)
@@ -128,9 +132,8 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
 // ---- Riot at night ----
 {
   const { game, g, log } = fresh()
-  const mine = game.prisoners.filter((p) => p.block === 'A').slice(0, 6)
-  for (const p of mine) p.trust = 1
   game.clock.skipTo(23 * 60)
+  game.memory.pay('firm', game.clock.minutes)
   run(game, 1)
   put(game, 18, 18)
   g.kickOff()
@@ -142,6 +145,22 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   check('riot: officers are busy on the landing', busy >= 3, `${busy} busy`)
 }
 
+// ---- Paying a firm ----
+{
+  const { game, log } = fresh()
+  const boss = game.gangLeader('firm')!
+  check('gangs: four firms each with a boss', (['firm', 'crows', 'lions', 'northern'] as const).every((g) => !!game.gangLeader(g)))
+  check('gangs: five of the home firm on each wing', game.prisoners.filter((p) => p.gang === 'firm' && p.block === 'A').length === 5)
+  for (let i = 0; i < 6; i++) game.player.inventory.add('snout')
+  game.talkTo(boss)
+  const pay = lastTalk?.options.find((o) => o.label.startsWith('Pay'))
+  check('gangs: boss offers to back a riot for snout', !!pay && pay.enabled, pay?.label)
+  pay?.run()
+  check('gangs: the Firm now backs you', game.memory.backing('firm', game.clock.minutes) && boss.supporter, log[log.length - 1])
+  check('gangs: their rival takes offence', game.memory.gangs.crows.hostility > 0)
+  check('gangs: the price goes up next time', game.memory.bribePrice('firm') > 4)
+}
+
 // ---- Riot refused without backing ----
 {
   const { game, g, log } = fresh()
@@ -150,7 +169,7 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   run(game, 1)
   put(game, 18, 18)
   g.kickOff()
-  check('riot: nobody joins without trust', !game.riot.active, log[log.length - 1])
+  check('riot: nobody kicks off without paying the firm', !game.riot.active && log[log.length - 1].includes('Pay'), log[log.length - 1])
 }
 
 // ---- Vents ----
@@ -164,7 +183,7 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   check('vent: climb in', prompt(game, 'Climb into'))
   check('vent: in the ducts', game.player.inVent)
   run(game, 0.2)
-  check('vent: is an attempt', game.player.attempt === 'vent')
+  check('vent: out of bounds but unseen, so not yet an attempt', game.player.illegal === 2 && game.player.attempt === null)
   // Run (loud) along the ducts toward the hub.
   game.input.forced = { x: 0, z: -1 }
   run(game, 2)
@@ -202,6 +221,41 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   check('key: unlock prompt at a gate', prompt(game, 'Unlock with'), game.prompts.map((p) => p.label).join(', '))
   run(game, 0.6)
   check('key: gate opens', gate.openness > 0.7)
+}
+
+// ---- Spotted, then back to the cell ----
+{
+  const { game, log } = fresh()
+  game.clock.skipTo(23 * 60)
+  run(game, 1)
+  const officer = game.guards.find((gu) => gu.block === 'A' && gu.duty === 'landing')!
+  // Put the landing officer mid-landing facing east, and stand four metres in front.
+  officer.stop()
+  officer.body.x = 20.5 * TILE
+  officer.body.z = 14.5 * TILE
+  officer.body.yaw = Math.PI / 2
+  game.player.body.x = officer.x + 4
+  game.player.body.z = officer.z
+  const spotted = run(game, 3, () => game.player.attempt !== null)
+  check('seen: being spotted out of bounds starts the attempt', spotted, `${game.player.attempt}`)
+  // Slip back behind the door with nobody on you.
+  for (const gu of game.guards) {
+    gu.chasing = false
+    gu.suspicion = 0
+    gu.lastSeen = null
+    gu.body.x = 80
+    gu.body.z = 120
+  }
+  put(game, 18, 18)
+  run(game, 0.3)
+  check('seen: getting back to your cell cancels it', game.player.attempt === null && game.memory.attemptsUsed === 0, log[log.length - 1])
+}
+
+// ---- Sight guide ----
+{
+  const { game } = fresh()
+  const len = game.grid.rayLength(36.5 * 2, 14.5 * 2, Math.PI, 30)
+  check('sight: the guide stops at walls', len < 6, `ray north from the corridor runs ${len.toFixed(1)}m`)
 }
 
 // ---- Eight failures end it ----

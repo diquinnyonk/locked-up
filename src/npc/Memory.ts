@@ -12,6 +12,8 @@
  * routine and gives you four more, but it does not forget. Lose those as
  * well and it is over.
  */
+import { GANGS, GANG_IDS, type GangId, type GangState } from './Gangs'
+
 export type Method = 'key' | 'toothpaste' | 'sick' | 'riot' | 'vent' | 'wall' | 'gate'
 
 export const METHOD_NAMES: Record<Method, string> = {
@@ -39,11 +41,53 @@ export class PrisonMemory {
   readonly hotspots: { x: number; z: number; weight: number }[] = []
   /** Calls flagged by the wiretap; each makes the next listener stricter. */
   phoneFlags = 0
-  /** How badly the wing's hard men want you dead, 0..1. */
-  gangHostility = 0
+  /** Each firm's view of you. */
+  readonly gangs: Record<GangId, GangState> = {
+    firm: { hostility: 0, backingUntil: -1, paid: 0 },
+    crows: { hostility: 0, backingUntil: -1, paid: 0 },
+    lions: { hostility: 0, backingUntil: -1, paid: 0 },
+    northern: { hostility: 0, backingUntil: -1, paid: 0 },
+  }
   /** Keys reported missing. */
   keysLost = 0
   readonly lessons: Lesson[] = []
+
+  /** The firm that hates you most, and how much. Decides the gang ending. */
+  get worstGang(): { id: GangId; hostility: number } {
+    let id: GangId = 'firm'
+    for (const g of GANG_IDS) if (this.gangs[g].hostility > this.gangs[id].hostility) id = g
+    return { id, hostility: this.gangs[id].hostility }
+  }
+
+  get gangHostility(): number {
+    return this.worstGang.hostility
+  }
+
+  annoy(gang: GangId, amount: number): void {
+    const g = this.gangs[gang]
+    g.hostility = Math.max(0, Math.min(1, g.hostility + amount))
+  }
+
+  /**
+   * Snout a firm wants to back a riot. Goes up with every riot the
+   * officers have already put down, and every time you have come back.
+   */
+  bribePrice(gang: GangId): number {
+    return 4 + this.used.riot * 2 + this.gangs[gang].paid * 2
+  }
+
+  /** Pay a firm: they back you for two days, and their rival takes it badly. */
+  pay(gang: GangId, now: number): void {
+    const g = this.gangs[gang]
+    g.paid++
+    g.backingUntil = now + 2 * 1440
+    this.annoy(gang, -0.15)
+    this.annoy(GANGS[gang].rival, 0.15)
+  }
+
+  backing(gang: GangId, now: number): boolean {
+    return this.gangs[gang].backingUntil > now
+  }
 
   get attemptsLeft(): number {
     return ATTEMPTS_PER_ROUND - this.attemptsUsed
@@ -140,7 +184,9 @@ function lessonFor(method: Method, times: number): string {
     case 'sick':
       return times === 1 ? 'Healthcare wants real symptoms now, and sends two officers.' : 'Night sick calls are ignored unless you are frothing.'
     case 'riot':
-      return times === 1 ? 'Gate officers no longer leave their posts in a disturbance.' : 'They need a bigger crowd to lose control now.'
+      return times === 1
+        ? 'Gate officers no longer leave their posts in a disturbance, and the firms want more snout to risk it again.'
+        : 'They need a bigger crowd to lose control now, and the firms charge double.'
     case 'vent':
       return 'Officers stop under vent grilles to listen.'
     case 'wall':

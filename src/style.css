@@ -550,3 +550,33 @@ body.playing #hud {
     bottom: 120px;
   }
 }
+
+#difficulty {
+  border: 2px solid var(--ink);
+  padding: 0.5rem 0.7rem 0.6rem;
+  margin-top: 0.4rem;
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+}
+#difficulty legend {
+  font: 700 0.8rem var(--sans);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 0 0.3rem;
+}
+#difficulty label {
+  display: flex;
+  gap: 0.45rem;
+  align-items: baseline;
+  line-height: 1.35;
+  cursor: pointer;
+}
+#panel .gang {
+  border-left: 8px solid var(--ink);
+  padding: 0.3rem 0.5rem;
+  margin-bottom: 0.35rem;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  background: rgb(242 251 250 / 55%);
+}

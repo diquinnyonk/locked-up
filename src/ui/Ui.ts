@@ -5,6 +5,7 @@ import type { Game, UiPort } from '../game/Game'
 import { ITEMS, INVENTORY_SLOTS, RECIPES } from '../game/Items'
 import { ATTEMPTS_PER_ROUND, METHOD_NAMES, ROUNDS, type Method } from '../npc/Memory'
 import { MAP_H, MAP_W, PLAYER_CELL, Tile } from '../world/Grid'
+import { GANGS, GANG_IDS } from '../npc/Gangs'
 
 /**
  * The interface, in DOM. Flat ink panels on paper, hard edges, no gradients:
@@ -215,15 +216,26 @@ export class Ui implements UiPort {
         <li><b>Steal a key</b>: get behind an officer (R), or knock one down and take them. Press soap on it to keep a mould.</li>
         <li><b>Toothpaste</b>: by day, stand in your open doorway and pack the lock (R). At night, ease it open.</li>
         <li><b>Fake sickness</b>: at night in your cell press H. Chew soap first (Q) once they wise up. Slip away from the escort in healthcare.</li>
-        <li><b>Riot</b>: win trust with snout, ask for backing, then press G. At night the landing goes up and the officers open the cells.</li>
+        <li><b>Riot</b>: pay the boss of the firm that runs your wing, then press G. At night the landing goes up and the officers open the cells.</li>
         <li><b>The vent</b> behind your table. Nobody remembers it is there.</li>
       </ol>
       <h3>Getting out of the prison</h3>
       <p>Over the yard wall with a grappling hook, or through the gatehouse with a key. Before you go, get word outside: a <b>phone call</b> that never says when (car waits three nights), the <b>flag</b> on the yard pole by day, or a <b>torch</b> from your window at night.</p>
+      <h3>The firms</h3>
+      ${GANG_IDS.map((id) => {
+        const def = GANGS[id]
+        const st = g.memory.gangs[id]
+        const leader = g.gangLeader(id)
+        const backing = g.memory.backing(id, g.clock.minutes)
+        return `<div class="gang" style="border-left-color:${css(def.hex)}"><b>${def.name}</b>, ${def.wing} wing. Boss: ${leader ? escape(leader.name) : 'nobody'}.<br>${escape(def.blurb)}<br><small>Price to back a riot: ${g.memory.bribePrice(id)} snout · Hostility ${Math.round(st.hostility * 100)}%${backing ? ' · <b>backing you</b>' : ''} · Rival: ${GANGS[def.rival].name}</small></div>`
+      }).join('')}
+      <p class="hint">Nobody kicks off on a landing without the firm that runs it. Paying one firm offends its rival. Every riot the officers put down puts the price up.</p>
+      <h3>Attempts</h3>
+      <p class="hint">Being out of bounds only becomes an attempt once an officer sees you. Get back behind your door before they catch you and it does not count. ${g.hard ? 'Hard mode: no sight guide.' : 'The pale shapes on the floor are what each officer can see, cut off by walls; the small ring behind them is how close you can creep before they notice.'}</p>
       <h3>What they have learned</h3>
       ${g.memory.lessons.length ? `<ul>${g.memory.lessons.map((l) => `<li>${escape(l.text)}</li>`).join('')}</ul>` : '<p class="hint">Nothing yet. Every failed attempt teaches them.</p>'}
       ${used.length ? `<p class="hint">Methods burned: ${used.map((m) => `${METHOD_NAMES[m]} ×${g.memory.used[m]}`).join(', ')}</p>` : ''}
-      <p class="hint">Gang hostility: ${Math.round(g.memory.gangHostility * 100)}% · Phone line strictness: ${g.memory.phoneStrictness}/3</p>
+      <p class="hint">Phone line strictness: ${g.memory.phoneStrictness}/3</p>
       <h3>Keys</h3>
       <p class="hint">WASD move · Shift run · C sneak · E use · R alternate · F fight · Tab pockets & crafting · Q chew soap · H fake sick · G kick off · Z sleep · M map · J journal</p>`
     const close = document.createElement('button')
@@ -261,10 +273,21 @@ export class Ui implements UiPort {
     $('#health').style.width = `${p.health}%`
 
     const suspicion = Math.max(0, ...g.guards.map((gg) => (gg.chasing ? 1 : gg.suspicion)))
-    const status = g.alarm.active || g.guards.some((gg) => gg.chasing) ? 'HUNTED' : p.illegal === 2 ? 'OUT OF BOUNDS: ESCAPING' : p.illegal === 1 ? 'Somewhere you should not be' : p.inVent ? 'In the vents' : ''
+    const hunted = g.alarm.active || g.guards.some((gg) => gg.chasing)
+    const status = hunted
+      ? 'HUNTED'
+      : p.attempt
+        ? 'SPOTTED: ESCAPE ATTEMPT'
+        : p.illegal === 2
+          ? p.inVent
+            ? 'In the vents: unseen'
+            : 'Out of bounds: unseen'
+          : p.illegal === 1
+            ? 'Somewhere you should not be'
+            : ''
     const st = $('#status')
     st.textContent = status
-    st.className = status ? (g.alarm.active || suspicion >= 1 ? 'alert' : 'warn') : ''
+    st.className = status ? (hunted || p.attempt ? 'alert' : 'warn') : ''
     $('#suspicion').style.width = `${suspicion * 100}%`
     ;($('#suspicion').parentElement as HTMLElement).style.visibility = suspicion > 0.02 ? 'visible' : 'hidden'
 
@@ -402,7 +425,7 @@ export class Ui implements UiPort {
       }
       for (const gr of g.grid.grates) dot((gr.tx + 0.5) * 2, (gr.ty + 0.5) * 2, gr.sealed ? css(HEX.doorRed) : css(HEX.gateYellow), 2.2)
     }
-    for (const gu of g.guards) if (gu.ko <= 0) dot(gu.x, gu.z, gu.chasing ? css(HEX.visionAlert) : css(HEX.paper), 1.8)
+    if (!g.hard) for (const gu of g.guards) if (gu.ko <= 0) dot(gu.x, gu.z, gu.chasing ? css(HEX.visionAlert) : css(HEX.paper), 1.8)
     if (g.carPresent) dot(g.dynamic.car.position.x, g.dynamic.car.position.z, css(HEX.car), 3)
     dot(g.player.body.x, g.player.body.z, css(HEX.player), 3)
     ctx.strokeStyle = css(HEX.ink)

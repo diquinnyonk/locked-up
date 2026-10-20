@@ -14,8 +14,15 @@ npm test           # headless checks of every escape route
 npm run sim        # headless day of the regime, printed by period
 ```
 
-Type your name on the title screen and you are booked in to HMP Blackmoor,
-cell A8, with one cellmate.
+Type your name on the title screen, pick a difficulty, and you are booked in to
+HMP Blackmoor, cell A8, with one cellmate.
+
+- **Normal**: every officer's sight is drawn on the floor. The wide fan is how
+  far they see ahead, cut off by walls and shut doors, and it shrinks while you
+  sneak. The small ring behind them is how close you can creep before they
+  notice you anyway. It turns red as they get suspicious.
+- **Hard**: no sight guide, no officers on the map, and they spot you a quarter
+  faster.
 
 ## The prison
 
@@ -41,7 +48,7 @@ minutes, and you can sleep (Z) through the night.
 | **Steal a key** | Get behind an officer and lift their keys (R), or knock one down and take them. They notice at the next shift change, so press a mould into soap first and make a copy. |
 | **Toothpaste** | By day, stand in your open doorway and pack the strike plate (R). At lights out the door shuts but never locks. Ease it open (E). |
 | **Fake sickness** | Behind your door at night, press H. An officer walks you to healthcare and waits by the door. Slip away, take the vent, or knock them out. |
-| **Riot** | Win prisoners' trust with snout and ask if they will back you. Press G. At night the landing goes up and the officers open the cells to pull out ringleaders. By day your lot start swinging and officers leave gates swinging behind them. |
+| **Riot** | Pay the boss of the firm that runs your wing (see below), then press G. At night the landing goes up and the officers open the cells to pull out ringleaders. By day your lot start swinging and officers leave gates swinging behind them. Mates won over with snout add to the numbers. |
 | **The vent** | Your cell has a grille the guards forgot. The screws are rusted enough for a spoon. |
 
 The **vents** connect every room except the cells, plus your own. They are tin,
@@ -63,6 +70,27 @@ key. Before you go, someone has to be waiting on the road:
 
 Reach the car to win. Get over the wall with nobody waiting and the dog unit
 finds you.
+
+## The firms
+
+Nobody kicks off a landing without the gang that runs it, and they only do it
+for snout. Each wing has a home firm of five, one of them the boss, plus a
+soldier from its rival. Members wear the firm's colour.
+
+| Firm | Runs | Colour | Rival | |
+| --- | --- | --- | --- | --- |
+| **The Firm** | A wing | maroon | The Crows | Old-school East End faces. They run the snout on A and expect to be asked first. |
+| **The Crows** | B wing | navy | The Firm | Young and loud. They hate the Firm more than the screws. |
+| **Red Lions** | C wing | red | The Northern Mob | Football lads off the terraces. Always up for a ruck, never for a plan. |
+| **The Northern Mob** | D wing | mustard | Red Lions | Quiet heavies who do business and never forget a debt. |
+
+Talk to a boss to pay them. Their backing lasts two days. The price starts at
+4 snout and goes up every time you pay them again, and every time a riot of
+yours has been put down. Paying a firm offends its rival. Hitting their lads,
+or getting them cuffed in a riot they were not paid for, makes them hostile. Past
+a point their boss will not deal with you at all, and their soldiers come for
+you when no officer is near. If you lose both rounds, the firm that hates you
+most decides how it ends.
 
 ## Everything is a weapon or a tool
 
@@ -90,9 +118,10 @@ second and staggered across frames.
   riot → brawl nearby → gang hunting you → frightened → snitching → lights out →
   the regime.
 
-You have **four attempts**. An attempt starts the moment you are somewhere you
-cannot explain (out of your cell at night, in the vents, in maintenance, on the
-wall). If you get back to your cell unseen, it never happened. Get caught and the
+You have **four attempts**. Being somewhere you cannot explain (out of your cell
+at night, in the vents, in maintenance, on the wall) is only out of bounds
+until an officer **sees** you there. Then the attempt is under way. Get back
+behind your own door before they catch you and it does not count. Get caught and the
 attempt is spent, contraband goes, you do a night in segregation, and
 `PrisonMemory` (`src/npc/Memory.ts`) records how you did it and where:
 
@@ -106,7 +135,7 @@ attempt is spent, contraband goes, you do a night in segregation, and
 - Where you were caught joins the landing patrol routes, everyone sees a little
   further each time, and the phone listener's vocabulary grows.
 
-Individual people remember too. An officer you fooled or hurt watches you harder
+Each firm remembers too, and so do individual people. An officer you fooled or hurt watches you harder
 and will not fall for the same thing twice. Prisoners keep trust and grudges.
 Snitches who see a report pay off report more readily. Gang members hold the
 riots that got them cuffed against you, and their grudge sets the prison-wide
@@ -115,8 +144,7 @@ the officers have learned.
 
 When the four attempts are gone, the count resets for a second round, and the
 prison keeps everything it learned. **Exhaust both rounds and it is over**:
-segregation indefinitely or, if the gang's hostility is high enough, the gang
-gets to you first.
+segregation indefinitely or, if a firm hates you enough, they get to you first.
 
 ## Controls
 

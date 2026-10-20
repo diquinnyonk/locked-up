@@ -309,6 +309,28 @@ export class Grid {
     return true
   }
 
+  /**
+   * How far a line of sight runs from a point in a direction before a wall
+   * or a shut solid door stops it. Same rules as `sightClear`, so the sight
+   * guide on the floor is exactly what the officers can see.
+   */
+  rayLength(x: number, z: number, angle: number, max: number): number {
+    const dx = Math.sin(angle)
+    const dz = Math.cos(angle)
+    const step = 0.3
+    for (let d = step; d < max; d += step) {
+      const tx = Math.floor((x + dx * d) / TILE)
+      const ty = Math.floor((z + dz * d) / TILE)
+      const tile = this.tile(tx, ty)
+      if (tile === Tile.Solid || tile === Tile.Perimeter) return d
+      if (tile === Tile.Door) {
+        const door = this.doorAt.get(ty * MAP_W + tx)
+        if (door && door.openness < 0.5 && (door.kind === 'room' || door.kind === 'secure' || door.kind === 'perimeter')) return d
+      }
+    }
+    return max
+  }
+
   /** Is this world point inside the duct network? */
   inDuct(x: number, z: number): boolean {
     const fx = x / TILE - 0.5

@@ -3,6 +3,7 @@ import { type Body, type Pose, makeBody } from '../render/Crowd'
 import type { ItemId } from '../game/Items'
 import { type CellInfo, type Door, TILE, blockOfZone } from '../world/Grid'
 import { Agent } from './Agent'
+import { GANGS, type GangId } from './Gangs'
 import { type Node, type Status, bt, traced } from './BehaviourTree'
 import type { Guard } from './Guard'
 import type { World } from './World'
@@ -54,10 +55,13 @@ export interface ActivitySpot {
 
 export class Prisoner extends Agent {
   readonly role: 'prisoner' = 'prisoner'
-  readonly name: string
+  name: string
   readonly cell: CellInfo
   readonly bunk: number
-  readonly temperament: Temperament
+  temperament: Temperament
+  /** Which firm, if any, and whether they run it. */
+  gang: GangId | null = null
+  leader = false
   readonly sells: ItemId[]
   private readonly tree: Node<Prisoner>
 
@@ -82,9 +86,9 @@ export class Prisoner extends Agent {
     const hairs = [HEX.hairBlack, HEX.hairBrown, HEX.hairBlonde, HEX.hairGrey, HEX.hairRed, null]
     const roll = rng()
     const temperament: Temperament =
-      roll < 0.14 ? 'gang' : roll < 0.22 ? 'snitch' : roll < 0.34 ? 'hothead' : roll < 0.44 ? 'old' : roll < 0.52 ? 'fixer' : 'lag'
+      roll < 0.1 ? 'snitch' : roll < 0.34 ? 'hothead' : roll < 0.44 ? 'old' : roll < 0.52 ? 'fixer' : 'lag'
     const body: Body = makeBody({
-      top: temperament === 'gang' ? HEX.prisonMaroon : rng() < 0.15 ? HEX.prisonBlue : HEX.prisonGrey,
+      top: rng() < 0.15 ? HEX.prisonBlue : HEX.prisonGrey,
       trousers: HEX.prisonGreyDark,
       skin: skins[Math.floor(rng() * skins.length)],
       hair: temperament === 'old' ? HEX.hairGrey : hairs[Math.floor(rng() * hairs.length)],
@@ -97,7 +101,6 @@ export class Prisoner extends Agent {
     const first = FIRST[index % FIRST.length]
     this.name = rng() < 0.4 ? `${NICK[Math.floor(rng() * NICK.length)]} ${first}` : first
     this.sells = temperament === 'fixer' ? STOCK[index % STOCK.length] : []
-    if (temperament === 'gang') this.trust = 0
     if (temperament === 'old') this.trust = 0.3
     const b = cell.bunks[bunk]
     body.x = b.x + (bunk === 0 ? 0.55 : 0)
@@ -115,7 +118,19 @@ export class Prisoner extends Agent {
     return false
   }
 
+  /** Signed up to a firm. Members wear its colour; the leader takes its name. */
+  joinGang(gang: GangId, leader: boolean): void {
+    this.gang = gang
+    this.leader = leader
+    this.temperament = 'gang'
+    this.trust = 0
+    this.body.top = GANGS[gang].hex
+    if (leader) this.name = `${GANGS[gang].leaderNick} ${this.name.split(' ').pop()}`
+  }
+
+  /** Will back you when it kicks off: a mate you have won over, or a member of a firm you have paid. */
   get supporter(): boolean {
+    if (this.gang) return this.world.memory.backing(this.gang, this.world.clock.minutes)
     return this.trust >= 0.6 && this.temperament !== 'snitch'
   }
 
@@ -129,7 +144,7 @@ export class Prisoner extends Agent {
     if (by === 'player') {
       this.grudge = Math.min(1, this.grudge + 0.25)
       this.trust = Math.max(0, this.trust - 0.3)
-      if (this.temperament === 'gang') this.world.memory.gangHostility = Math.min(1, this.world.memory.gangHostility + 0.06)
+      if (this.gang) this.world.memory.annoy(this.gang, this.leader ? 0.2 : 0.06)
     }
     if (this.hp <= 0) {
       this.ko = 14
@@ -155,7 +170,8 @@ export class Prisoner extends Agent {
     this.cuffed = 6
     if (this.world.riot.byPlayer) {
       this.grudge = Math.min(1, this.grudge + 0.15)
-      if (this.temperament === 'gang') this.world.memory.gangHostility = Math.min(1, this.world.memory.gangHostility + 0.03)
+      // A firm you paid takes its lumps; anyone else blames you.
+      if (this.gang && !this.supporter) this.world.memory.annoy(this.gang, 0.03)
     }
   }
 
@@ -373,7 +389,7 @@ function buildPrisonerTree(world: World): Node<Prisoner> {
 
   const gangHunt = bt.sequence<Prisoner>(
     'gang',
-    bt.when('gang', (s) => s.temperament === 'gang' && (s.grudge > 0.5 || world.memory.gangHostility > 0.55)),
+    bt.when('gang', (s) => !!s.gang && (s.grudge > 0.5 || world.memory.gangs[s.gang].hostility > 0.55)),
     bt.when('you are close and alone', (s) => {
       if (p.inVent || p.health <= 0 || world.clock.locked) return false
       if (s.distanceTo(p.body.x, p.body.z) > 9) return false
@@ -381,7 +397,7 @@ function buildPrisonerTree(world: World): Node<Prisoner> {
       return !g || g.d > 13
     }),
     traced('come for you', (s) => {
-      if (s.speechTimer <= 0) s.say(['You owe us.', `Wrong place, ${p.name}.`, 'Nowhere to run in here.'][Math.floor(world.rng() * 3)], 2)
+      if (s.speechTimer <= 0) s.say([`${GANGS[s.gang!].name} send their regards.`, `Wrong place, ${p.name}.`, 'Nowhere to run in here.'][Math.floor(world.rng() * 3)], 2)
       s.fighting = true
       s.fightTarget = 'player'
       return 'running'

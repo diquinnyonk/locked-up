@@ -77,6 +77,8 @@ export interface World {
   lockChecks: Door[]
   grates: Grate[]
   fixtures: Fixtures
+  /** Hard mode: no sight guide, sharper officers. */
+  hard: boolean
   requestDoor(door: Door, who: 'guard' | 'prisoner' | 'player', block?: string, from?: string): boolean
   caught(by: Guard): void
   warn(by: Guard, text: string): void

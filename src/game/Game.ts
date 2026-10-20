@@ -5,9 +5,10 @@ import { type Body, Crowd, makeBody } from '../render/Crowd'
 import { Guard, type GuardRole } from '../npc/Guard'
 import { ATTEMPTS_PER_ROUND, METHOD_NAMES, type Method, PrisonMemory } from '../npc/Memory'
 import { Prisoner } from '../npc/Prisoner'
+import { GANGS, GANG_IDS, type GangId, gangOfWing } from '../npc/Gangs'
 import type { Noise, PlayerView, Riot, SickCall, World } from '../npc/World'
 import { buildPrison, type Fixtures } from '../world/Build'
-import { Dynamic, type LooseItem } from '../world/Dynamic'
+import { CONE_FRONT_RAYS, CONE_RAYS, Dynamic, type LooseItem } from '../world/Dynamic'
 import { BLOCKS, type BlockId, type Door, type Grate, Grid, PLAYER_CELL, TILE, Tile, blockOfZone, tileCentre, worldToTile } from '../world/Grid'
 import { moveCircle } from '../world/Nav'
 import { Clock, RESTRICTED, allowedZones } from './Clock'
@@ -158,6 +159,18 @@ export class Game implements World {
         this.bodies.push(p.body)
       }
     }
+    // The firms: five of the home gang on every wing, the first of them in
+    // charge, and one of their rival's soldiers living among them.
+    for (const wing of BLOCKS) {
+      const home = gangOfWing(wing)
+      const pool = this.prisoners.filter((p) => p.block === wing && !p.isCellmate && p.temperament !== 'fixer' && p.temperament !== 'snitch')
+      for (let i = pool.length - 1; i > 0; i--) {
+        const j = Math.floor(this.rng() * (i + 1))
+        ;[pool[i], pool[j]] = [pool[j], pool[i]]
+      }
+      pool.slice(0, 5).forEach((p, i) => p.joinGang(home, i === 0))
+      pool[5]?.joinGang(GANGS[home].rival, false)
+    }
     // Officers: four per wing.
     const central: Record<BlockId, { tx: number; ty: number }> = {
       A: { tx: 39, ty: 15 },
@@ -248,22 +261,27 @@ export class Game implements World {
     this.flash = Math.max(this.flash, 0.5)
     if (this.player.health <= 0) {
       this.player.health = 0
-      const gang = by instanceof Prisoner && by.temperament === 'gang'
-      if (gang && this.memory.gangHostility > 0.9 && this.memory.round === 2) {
-        this.finish(false, 'gang')
+      const gang = by instanceof Prisoner ? by.gang : null
+      if (gang && this.memory.gangs[gang].hostility > 0.9 && this.memory.round === 2) {
+        this.finish(false, 'gang', gang)
         return
       }
-      this.toast(gang ? `${by.name}'s lot gave you a kicking.` : 'You were knocked out.', 'bad')
+      this.toast(gang ? `${GANGS[gang].name} gave you a kicking.` : 'You were knocked out.', 'bad')
       this.knockedOut()
     }
   }
 
   /** Red flash for the UI, decays per frame. */
   flash = 0
+  /** Hard mode: no sight-cone guide, and officers spot you faster. */
+  hard = false
 
   caught(by: Guard): void {
     if (this.over || this.punished) return
     const p = this.player
+    // Caught somewhere you cannot explain counts as an attempt, even if
+    // nobody had laid eyes on you until this moment.
+    if (!p.attempt && p.illegal === 2) p.attempt = this.inferMethod()
     const method = p.attempt
     if (!method) {
       // Caught out of bounds but not escaping: a nicking.
@@ -282,7 +300,8 @@ export class Game implements World {
     }
     p.attempt = null
     if (result === 'over') {
-      this.finish(false, this.memory.gangHostility > 0.45 ? 'gang' : 'solitary')
+      const worst = this.memory.worstGang
+      this.finish(false, worst.hostility > 0.45 ? 'gang' : 'solitary', worst.id)
       return
     }
     const lesson = this.memory.lessons[this.memory.lessons.length - 1]
@@ -361,7 +380,7 @@ export class Game implements World {
     p.health = 100
   }
 
-  private finish(won: boolean, how: 'escape' | 'gang' | 'solitary'): void {
+  private finish(won: boolean, how: 'escape' | 'gang' | 'solitary', gang: GangId = 'firm'): void {
     this.over = true
     this.input.enabled = false
     const name = this.player.name
@@ -374,8 +393,8 @@ export class Game implements World {
     } else if (how === 'gang') {
       this.ui.end(
         false,
-        'The gang got you',
-        `Eight attempts, eight failures, and every one of them brought the screws down on the wing.\nThe lads in maroon caught ${name} in the showers with nobody watching.\nThey never found out who did it.`,
+        `${GANGS[gang].name} got you`,
+        `Eight attempts, eight failures, and every one of them brought the screws down on the wing.\n${GANGS[gang].name} caught ${name} in the showers with nobody watching. ${this.gangLeader(gang)?.name ?? 'Their boss'} did not even look up from his tea.\nThey never found out who did it.`,
       )
     } else {
       this.ui.end(
@@ -467,10 +486,7 @@ export class Game implements World {
     }
 
     // Visuals.
-    this.guards.forEach((g, i) => {
-      const show = !this.player.inVent && g.ko <= 0 && Math.hypot(g.x - this.player.body.x, g.z - this.player.body.z) < 40
-      this.dynamic.setCone(i, g.x, g.z, g.body.yaw, g.visionRange() * (g.chasing ? 0.5 : 0.62), g.chasing ? 1 : g.suspicion, show)
-    })
+    this.updateSightGuide()
     this.dynamic.ducts.visible = this.player.inVent
     const carHere = this.carPresent
     this.dynamic.update(delta, {
@@ -482,6 +498,44 @@ export class Game implements World {
     const pb = this.player.body
     this.dynamic.marker.position.set(pb.x, pb.y + (this.player.inVent ? 3.6 : 2.9) + Math.sin(performance.now() / 300) * 0.08, pb.z)
     this.crowd.update(this.bodies, delta)
+  }
+
+  private readonly conePoints = this.guards.map(() => new Float32Array(CONE_RAYS * 2))
+
+  /**
+   * Draws what each officer can see onto the floor, cut off by walls. Off in
+   * hard mode, in the vents (nobody below can see you there) and for anyone
+   * too far away to matter.
+   */
+  private updateSightGuide(): void {
+    const pb = this.player.body
+    this.guards.forEach((g, i) => {
+      const show = !this.hard && !this.player.inVent && g.ko <= 0 && Math.hypot(g.x - pb.x, g.z - pb.z) < 36
+      if (!show) {
+        this.dynamic.setCone(i, 0, 0, null, 0)
+        return
+      }
+      const pts = this.conePoints[i] ?? (this.conePoints[i] = new Float32Array(CONE_RAYS * 2))
+      const far = g.effectiveRange()
+      const near = g.closeRange()
+      const half = Guard.HALF_ANGLE
+      for (let k = 0; k < CONE_RAYS; k++) {
+        let angle: number
+        let reach: number
+        if (k < CONE_FRONT_RAYS) {
+          angle = g.body.yaw - half + (2 * half * k) / (CONE_FRONT_RAYS - 1)
+          reach = far
+        } else {
+          const t = (k - CONE_FRONT_RAYS + 1) / (CONE_RAYS - CONE_FRONT_RAYS + 1)
+          angle = g.body.yaw + half + (Math.PI * 2 - 2 * half) * t
+          reach = near
+        }
+        const len = this.grid.rayLength(g.x, g.z, angle, reach)
+        pts[k * 2] = g.x + Math.sin(angle) * len
+        pts[k * 2 + 1] = g.z + Math.cos(angle) * len
+      }
+      this.dynamic.setCone(i, g.x, g.z, pts, g.chasing ? 1 : g.suspicion)
+    })
   }
 
   get carPresent(): boolean {
@@ -797,16 +851,35 @@ export class Game implements World {
     if (this.fightingFor > 0 && !this.riot.active && level < 1) level = 1
     p.illegal = level
 
-    if (level === 2 && !p.attempt) {
-      p.attempt = this.methodHint ?? (p.inVent ? 'vent' : p.zone === 'outside' ? 'wall' : 'gate')
-      this.toast(`Escape attempt under way: ${METHOD_NAMES[p.attempt]}.`, 'neutral')
+    // Out of bounds is only an attempt once an officer has seen you there.
+    const watched = this.guards.some((g) => g.seesPlayer || g.chasing)
+    if (level === 2 && !p.attempt && watched) {
+      p.attempt = this.inferMethod()
+      this.toast(`Spotted! Escape attempt under way: ${METHOD_NAMES[p.attempt]}. Get back to your cell before they catch you and it will not count.`, 'bad')
     }
-    // Back in your cell unseen: nothing happened.
-    if (p.attempt && p.zone === p.cell && !p.inVent && !this.alarm.active && !this.guards.some((g) => g.chasing)) {
+    // Back behind your own door with nobody on you: it never happened.
+    // (How you got out is kept: you may still be on your way.)
+    if (p.attempt && p.zone === p.cell && !p.inVent && !this.climb && !watched) {
+      this.toast('Back in your cell. They saw something, but they cannot prove it was you.', 'good')
       p.attempt = null
       this.methodHint = null
-      this.toast('Back in your cell. Nobody saw a thing.', 'good')
+      this.alarm.active = false
     }
+  }
+
+  private inferMethod(): Method {
+    const p = this.player
+    return this.methodHint ?? (p.inVent ? 'vent' : p.zone === 'outside' ? 'wall' : 'gate')
+  }
+
+  gangLeader(gang: GangId): Prisoner | undefined {
+    return this.prisoners.find((p) => p.gang === gang && p.leader)
+  }
+
+  /** Firms whose paid backing covers this wing right now. */
+  private backingFirms(wing: string): GangId[] {
+    const now = this.clock.minutes
+    return GANG_IDS.filter((g) => this.memory.backing(g, now) && this.prisoners.some((p) => p.gang === g && p.block === wing))
   }
 
   // ---- Prompts and actions ----
@@ -1114,10 +1187,16 @@ export class Game implements World {
     const supporters = this.prisoners.filter((pr) => pr.block === p.block && pr.supporter)
     const need = this.memory.riotSupportNeeded
     if (this.riot.active) return
+    const firm = gangOfWing(p.block)
+    if (!this.backingFirms(p.block).length) {
+      const leader = this.gangLeader(firm)
+      this.toast(`Nobody on this landing moves without ${GANGS[firm].name} saying so. Pay ${leader?.name ?? 'their boss'} first (${this.memory.bribePrice(firm)} snout).`, 'bad')
+      return
+    }
     if (this.clock.locked) {
       if (p.zone !== p.cell) return
       if (supporters.length < need) {
-        this.toast(`You shout through the hatch. ${supporters.length} answer. You need ${need} on the landing who trust you (give snout, ask for backing).`, 'bad')
+        this.toast(`You shout through the hatch. ${supporters.length} answer. You need ${need}: pay another firm, or win over more of the landing with snout.`, 'bad')
         return
       }
       const landing = this.grid.rooms.get(`block${p.block}`)!.rects[0]
@@ -1253,9 +1332,9 @@ export class Game implements World {
       enabled: inv.has('snout'),
       run: () => {
         inv.remove('snout')
-        pr.trust = Math.min(1, pr.trust + (pr.temperament === 'gang' ? 0.12 : 0.22))
+        pr.trust = Math.min(1, pr.trust + (pr.gang ? 0.12 : 0.22))
         pr.grudge = Math.max(0, pr.grudge - 0.2)
-        if (pr.temperament === 'gang') this.memory.gangHostility = Math.max(0, this.memory.gangHostility - 0.05)
+        if (pr.gang) this.memory.annoy(pr.gang, -0.05)
         pr.say('Cheers.', 1.5)
         refresh()
       },
@@ -1274,27 +1353,58 @@ export class Game implements World {
         },
       })
     }
-    options.push({
-      label: 'Will you back me when it kicks off?',
-      enabled: true,
-      run: () => {
-        const yes = pr.supporter
-        this.ui.talk(pr.name, yes ? "I've got your back. Say the word (G) and I'm in." : pr.temperament === 'snitch' ? "Sorry mate, not my thing." : 'Do I look like your mate? Make it worth my while.', [])
-      },
-    })
+    if (pr.gang && pr.leader) {
+      const gang = pr.gang
+      const def = GANGS[gang]
+      const price = this.memory.bribePrice(gang)
+      const state = this.memory.gangs[gang]
+      const backing = this.memory.backing(gang, this.clock.minutes)
+      options.push({
+        label: backing ? `${def.name} are already with you` : `Pay ${def.name} to back a riot (${price} snout)`,
+        enabled: !backing && inv.count('snout') >= price,
+        run: () => {
+          if (state.hostility >= 0.7) {
+            this.ui.talk(pr.name, `After what you have done to my lads? Not for all the snout on the wing.`, [])
+            return
+          }
+          for (let i = 0; i < price; i++) inv.remove('snout')
+          this.memory.pay(gang, this.clock.minutes)
+          this.toast(`${def.name} will back you for two days. ${GANGS[def.rival].name} will hear about it.`, 'good')
+          this.ui.talk(pr.name, `Pleasure doing business. Give the word (G) on ${def.wing} wing and my lads go up. You have two days.`, [])
+        },
+      })
+    } else {
+      options.push({
+        label: 'Will you back me when it kicks off?',
+        enabled: true,
+        run: () => {
+          const yes = pr.supporter
+          let line: string
+          if (pr.gang) {
+            const leader = this.gangLeader(pr.gang)
+            line = yes ? `${leader?.name ?? 'The boss'} says we are on. Give the word.` : `Not my call. Talk to ${leader?.name ?? 'the boss'} on ${GANGS[pr.gang].wing} wing.`
+          } else line = yes ? "I've got your back. Say the word (G) and I'm in." : pr.temperament === 'snitch' ? 'Sorry mate, not my thing.' : 'Do I look like your mate? Make it worth my while.'
+          this.ui.talk(pr.name, line, [])
+        },
+      })
+    }
+    options.push({ label: 'Ask about the firms', enabled: true, run: () => this.ui.talk(pr.name, this.firmsGossip(), []) })
     options.push({ label: 'Ask what they have heard', enabled: true, run: () => this.ui.talk(pr.name, this.gossip(pr), []) })
     if (pr.isCellmate) options.push({ label: 'Ask about the cell', enabled: true, run: () => this.ui.talk(pr.name, cellmateTip(this.memory.round), []) })
     const greeting =
       pr.grudge > 0.5
         ? 'What do YOU want?'
-        : pr.temperament === 'gang'
-          ? 'You lost?'
+        : pr.gang
+          ? pr.leader
+            ? `You know who I am. ${GANGS[pr.gang].name} run ${GANGS[pr.gang].wing} wing.`
+            : 'You lost?'
           : pr.temperament === 'fixer'
             ? 'Looking for something? I can get things.'
             : pr.isCellmate
               ? `Alright, ${this.player.name}.`
               : 'Alright?'
-    const trust = pr.supporter ? ' (backs you)' : pr.grudge > 0.5 ? ' (holds a grudge)' : ''
+    const firm = pr.gang ? `, ${pr.leader ? 'boss of ' : ''}${GANGS[pr.gang].name}` : ''
+    const trust = `${firm}${pr.supporter ? ' (backs you)' : pr.grudge > 0.5 ? ' (holds a grudge)' : ''}`
     this.ui.talk(`${pr.name}${trust}`, greeting, options)
   }
 
@@ -1317,8 +1427,17 @@ export class Game implements World {
       'Soap takes a key impression lovely. Melt a fork into it with a lighter.',
       'Chew soap before you fake it. Froth sells it.',
     ]
-    if (pr.temperament === 'gang') return this.memory.gangHostility > 0.4 ? 'Every time you mess about, the screws come down on all of us. Keep it up.' : 'Mind your own.'
+    if (pr.gang) return this.memory.gangs[pr.gang].hostility > 0.4 ? 'Every time you mess about, the screws come down on all of us. Keep it up.' : 'Mind your own.'
     return tips[Math.floor(this.rng() * tips.length)]
+  }
+
+  private firmsGossip(): string {
+    const lines = GANG_IDS.map((g) => {
+      const def = GANGS[g]
+      const leader = this.gangLeader(g)
+      return `${def.name} run ${def.wing} wing, ${leader?.name ?? 'nobody'} in charge. ${def.blurb}`
+    })
+    return `${lines.join(' ')} Nobody kicks off without the firm that runs the landing. Pay the boss, and mind who you pay: the Firm and the Crows hate each other, and so do the Lions and the Mob.`
   }
 
   openStash(): void {

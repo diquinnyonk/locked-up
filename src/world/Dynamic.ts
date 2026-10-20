@@ -1,6 +1,6 @@
 import {
-  type BufferGeometry,
-  CircleGeometry,
+  BufferAttribute,
+  BufferGeometry,
   Color,
   ConeGeometry,
   DoubleSide,
@@ -24,6 +24,10 @@ import { PERIMETER_H, WALL_H } from './Build'
  * grilles, the ducts (only drawn while you are in them), loose items, the
  * officers' sight cones, the getaway car, the signal flag and riot smoke.
  */
+/** Rays per sight cone: most across the front, a few round the back. */
+export const CONE_RAYS = 40
+export const CONE_FRONT_RAYS = 28
+
 function solid(geometry: BufferGeometry): Mesh {
   const m = new Mesh(geometry, toon(0xffffff, { tinted: true }))
   m.layers.enable(SOLID_LAYER)
@@ -223,28 +227,46 @@ export class Dynamic {
     this.itemGroup.remove(item.mesh)
   }
 
-  /** Sight cones: one flat fan per officer, laid on the floor. */
+  /**
+   * The sight guide: one flat fan per officer, laid on the floor and cut off
+   * by walls. The wide part is how far they see in front; the small ring
+   * behind is how close you can get before they notice you anyway.
+   */
   ensureCones(count: number): void {
     while (this.cones.length < count) {
-      const g = new CircleGeometry(1, 18, -1.0 + Math.PI / 2, 2.0)
-      g.rotateX(-Math.PI / 2)
+      const g = new BufferGeometry()
+      const positions = new Float32Array((CONE_RAYS + 1) * 3)
+      g.setAttribute('position', new BufferAttribute(positions, 3))
+      const index: number[] = []
+      for (let i = 1; i <= CONE_RAYS; i++) index.push(0, i, (i % CONE_RAYS) + 1)
+      g.setIndex(index)
       const m = new Mesh(g, new MeshBasicMaterial({ color: new Color(HEX.visionCalm), transparent: true, opacity: 0.16, depthWrite: false, side: DoubleSide }))
+      m.frustumCulled = false
       m.renderOrder = 2
       this.cones.push(m)
       this.coneGroup.add(m)
     }
   }
 
-  setCone(i: number, x: number, z: number, yaw: number, range: number, alert: number, visible: boolean): void {
+  /** `points` is CONE_RAYS pairs of world x, z around the officer. */
+  setCone(i: number, x: number, z: number, points: Float32Array | null, alert: number): void {
     const m = this.cones[i]
-    m.visible = visible
-    if (!visible) return
-    m.position.set(x, 0.04, z)
-    m.rotation.y = yaw + Math.PI
-    m.scale.setScalar(range)
+    m.visible = !!points
+    if (!points) return
+    const attr = m.geometry.getAttribute('position') as BufferAttribute
+    const a = attr.array as Float32Array
+    a[0] = x
+    a[1] = 0.05
+    a[2] = z
+    for (let k = 0; k < CONE_RAYS; k++) {
+      a[(k + 1) * 3] = points[k * 2]
+      a[(k + 1) * 3 + 1] = 0.05
+      a[(k + 1) * 3 + 2] = points[k * 2 + 1]
+    }
+    attr.needsUpdate = true
     const mat = m.material as MeshBasicMaterial
     mat.color.copy(color(HEX.visionCalm)).lerp(color(HEX.visionAlert), Math.min(1, alert))
-    mat.opacity = 0.08 + alert * 0.2
+    mat.opacity = 0.2 + alert * 0.2
   }
 
   update(delta: number, opts: { flag: boolean; car: boolean; smokeAt: { x: number; z: number } | null; flagAt: { x: number; z: number } }): void {

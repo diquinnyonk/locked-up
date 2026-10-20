@@ -59,6 +59,8 @@ export class Guard extends Agent {
   hp = 10
   /** Helping at a riot. */
   busy = false
+  /** Had you in sight this frame. */
+  seesPlayer = false
   patrolTarget: { tx: number; ty: number } | null = null
   dwell = 0
   lockIndex = 0
@@ -101,12 +103,14 @@ export class Guard extends Agent {
     if (this.ko > 0) {
       this.suspicion = 0
       this.chasing = false
+      this.seesPlayer = false
       this.body.pose = 'down'
       return
     }
     const w = this.world
     const p = w.player
     const sees = this.canSeePlayer()
+    this.seesPlayer = sees
     if (sees) this.lastSeen = { x: p.body.x, z: p.body.z, t: 0 }
     else if (this.lastSeen) this.lastSeen.t += delta
 
@@ -114,7 +118,7 @@ export class Guard extends Agent {
     if (sees && p.illegal > 0 && !escorting) {
       const d = this.distanceTo(p.body.x, p.body.z)
       const range = this.visionRange()
-      const rate = (1.8 - d / range) * (p.illegal === 2 ? 1.6 : 0.7) * (1 + this.wary) * (this.busy ? 0.4 : 1)
+      const rate = (1.8 - d / range) * (p.illegal === 2 ? 1.6 : 0.7) * (1 + this.wary) * (this.busy ? 0.4 : 1) * (w.hard ? 1.25 : 1)
       this.suspicion = Math.min(1, this.suspicion + delta * Math.max(0.25, rate))
     } else if (sees && p.dodgy > 0 && !escorting) {
       this.suspicion = Math.min(1, this.suspicion + delta * 0.35)
@@ -145,16 +149,30 @@ export class Guard extends Agent {
     const dx = p.body.x - this.x
     const dz = p.body.z - this.z
     const d = Math.hypot(dx, dz)
-    const range = this.visionRange() * (p.sneaking ? 0.7 : 1)
-    const close = (p.running ? 4.5 : p.sneaking ? 1.6 : 2.6) + Math.min(2, this.world.memory.used.gate * 1.0)
+    const range = this.effectiveRange()
+    const close = this.closeRange()
     if (d > range) return false
     if (d > close) {
       const angle = Math.atan2(dx, dz) - this.body.yaw
       const a = Math.abs(Math.atan2(Math.sin(angle), Math.cos(angle)))
-      if (a > 1.0) return false
+      if (a > Guard.HALF_ANGLE) return false
     }
     return this.world.grid.sightClear(this.x, this.z, p.body.x, p.body.z)
   }
+
+  /** How far they would see you right now, given how you are moving. */
+  effectiveRange(): number {
+    return this.visionRange() * (this.world.player.sneaking ? 0.7 : 1)
+  }
+
+  /** Inside this they notice you whichever way they face. */
+  closeRange(): number {
+    const p = this.world.player
+    return (p.running ? 4.5 : p.sneaking ? 1.6 : 2.6) + Math.min(2, this.world.memory.used.gate * 1.0)
+  }
+
+  /** Half-angle of the sight cone, radians. */
+  static readonly HALF_ANGLE = 1.0
 
   /** Is the player behind this officer, close enough to lift their keys? */
   canBePickpocketed(): boolean {

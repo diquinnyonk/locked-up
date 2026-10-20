@@ -34,6 +34,7 @@ form.addEventListener('submit', (e) => {
   e.preventDefault()
   const name = nameInput.value.trim().replace(/\s+/g, ' ').slice(0, 18) || 'Prisoner'
   game.player.name = name
+  game.hard = (form.querySelector('input[name="mode"]:checked') as HTMLInputElement | null)?.value === 'hard'
   game.clock.minutes = 8 * 60 - 20
   game.input.enabled = true
   game.input.clear()
@@ -45,7 +46,7 @@ form.addEventListener('submit', (e) => {
   nameInput.blur()
   ui.card(
     `${name}, prisoner A7-${Math.floor(1000 + Math.random() * 9000)}`,
-    `Welcome to HMP Blackmoor. You share cell A8 with ${game.cellmate?.name ?? 'a stranger'}.\nGet out of your cell, get out of the wing, get over the wall, and have someone waiting when you do.\nPress J for the journal: every way out, and everything the prison learns.`,
+    `Welcome to HMP Blackmoor. You share cell A8 with ${game.cellmate?.name ?? 'a stranger'}.\nGet out of your cell, get out of the wing, get over the wall, and have someone waiting when you do.\nOut of bounds only counts as an attempt once an officer sees you, and if you make it back to your cell it never happened.${game.hard ? '' : ' The pale shapes on the floor are what each officer can see.'}\nPress J for the journal: every way out, the gangs, and everything the prison learns.`,
     30,
   )
 })

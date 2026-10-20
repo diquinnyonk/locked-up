@@ -17,6 +17,11 @@
         <form id="name-form" autocomplete="off">
           <label for="name">Name, for the record</label>
           <input id="name" maxlength="18" placeholder="Surname will do" required />
+          <fieldset id="difficulty">
+            <legend>Difficulty</legend>
+            <label><input type="radio" name="mode" value="normal" checked /> <b>Normal</b>: officers' sight drawn on the floor</label>
+            <label><input type="radio" name="mode" value="hard" /> <b>Hard</b>: no sight guide, officers off the map, and they spot you faster</label>
+          </fieldset>
           <button type="submit">Begin your sentence</button>
         </form>
         <p class="keys">WASD move · Shift run · C sneak · E use · R alternate · F fight · Tab pockets &amp; crafting · J journal · M map</p>
