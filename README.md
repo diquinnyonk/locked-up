@@ -1,0 +1,153 @@
+# Locked Up
+
+A UK prison break in the browser. WebGL2 and three.js, no external assets. Every
+mesh, colour and sound is generated in code. It is drawn in the same cel style as
+Windward (`seagull-game`): a quantised toon ramp, a shadow side tinted toward a
+cool shade colour rather than black, Fresnel rims, inverted-hull ink outlines on
+every person, and screen-space ink lines (a Roberts cross over a normal and depth
+prepass) on the building, all from one palette in `src/art/palette.ts`.
+
+```bash
+npm install
+npm run dev        # play
+npm test           # headless checks of every escape route
+npm run sim        # headless day of the regime, printed by period
+```
+
+Type your name on the title screen and you are booked in to HMP Blackmoor,
+cell A8, with one cellmate.
+
+## The prison
+
+- **Four wings (A–D)**: ten cells each, two prisoners to a cell, so 20 per wing
+  (you are one of A's). Each wing has a landing and a yellow security gate.
+- **Sixteen officers**, four per wing: one on the wing gate, one walking the
+  landing (and nights), one who follows the wing to work, meals and the yard,
+  and one posted on a central gate.
+- **Corridors and gates.** Only officers can open a gate. By day the officer on
+  it lets you through toward wherever the regime sends you, and nowhere else.
+- Showers, laundry, the canteen with its payphones, healthcare, segregation,
+  the games room, maintenance (behind a red door), and the **exercise yard**
+  against the perimeter wall. The road out is on the other side.
+
+The day runs to a timetable: unlock, breakfast, work, lunch, yard, association,
+tea, evening association, bang-up, lights out. One real second is two prison
+minutes, and you can sleep (Z) through the night.
+
+## Getting out of your cell
+
+| Method | How |
+| --- | --- |
+| **Steal a key** | Get behind an officer and lift their keys (R), or knock one down and take them. They notice at the next shift change, so press a mould into soap first and make a copy. |
+| **Toothpaste** | By day, stand in your open doorway and pack the strike plate (R). At lights out the door shuts but never locks. Ease it open (E). |
+| **Fake sickness** | Behind your door at night, press H. An officer walks you to healthcare and waits by the door. Slip away, take the vent, or knock them out. |
+| **Riot** | Win prisoners' trust with snout and ask if they will back you. Press G. At night the landing goes up and the officers open the cells to pull out ringleaders. By day your lot start swinging and officers leave gates swinging behind them. |
+| **The vent** | Your cell has a grille the guards forgot. The screws are rusted enough for a spoon. |
+
+The **vents** connect every room except the cells, plus your own. They are tin,
+so running is loud and officers below come to listen. Get caught in there and
+they weld your cell vent shut.
+
+## Getting out of the prison
+
+Over the yard wall with a grappling hook, or through the gatehouse gate with a
+key. Before you go, someone has to be waiting on the road:
+
+- **The phone.** Type what you say to your brother. An officer listens, so never
+  say *when* or *how*. "Tonight", times, days and "escape" get the call cut, and
+  every flagged call teaches the listener more words. A clean call means a car
+  waits on the road for the next three nights.
+- **The flag.** A bedsheet and a red sock, run up the yard flagpole by day: the
+  car comes that night.
+- **A torch.** Batteries, wire and tape, flashed out of your cell window at night.
+
+Reach the car to win. Get over the wall with nobody waiting and the dog unit
+finds you.
+
+## Everything is a weapon or a tool
+
+Every item has a damage value and a use. Toothbrushes and razor blades make a
+shiv. A pool ball in a sock is a cosh. Two bedsheets make a rope, and a rope, a
+fork and gaffer tape make a grappling hook. Soap takes a key mould, and a fork
+melted into the mould with a lighter and a spoon makes a homemade key. A spoon
+ground flat on the yard concrete undoes vent screws. A mop handle with a shiv
+taped on is a spear. Pool balls and magazines can be thrown to pull an officer's
+attention. Contraband goes on a pat-down. A loose brick in your cell stashes four
+items, and they do not always find it.
+
+Fixers on the wings sell razors, lighters, wire, tape, batteries and screwdrivers
+for snout. You earn snout working laundry shifts.
+
+## Behaviour trees, and what the prison learns
+
+Every NPC runs a behaviour tree (`src/npc/BehaviourTree.ts`), ticked six times a
+second and staggered across frames.
+
+- **Officers** (`src/npc/Guard.ts`): knocked out → chase → riot → noticed
+  something → sick call → pat-down → investigate a noise → lock checks → bang-up
+  → listen at vents → duty (post, landing or escort).
+- **Prisoners** (`src/npc/Prisoner.ts`): knocked out → cuffed → fighting → night
+  riot → brawl nearby → gang hunting you → frightened → snitching → lights out →
+  the regime.
+
+You have **four attempts**. An attempt starts the moment you are somewhere you
+cannot explain (out of your cell at night, in the vents, in maintenance, on the
+wall). If you get back to your cell unseen, it never happened. Get caught and the
+attempt is spent, contraband goes, you do a night in segregation, and
+`PrisonMemory` (`src/npc/Memory.ts`) records how you did it and where:
+
+- **Keys** lifted: officers guard their chains, and lifting gets harder each time.
+- **Toothpaste** found: the night officer tries every door at bang-up.
+- **Sick calls** faked: healthcare wants to see you frothing (chew soap, Q) and
+  sends two officers. Fake it often enough and nobody comes.
+- **Riots**: gate officers stop leaving their posts, and you need more backers.
+- **Vents**: officers stand under grilles and listen, and hear further.
+- **The wall**: an officer walks the yard at night.
+- Where you were caught joins the landing patrol routes, everyone sees a little
+  further each time, and the phone listener's vocabulary grows.
+
+Individual people remember too. An officer you fooled or hurt watches you harder
+and will not fall for the same thing twice. Prisoners keep trust and grudges.
+Snitches who see a report pay off report more readily. Gang members hold the
+riots that got them cuffed against you, and their grudge sets the prison-wide
+gang hostility. Ask anyone what they have heard and they will tell you what
+the officers have learned.
+
+When the four attempts are gone, the count resets for a second round, and the
+prison keeps everything it learned. **Exhaust both rounds and it is over**:
+segregation indefinitely or, if the gang's hostility is high enough, the gang
+gets to you first.
+
+## Controls
+
+| Key | Action |
+| --- | --- |
+| `WASD` / arrows | Move |
+| `Shift` | Run (loud) |
+| `C` | Sneak (slow, quiet, harder to spot) |
+| `E` | Use / talk / pick up |
+| `R` | Alternate action: lift keys, toothpaste, stash, torch |
+| `F` | Fight (your best weapon is used automatically) |
+| `Tab` / `I` | Pockets and crafting |
+| `Q` | Chew soap |
+| `H` | Bang the door, fake sick (night, in your cell) |
+| `G` | Kick off a riot |
+| `Z` | Sleep through the night |
+| `J` | Journal: every way out, and what they have learned |
+| `M` | Big map, with the ducts |
+| `Esc` | Pause |
+
+## Layout of the code
+
+```
+src/
+  art/        palette, toon ramp and material, ink outlines, painted primitives
+  shaders/    toon shader (Windward's, plus a shared day/night world tint)
+  render/     cel post pipeline, the instanced crowd
+  world/      tile grid and layout, A* and collision, static build, moving parts
+  npc/        behaviour trees, officers, prisoners, the prison's memory
+  game/       the regime clock, doors, items and recipes, the phone, the game
+  ui/         HUD, minimap, panels, speech bubbles
+  audio/      synthesised sound
+scripts/      headless simulation and scenario checks
+```

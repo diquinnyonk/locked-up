@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <title>Locked Up</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <canvas id="viewport"></canvas>
+
+    <div id="start">
+      <div class="sheet">
+        <p class="kicker">HMP Blackmoor · Category B</p>
+        <h1>Locked Up</h1>
+        <p class="lede">Four wings. Eighty prisoners. Sixteen officers who learn from every mistake you make.<br />Four attempts to get out. Then four more. Then it is over.</p>
+        <form id="name-form" autocomplete="off">
+          <label for="name">Name, for the record</label>
+          <input id="name" maxlength="18" placeholder="Surname will do" required />
+          <button type="submit">Begin your sentence</button>
+        </form>
+        <p class="keys">WASD move · Shift run · C sneak · E use · R alternate · F fight · Tab pockets &amp; crafting · J journal · M map</p>
+      </div>
+    </div>
+
+    <div id="hud">
+      <div id="info">
+        <div id="who"></div>
+        <div id="time"></div>
+        <div id="period"></div>
+        <div id="next"></div>
+        <div id="attempts"></div>
+        <div class="bar"><div id="health"></div></div>
+        <div id="contact"></div>
+      </div>
+      <canvas id="minimap"></canvas>
+      <div id="centre">
+        <div id="status"></div>
+        <div class="bar thin"><div id="suspicion"></div></div>
+        <div id="attempt"></div>
+      </div>
+      <div id="zone"></div>
+      <div id="toasts"></div>
+      <div id="prompts"></div>
+      <div id="inventory"></div>
+    </div>
+    <div id="bubbles"></div>
+    <div id="panel"></div>
+    <div id="card"></div>
+    <div id="end"></div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
