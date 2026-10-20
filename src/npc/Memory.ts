@@ -43,10 +43,10 @@ export class PrisonMemory {
   phoneFlags = 0
   /** Each firm's view of you. */
   readonly gangs: Record<GangId, GangState> = {
-    firm: { hostility: 0, backingUntil: -1, paid: 0 },
-    crows: { hostility: 0, backingUntil: -1, paid: 0 },
-    lions: { hostility: 0, backingUntil: -1, paid: 0 },
-    northern: { hostility: 0, backingUntil: -1, paid: 0 },
+    firm: { hostility: 0, backingUntil: -1, paid: 0, favours: 0 },
+    crows: { hostility: 0, backingUntil: -1, paid: 0, favours: 0 },
+    lions: { hostility: 0, backingUntil: -1, paid: 0, favours: 0 },
+    northern: { hostility: 0, backingUntil: -1, paid: 0, favours: 0 },
   }
   /** Keys reported missing. */
   keysLost = 0
@@ -73,13 +73,15 @@ export class PrisonMemory {
    * officers have already put down, and every time you have come back.
    */
   bribePrice(gang: GangId): number {
-    return 4 + this.used.riot * 2 + this.gangs[gang].paid * 2
+    const g = this.gangs[gang]
+    return Math.max(1, 4 + this.used.riot * 2 + g.paid * 2 - g.favours * 2)
   }
 
   /** Pay a firm: they back you for two days, and their rival takes it badly. */
   pay(gang: GangId, now: number): void {
     const g = this.gangs[gang]
     g.paid++
+    g.favours = 0
     g.backingUntil = now + 2 * 1440
     this.annoy(gang, -0.15)
     this.annoy(GANGS[gang].rival, 0.15)

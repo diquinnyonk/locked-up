@@ -31,7 +31,7 @@ import type { World } from './World'
 export type Temperament = 'lag' | 'gang' | 'snitch' | 'hothead' | 'old' | 'fixer'
 
 const FIRST = ['Dave', 'Gaz', 'Tommo', 'Dean', 'Wayne', 'Kev', 'Lee', 'Jamal', 'Callum', 'Ryan', 'Darren', 'Nathan', 'Liam', 'Craig', 'Marcus', 'Kieran', 'Shane', 'Reece', 'Tariq', 'Mo', 'Jonno', 'Stu', 'Paddy', 'Ollie', 'Dwayne', 'Ade', 'Taff', 'Jock', 'Scouse', 'Fergus', 'Carl', 'Neil', 'Barry', 'Terry', 'Vince', 'Rocco', 'Ash', 'Dom', 'Jase', 'Rich']
-const NICK = ['Big', 'Little', 'Mad', 'Old', 'Posh', 'Smiler', 'Two-Times', 'Scratch', 'Chalky', 'Lucky', 'Spider', 'Bones', 'Doc', 'Sparky', 'Tank']
+const NICK = ['Big', 'Little', 'Mad', 'Posh', 'Two-Sugars', 'Biscuits', 'Kettle', 'Dodgy', 'Fingers', 'Wonky', 'Chalky', 'Pie', 'Spanner', 'Bins', 'Gravy', 'Scampi', 'Sausage', 'Toast']
 
 const WALK = 2.2
 const RUN = 4.6
@@ -80,6 +80,8 @@ export class Prisoner extends Agent {
   private lastPeriod = ''
   fearTimer = 0
   isCellmate = false
+  /** The last punch they took was yours: jobs that want someone flattened check this. */
+  lastHitByPlayer = false
 
   constructor(index: number, cell: CellInfo, bunk: number, world: World, rng: () => number) {
     const skins = [HEX.skin, HEX.skinTan, HEX.skinDeep, HEX.skinPale, HEX.skin]
@@ -141,6 +143,7 @@ export class Prisoner extends Agent {
   /** Hit by someone. Returns true if that put them down. */
   hit(damage: number, by: Prisoner | 'player'): boolean {
     this.hp -= damage
+    this.lastHitByPlayer = by === 'player'
     if (by === 'player') {
       this.grudge = Math.min(1, this.grudge + 0.25)
       this.trust = Math.max(0, this.trust - 0.3)
@@ -345,7 +348,7 @@ function buildPrisonerTree(world: World): Node<Prisoner> {
       s.body.pose = s.supporter || world.rng() < 0.5 ? 'wave' : 'stand'
       const d = s.cell.door
       s.face((d.tx + 0.5) * TILE, (d.ty + 0.5) * TILE)
-      if (world.rng() < 0.04) s.say(['Screws out!', 'Oi oi oi!', 'Open up!', 'Burn it down!'][Math.floor(world.rng() * 4)], 1.5)
+      if (world.rng() < 0.04) s.say(['Screws out!', 'Oi oi oi!', 'We want proper gravy!', 'Free the telly!', 'Bring back the custard!'][Math.floor(world.rng() * 5)], 1.5)
       return 'running'
     }),
   )
@@ -369,7 +372,7 @@ function buildPrisonerTree(world: World): Node<Prisoner> {
         if (best) {
           s.fighting = true
           s.fightTarget = best
-          if (world.rng() < 0.3) s.say(['Come on then!', 'Have it!', 'Get in!'][Math.floor(world.rng() * 3)], 1.4)
+          if (world.rng() < 0.3) s.say(['Come on then!', 'Have it!', 'You what?!', "That's for the custard!", 'Not the face!'][Math.floor(world.rng() * 5)], 1.4)
           return 'running'
         }
       }
@@ -429,7 +432,7 @@ function buildPrisonerTree(world: World): Node<Prisoner> {
       s.body.pose = 'walk'
       const st = s.goToWorld(g.g.x, g.g.z, WALK * 1.3, 1.4)
       if (st === 'success') {
-        s.say(`Guv... ${p.name}'s carrying.`, 2.5)
+        s.say(`Guv... ${p.name}'s carrying. You didn't hear it from me. I'm not here.`, 2.5)
         g.g.searchTarget = true
         s.report = false
         s.reportsMade++

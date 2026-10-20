@@ -74,4 +74,6 @@ export interface GangState {
   backingUntil: number
   /** Times you have paid them. */
   paid: number
+  /** Jobs done for them since you last paid: each knocks the price down. */
+  favours: number
 }

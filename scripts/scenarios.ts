@@ -161,6 +161,93 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   check('gangs: the price goes up next time', game.memory.bribePrice('firm') > 4)
 }
 
+// ---- Jobs from the firms ----
+{
+  const { game, log } = fresh()
+  const boss = game.gangLeader('firm')!
+  const job = (label: string) => {
+    game.talkTo(boss)
+    return lastTalk?.options.find((o) => o.label.includes(label))
+  }
+  const take = () => lastTalk?.options.find((o) => o.label.startsWith('Take the job'))?.run()
+  job('Got any work')?.run()
+  check('jobs: the Firm boss pitches a job', !!lastTalk?.title.includes('Soap Opera'), lastTalk?.title)
+  take()
+  check('jobs: job taken', game.missions.active.length === 1)
+  game.player.inventory.add('soap')
+  const snoutBefore = game.player.inventory.count('snout')
+  const price = game.memory.bribePrice('firm')
+  job("It's done")?.run()
+  check('jobs: soap handed in for snout', game.player.inventory.count('snout') === snoutBefore + 2 && !game.player.inventory.has('soap'), log[log.length - 1])
+  check('jobs: the riot price drops', game.memory.bribePrice('firm') < price, `${price} -> ${game.memory.bribePrice('firm')}`)
+
+  job('Got any work')?.run()
+  take()
+  check('jobs: handed a parcel to plant', game.player.inventory.has('parcel'))
+  game.player.inventory.remove('parcel')
+  game.dynamic.spawnItem('parcel', 60 * 2, 14.5 * 2, 'blockB')
+  run(game, 0.1)
+  check('jobs: parcel planted on B wing', game.missions.active[0]?.done === true)
+  job("It's done")?.run()
+
+  job('Got any work')?.run()
+  check('jobs: the beat-up job names a Crow', !!game.missions && /Crows|trifle/.test(lastTalk?.line ?? ''), lastTalk?.line.slice(0, 60))
+  take()
+  const target = game.missions.active[0].target!
+  check('jobs: target is a rival', target.gang === 'crows')
+  target.hit(20, 'player')
+  run(game, 0.1)
+  check('jobs: flattening him counts', game.missions.active[0].done, `${target.name}`)
+  job("It's done")?.run()
+  const gotLighter = game.player.inventory.has('lighter') || game.dynamic.items.some((i) => i.id === 'lighter' && Math.hypot(i.x - game.player.body.x, i.z - game.player.body.z) < 2)
+  check('jobs: three Firm jobs done, lighter paid (in pockets or at your feet)', game.missions.completedCount === 3 && gotLighter)
+}
+
+// ---- Jobs from officers ----
+{
+  const { game, log } = fresh()
+  const officer = game.guards.find((gu) => game.missions.hasOffer(gu))!
+  check('jobs: some officers want a word', !!officer)
+  ;(game.missions as any).officerOffers.set(officer, (game.missions as any).officerOffers.get(officer))
+  // Force the biscuit job so the test knows what to bring.
+  const all = [...(game.missions as any).officerOffers.values()]
+  const custard = all.find((t: any) => t.id === 'custard-crisis') ?? { ...all[0], id: 'custard-crisis', objective: { kind: 'fetch', item: 'biscuits' }, reward: { blindEye: true } }
+  ;(game.missions as any).officerOffers.set(officer, custard)
+  game.player.body.x = officer.x
+  game.player.body.z = officer.z + 1
+  ;(game as any).talkToGuard(officer)
+  lastTalk?.options.find((o) => o.label.includes('Got any work'))?.run()
+  lastTalk?.options.find((o) => o.label.startsWith('Take the job'))?.run()
+  game.player.inventory.add('biscuits')
+  ;(game as any).talkToGuard(officer)
+  lastTalk?.options.find((o) => o.label.includes("It's done"))?.run()
+  check('jobs: officer owes you a blind eye', officer.blindEye, log[log.length - 1])
+  // Now get caught out of bounds by him at night.
+  game.clock.skipTo(23 * 60)
+  officer.stop()
+  officer.body.x = 20.5 * 2
+  officer.body.z = 14.5 * 2
+  officer.body.yaw = Math.PI / 2
+  game.player.body.x = officer.x + 3
+  game.player.body.z = officer.z
+  for (const gu of game.guards) if (gu !== officer) { gu.body.x = 140; gu.body.z = 115 }
+  run(game, 2)
+  check('jobs: he looks the other way', !officer.blindEye && !officer.chasing && officer.ignoring > 0, log.filter((l) => l.includes('other way'))[0])
+}
+
+// ---- The quiet shift ----
+{
+  const { game, log } = fresh()
+  const officer = game.guards[0]
+  const quiet = { id: 'quiet-shift', title: 'The Quiet Shift', brief: 'Keep your nose clean till {time}.', objective: { kind: 'behave', hours: 3 }, reward: { snout: 2 }, thanks: 'ta' }
+  ;(game.missions as any).officerOffers.set(officer, quiet)
+  ;(game as any).talkToGuard(officer)
+  lastTalk?.options.find((o) => o.label.includes('Got any work'))?.run()
+  lastTalk?.options.find((o) => o.label.startsWith('Take the job'))?.run()
+  game.warn(game.guards[1], 'Oi.')
+  check('jobs: a warning ruins the quiet shift', game.missions.active.length === 0 && log.some((l) => l.startsWith('Job failed')))
+}
+
 // ---- Riot refused without backing ----
 {
   const { game, g, log } = fresh()

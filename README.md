@@ -92,6 +92,48 @@ a point their boss will not deal with you at all, and their soldiers come for
 you when no officer is near. If you lose both rounds, the firm that hates you
 most decides how it ends.
 
+## Jobs
+
+People want things doing. Look for **(has a job)** or **(wants a word)** when
+you go to talk to someone. You can have three jobs on at once, and you hand each
+one back to whoever set it. The HUD lists them under your details, and so does
+the journal.
+
+**The gang bosses** each have three jobs, in order. Every one done lowers that
+gang's riot price, cools their hostility and makes their lads like you. Jobs that
+hit their rival make the rival angrier.
+
+| Boss | Jobs |
+| --- | --- |
+| The Firm | *Soap Opera* (a bar of soap, definitely not for a key mould), *Return to Sender* (dump a parcel that smells of Lynx Africa and treason on the Crows' landing), *A Quiet Word* (flatten the Crow who said Uncle's mum's trifle was shop-bought) |
+| The Crows | *The Great Pool Ball Robbery* (not the black one, that's bad luck innit), *Crowtax* (three snout, a tax they are very proud of naming), *Bovver on A Wing* (they are not pigeons) |
+| Red Lions | *Away Day* (sing at the flagpole during yard), *Half-Time Oranges* (a canteen tray, which is a goalpost if you squint), *Derby Day* (they did not bottle it, they tactically retreated) |
+| The Northern Mob | *The Sock Audit* (two socks short, the books must balance), *Debt Collection* (three Twixes and an apology), *Tea, Proper* (liberate the real teabags from healthcare) |
+
+**Gang members** run small errands, a few each day: a toothbrush (it was used for
+grout), custard creams, or a perfumed letter to someone on another wing ("if
+anyone asks, it's from your nan").
+
+**Officers**: every morning three random officers want something done quietly:
+
+- *A Racing Certainty*: find their confiscated Racing Post in the games room
+  (Lord Biscuitwick, each way).
+- *The Custard Crisis*: the officers' biscuit tin is empty and it's only Tuesday.
+- *Specs Appeal*: leopard-print reading glasses lost in the yard. Do not laugh.
+- *Who's Brewing Hooch?*: sniff around a cell. The lads in it will know it was
+  you, and so will their gang.
+- *The Quiet Shift*: no warnings for three hours, for the sake of their bunions.
+- *Fantasy Football*: find out who a gang boss picked as captain (it's his nan).
+
+Officers pay in snout, in going easier on you, or in a **blind eye**: the next
+time that officer catches you out of bounds, he studies the ceiling instead.
+Fail a job, or let it run out, and the gang or the officer takes it personally.
+
+The officers are Mr Higginbottom, Ms Bottomley, Mr Crumpet, Mrs Thistlethwaite,
+Mr Pickles, Ms Doubleday, Mr Snodgrass, Mr Wellbeloved, Ms Puddifoot, Mr Gristle,
+Mrs Battenberg, Mr Sidebottom, Mr Featherstonehaugh, Ms Clutterbuck,
+Mr Ramsbottom and Mrs Shufflebotham, and every one of them has a bad knee.
+
 ## Everything is a weapon or a tool
 
 Every item has a damage value and a use. Toothbrushes and razor blades make a

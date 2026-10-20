@@ -580,3 +580,38 @@ body.playing #hud {
   line-height: 1.4;
   background: rgb(242 251 250 / 55%);
 }
+
+#jobs {
+  position: absolute;
+  top: 196px;
+  left: 12px;
+  width: 230px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+#jobs .job {
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-left: 8px solid var(--gate);
+  padding: 0.35rem 0.5rem;
+  font-size: 0.74rem;
+  line-height: 1.3;
+  box-shadow: 3px 3px 0 var(--ink);
+}
+#jobs .job.done {
+  border-left-color: var(--good);
+}
+#jobs .job b {
+  display: block;
+  font: 700 0.85rem var(--display);
+}
+#jobs .job small {
+  color: var(--steel);
+}
+@media (max-width: 720px) {
+  #jobs {
+    top: 160px;
+    width: 180px;
+  }
+}

@@ -15,6 +15,7 @@ import { Clock, RESTRICTED, allowedZones } from './Clock'
 import { Doors } from './Doors'
 import { ITEMS, Inventory, type ItemId, RECIPES, type Recipe, SPAWNS } from './Items'
 import { screenCall } from './Phone'
+import { Missions } from './Missions'
 
 /** What the game needs from the interface. Implemented in ui/Ui.ts. */
 export interface UiPort {
@@ -100,6 +101,7 @@ export class Game implements World {
   /** Time since the last thing the player did that a snitch would notice. */
   private dodgyTimer = 0
   readonly log: string[] = []
+  readonly missions: Missions
 
   constructor(scene: Scene, readonly ui: UiPort, name: string) {
     const built = buildPrison(this.grid)
@@ -141,6 +143,8 @@ export class Game implements World {
     scene.add(this.crowd.group)
     this.dynamic.ensureCones(this.guards.length)
     this.restock(true)
+    this.missions = new Missions(this)
+    this.missions.newDay()
   }
 
   private spawnPeople(): void {
@@ -225,6 +229,7 @@ export class Game implements World {
 
   warn(by: Guard, text: string): void {
     by.say(text, 3)
+    this.missions.onTrouble()
     this.warnings++
     if (this.warnings >= 3) {
       this.warnings = 0
@@ -289,6 +294,7 @@ export class Game implements World {
       return
     }
     by.wary = Math.min(1, by.wary + 0.35)
+    this.missions.onTrouble()
     this.sounds.push({ sound: 'caught', volume: 1 })
     const wasVent = p.inVent || method === 'vent'
     const result = this.memory.fail(method, p.body.x, p.body.z)
@@ -476,6 +482,7 @@ export class Game implements World {
     for (const a of agents) a.move(delta * (this.sleeping ? 2 : 1), agents)
     this.doors.update(delta)
     this.updateRiot(delta)
+    this.missions.update()
     this.updateNoises(delta)
     this.updateAlarm(delta)
 
@@ -560,6 +567,7 @@ export class Game implements World {
       if (previous) this.toast(`${this.clock.text}  ${this.clock.label}`, 'neutral')
       if (period === 'unlock') {
         this.restock(false)
+        this.missions.newDay()
         if (this.contactNights > 0) this.contactNights--
         this.signalTonight = false
         this.flagUp = false
@@ -955,12 +963,12 @@ export class Game implements World {
       } else if (g.canBePickpocketed()) {
         add('R', `Lift ${g.name}'s keys`, () => this.takeKeys(g, false))
       }
-      if (g.ko <= 0) add('E', `Talk to ${g.name}`, () => this.talkToGuard(g))
+      if (g.ko <= 0) add('E', `Talk to ${g.name}${this.missions.hasOffer(g) ? ' (wants a word)' : ''}`, () => this.talkToGuard(g))
       break
     }
     for (const pr of this.prisoners) {
       if (pr.ko > 0 || !front(pr.x, pr.z)) continue
-      add('E', `Talk to ${pr.name}`, () => this.talkTo(pr))
+      add('E', `Talk to ${pr.name}${this.missions.hasOffer(pr) ? ' (has a job)' : ''}`, () => this.talkTo(pr))
       break
     }
 
@@ -1015,6 +1023,7 @@ export class Game implements World {
       if (near(cell.bunks[0].x, cell.bunks[0].z, 1.6) && this.clock.locked) add('E', 'Sleep (Z) till morning', () => this.trySleep())
     }
     if (inv.has('spoon') && p.zone === 'yard') add('R', 'Grind the spoon flat on the concrete', () => this.craftNamed('flatSpoon'))
+    this.missions.prompts(add)
 
     this.prompts = out
   }
@@ -1319,8 +1328,15 @@ export class Game implements World {
   }
 
   private talkToGuard(g: Guard): void {
-    const lines = g.wary > 0.6 ? ["I've got my eye on you.", "Don't even think about it.", 'Move along.'] : ['What do you want?', 'Keep your nose clean.', "Not now, I'm busy.", 'Lovely weather for it, eh?']
-    g.say(lines[Math.floor(this.rng() * lines.length)], 2.5)
+    const offer = this.missions.hasOffer(g)
+    const lines =
+      g.wary > 0.6
+        ? ["I've got my eye on you. Both of them. This one's glass.", "Don't even think about it. I can see you thinking. Your lips move.", 'Move along before I find a reason.']
+        : offer
+          ? ["Ah. You. Just the person. Keep your voice down.", "Psst. Over here. No, act natural. NATURAL.", "You look like someone who can keep their mouth shut. Can you? Good."]
+          : ['What do you want? If it is the telly remote, the answer is no.', 'Keep your nose clean and we will get along famously.', "Not now, I'm on my break. I'm always on my break.", 'Lovely weather for it. Not that you would know.', "If you're after the toilet roll, there is none. There's never any."]
+    const line = lines[Math.floor(this.rng() * lines.length)]
+    this.ui.talk(g.name, line, this.missions.options(g))
   }
 
   talkTo(pr: Prisoner): void {
@@ -1389,20 +1405,21 @@ export class Game implements World {
       })
     }
     options.push({ label: 'Ask about the firms', enabled: true, run: () => this.ui.talk(pr.name, this.firmsGossip(), []) })
+    options.unshift(...this.missions.options(pr))
     options.push({ label: 'Ask what they have heard', enabled: true, run: () => this.ui.talk(pr.name, this.gossip(pr), []) })
     if (pr.isCellmate) options.push({ label: 'Ask about the cell', enabled: true, run: () => this.ui.talk(pr.name, cellmateTip(this.memory.round), []) })
     const greeting =
       pr.grudge > 0.5
-        ? 'What do YOU want?'
+        ? pick2(this.rng, ['What do YOU want?', 'Oh, it is you. Marvellous. Smashing. Go away.'])
         : pr.gang
           ? pr.leader
             ? `You know who I am. ${GANGS[pr.gang].name} run ${GANGS[pr.gang].wing} wing.`
-            : 'You lost?'
+            : pick2(this.rng, ['You lost?', 'You look like you want something. Everyone wants something.'])
           : pr.temperament === 'fixer'
-            ? 'Looking for something? I can get things.'
+            ? pick2(this.rng, ['Looking for something? I can get things. Not Freddos. Never ask me for Freddos.', "Psst. Batteries, wire, a lighter, a screwdriver. Cash or snout. Mostly snout. Only snout."])
             : pr.isCellmate
               ? `Alright, ${this.player.name}.`
-              : 'Alright?'
+              : pick2(this.rng, ['Alright?', 'Y\'alright, our kid?', 'Wotcha.', 'Ey up.', 'Alright, chief? Kettle on?', 'Do I know you? I feel like I know you. Did you do my mum\'s guttering?'])
     const firm = pr.gang ? `, ${pr.leader ? 'boss of ' : ''}${GANGS[pr.gang].name}` : ''
     const trust = `${firm}${pr.supporter ? ' (backs you)' : pr.grudge > 0.5 ? ' (holds a grudge)' : ''}`
     this.ui.talk(`${pr.name}${trust}`, greeting, options)
@@ -1415,17 +1432,19 @@ export class Game implements World {
       return `Word is ${l.text.charAt(0).toLowerCase()}${l.text.slice(1)} All since your little stunt.`
     }
     const tips = [
-      'The screws carry the keys on their belts. Get behind one when he is distracted.',
-      'Toothpaste in the strike plate sets like concrete. Door looks locked, but it is not.',
-      'Bang on your door at night like you are dying and they have to take you to healthcare.',
-      'A proper kick-off on the landing and every screw in the place comes running. Doors get left open.',
-      'Phones are taped. Never say when. Never say how.',
-      'Lads used to run a red rag up the yard flagpole for their people on the road.',
-      'Maintenance has every tool you could want. Shame it is behind a red door.',
-      'The vents run over everything except the cells. Except some cells...',
-      'Two sheets knotted make a rope. Bend a fork and tape it on and it is a hook.',
-      'Soap takes a key impression lovely. Melt a fork into it with a lighter.',
-      'Chew soap before you fake it. Froth sells it.',
+      "The screws carry the keys on their belts. Get behind one while he's arguing about the footy.",
+      "Toothpaste in the strike plate sets like concrete. Door looks locked. It isn't. Whitening AND escaping.",
+      'Bang on your door at night like you are dying and they have to take you to healthcare. Make it a good groan. They score you.',
+      'Proper kick-off on the landing and every screw in the place comes running. Doors get left open. Kettles get left on.',
+      'Phones are taped. Never say when. Never say how. Talk about your nan. Everybody talks about their nan.',
+      'Lads used to run a red rag up the yard flagpole for their people on the road. Like semaphore, but dodgier.',
+      "Maintenance has every tool you could want. Shame it's behind a red door. Shame about a lot of things.",
+      'The vents run over everything except the cells. Except some cells... I have said too much. I always say too much.',
+      'Two sheets knotted make a rope. Bend a fork and tape it on and it is a hook. Blue Peter taught me that. Sort of.',
+      'Soap takes a key impression lovely. Melt a fork into it with a lighter. Do not do it in the canteen. Ask me how I know.',
+      'Chew soap before you fake it. Froth sells it. Tastes like a disappointing Tuesday.',
+      'Officers get bored. Bored officers want favours. Do one and they might not see you. Once.',
+      "Never trust a man who says 'with all due respect'. Or a man in maroon. Or the fish pie.",
     ]
     if (pr.gang) return this.memory.gangs[pr.gang].hostility > 0.4 ? 'Every time you mess about, the screws come down on all of us. Keep it up.' : 'Mind your own.'
     return tips[Math.floor(this.rng() * tips.length)]
@@ -1614,4 +1633,8 @@ function cellmateTip(round: number): string {
   return round === 1
     ? "See that grille behind the table? Maintenance never put it on the list. Screws are rusted to nothing; a spoon'd turn them. Goes up into the ducts. Don't get caught in there, mind, or they'll weld it."
     : "They've been at all the locks since you started. Keep your head down for a day or two. They forget faster than you think. They don't, actually."
+}
+
+function pick2<T>(rng: () => number, list: T[]): T {
+  return list[Math.floor(rng() * list.length)]
 }

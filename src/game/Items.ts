@@ -27,6 +27,13 @@ export type ItemId =
   | 'dart'
   | 'bleach'
   | 'screwdriver'
+  // Errands
+  | 'biscuits'
+  | 'teabags'
+  | 'parcel'
+  | 'letter'
+  | 'glasses'
+  | 'racingPost'
   // Crafted
   | 'shiv'
   | 'sockCosh'
@@ -77,6 +84,13 @@ export const ITEMS: Record<ItemId, ItemDef> = {
   dart: { id: 'dart', name: 'Dart', hex: HEX.metal, damage: 2, uses: [], contraband: true, blurb: 'From the games room board.' },
   bleach: { id: 'bleach', name: 'Bleach', hex: HEX.paper, damage: 2, uses: [], contraband: true, blurb: 'Laundry strength.' },
   screwdriver: { id: 'screwdriver', name: 'Screwdriver', hex: HEX.clothesRed, damage: 3, uses: ['openVent'], contraband: true, blurb: 'From the maintenance bench. Takes a vent cover off in seconds.' },
+
+  biscuits: { id: 'biscuits', name: 'Custard creams', hex: HEX.chipsOrange, damage: 0, uses: ['bribe'], contraband: false, blurb: 'A whole packet. On a landing, this is wealth.' },
+  teabags: { id: 'teabags', name: 'Proper teabags', hex: HEX.wood, damage: 0, uses: ['bribe'], contraband: false, blurb: 'Not the canteen dust. The real stuff. Grown men have wept.' },
+  parcel: { id: 'parcel', name: 'Suspicious parcel', hex: HEX.basket, damage: 1, uses: [], contraband: true, blurb: 'Wrapped in a pillowcase. Smells of Lynx Africa and treason. Do not shake it.' },
+  letter: { id: 'letter', name: 'Perfumed letter', hex: HEX.soap, damage: 0, uses: [], contraband: false, blurb: 'Lipstick kiss on the back. "To my Big Snuggle Bear". Oh dear.' },
+  glasses: { id: 'glasses', name: 'Reading glasses', hex: HEX.steelDark, damage: 0, uses: [], contraband: false, blurb: 'Leopard print, on a beaded chain. Unmistakably an officer\'s.' },
+  racingPost: { id: 'racingPost', name: 'The Racing Post', hex: HEX.clothesRed, damage: 1, uses: ['distract'], contraband: false, blurb: 'Confiscated, then lost. Three horses are circled in biro.' },
 
   shiv: { id: 'shiv', name: 'Shiv', hex: HEX.metal, damage: 6, uses: [], contraband: true, blurb: 'Toothbrush and a razor blade, melted together.' },
   sockCosh: { id: 'sockCosh', name: 'Sock cosh', hex: HEX.cloth, damage: 5, uses: [], contraband: true, blurb: 'A pool ball in a sock. Puts a man down.' },
@@ -207,10 +221,10 @@ export class Inventory {
 export const SPAWNS: { zone: string; items: ItemId[] }[] = [
   { zone: 'showers', items: ['soap', 'razor', 'toothbrush', 'toothpaste', 'sock'] },
   { zone: 'laundry', items: ['bedsheet', 'bedsheet', 'sock', 'bleach', 'mopHandle', 'snout'] },
-  { zone: 'hub', items: ['spoon', 'fork', 'tray', 'spoon', 'fork'] },
+  { zone: 'hub', items: ['spoon', 'fork', 'tray', 'spoon', 'fork', 'biscuits'] },
   { zone: 'games', items: ['poolBall', 'poolCue', 'dart', 'battery', 'magazine', 'snout'] },
   { zone: 'maint', items: ['screwdriver', 'wire', 'tape', 'lighter', 'tape'] },
-  { zone: 'infirmary', items: ['tape', 'bleach'] },
+  { zone: 'infirmary', items: ['tape', 'bleach', 'teabags'] },
   { zone: 'yard', items: ['snout'] },
   { zone: 'blockA', items: ['magazine', 'mopHandle'] },
 ]

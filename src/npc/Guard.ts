@@ -31,10 +31,10 @@ import type { World } from './World'
 export type GuardRole = 'gate' | 'landing' | 'escort' | 'central'
 
 const NAMES = [
-  'Mr Hughes', 'Ms Okafor', 'Mr Doyle', 'Mrs Patel',
-  'Mr Brennan', 'Ms Kowalski', 'Mr Asante', 'Mr Price',
-  'Ms Byrne', 'Mr Whitlock', 'Mrs Adeyemi', 'Mr Rourke',
-  'Mr Lennox', 'Ms Harding', 'Mr Mahmood', 'Mrs Fenwick',
+  'Mr Higginbottom', 'Ms Bottomley', 'Mr Crumpet', 'Mrs Thistlethwaite',
+  'Mr Pickles', 'Ms Doubleday', 'Mr Snodgrass', 'Mr Wellbeloved',
+  'Ms Puddifoot', 'Mr Gristle', 'Mrs Battenberg', 'Mr Sidebottom',
+  'Mr Featherstonehaugh', 'Ms Clutterbuck', 'Mr Ramsbottom', 'Mrs Shufflebotham',
 ]
 
 const WALK = 2.6
@@ -61,6 +61,10 @@ export class Guard extends Agent {
   busy = false
   /** Had you in sight this frame. */
   seesPlayer = false
+  /** Owes you one from a job: looks the other way the next time. */
+  blindEye = false
+  /** Seconds they are pointedly not looking at you. */
+  ignoring = 0
   patrolTarget: { tx: number; ty: number } | null = null
   dwell = 0
   lockIndex = 0
@@ -115,7 +119,10 @@ export class Guard extends Agent {
     else if (this.lastSeen) this.lastSeen.t += delta
 
     const escorting = p.escortedBy === this
-    if (sees && p.illegal > 0 && !escorting) {
+    if (this.ignoring > 0) this.ignoring -= delta
+    if (this.ignoring > 0 && !this.chasing) {
+      this.suspicion = 0
+    } else if (sees && p.illegal > 0 && !escorting) {
       const d = this.distanceTo(p.body.x, p.body.z)
       const range = this.visionRange()
       const rate = (1.8 - d / range) * (p.illegal === 2 ? 1.6 : 0.7) * (1 + this.wary) * (this.busy ? 0.4 : 1) * (w.hard ? 1.25 : 1)
@@ -126,9 +133,17 @@ export class Guard extends Agent {
       this.suspicion = Math.max(0, this.suspicion - delta * 0.25)
     }
 
+    if (this.suspicion >= 1 && sees && p.illegal > 0 && !this.chasing && this.blindEye) {
+      this.blindEye = false
+      this.suspicion = 0
+      this.ignoring = 40
+      this.say(pick(w.rng, ["I didn't see nothing. We're square, " + p.name + '.', "Is that... no. No it isn't. Lovely evening.", "*studies ceiling intently*"]), 3)
+      w.toast(`${this.name} looks the other way. That favour is spent.`, 'good')
+      return
+    }
     if (this.suspicion >= 1 && sees && p.illegal === 2 && !this.chasing) {
       this.chasing = true
-      this.say(pick(w.rng, [`Oi! ${p.name}! Stop right there!`, 'Escape! Escape! All units!', `Stay where you are, ${p.name}!`]), 2.5)
+      this.say(pick(w.rng, [`Oi! ${p.name}! Stop right there, you absolute weapon!`, 'Escape! Escape! Somebody put the kettle down and RUN!', `Stop, ${p.name}! I've got a bad knee!`, 'Code red! Code red! Somebody fetch my whistle!', `${p.name}! I can SEE you! Mostly!`]), 2.5)
       w.alarm.active = true
       w.alarm.timer = 40
       w.alarm.x = p.body.x
@@ -245,7 +260,7 @@ function buildGuardTree(world: World): Node<Guard> {
         g.chasing = false
         g.suspicion = 0.5
         if (g.lastSeen) g.investigate = { x: g.lastSeen.x, z: g.lastSeen.z, t: 8 }
-        g.say('Lost them...', 2)
+        g.say(pick(world.rng, ['Lost them. Typical.', "Where'd he go? He was RIGHT there.", 'Gone. Like my pension.']), 2)
         return 'failure'
       }
       const d = g.distanceTo(p.body.x, p.body.z)
@@ -273,7 +288,7 @@ function buildGuardTree(world: World): Node<Guard> {
       if (g.suspicion >= 1 && p.illegal === 1) {
         if (g.distanceTo(p.body.x, p.body.z) > 2) return g.goToWorld(p.body.x, p.body.z, WALK * 1.2, 1.8)
         if (g.warnCooldown <= 0) {
-          world.warn(g, `${p.name}! You're not meant to be here. Back where you belong.`)
+          world.warn(g, pick(world.rng, [`Oi, ${p.name}! This isn't a stately home, you can't just wander about!`, `${p.name}! Where do you think you are, Center Parcs? Back to your landing.`, `Right, ${p.name}. Back you go, or I'm telling the governor. And your mum.`, `${p.name}, I don't know what you're doing and I don't want to know. Shoo.`]))
           g.warnCooldown = 12
           g.suspicion = 0.3
         }
@@ -308,7 +323,7 @@ function buildGuardTree(world: World): Node<Guard> {
       if (target) {
         if (best < 1.2) {
           target.calm()
-          g.say(pick(world.rng, ['Get down! Down!', 'Hands behind your back!', 'Pack it in!']), 1.6)
+          g.say(pick(world.rng, ['Get down! Down!', 'Hands behind your back!', 'Pack it in, the lot of you!', 'Have some decorum!', 'I am too old for this!']), 1.6)
           g.body.pose = 'search'
           return 'running'
         }
@@ -339,7 +354,7 @@ function buildGuardTree(world: World): Node<Guard> {
       if (s === 'success') {
         g.body.pose = 'search'
         g.searchTarget = false
-        world.warn(g, `Arms up, ${p.name}. Someone says you're carrying.`)
+        world.warn(g, pick(world.rng, [`Arms up, ${p.name}. A little bird says you're carrying.`, `Pockets, ${p.name}. Turn them out. Slowly. Like a magician.`]))
         world.patDown(g)
       }
       return 'running'
@@ -360,7 +375,7 @@ function buildGuardTree(world: World): Node<Guard> {
         // In the duct right above me?
         const earshot = 3.2 + (p.running ? 4 : p.sneaking ? 0 : 1.6) + world.memory.ventListening * 3
         if (p.inVent && Math.hypot(p.body.x - inv.x, p.body.z - inv.z) < earshot) {
-          g.say(`I can hear you up there! Come out!`, 2.5)
+          g.say(pick(world.rng, ['I can hear you up there! Come out! I am not coming in, I have a bad back!', "Is that a pigeon? That's not a pigeon. OUT!", 'Mice do not wear trainers. Out you come.']), 2.5)
           world.caught(g)
           g.investigate = null
           return 'success'
@@ -390,7 +405,7 @@ function buildGuardTree(world: World): Node<Guard> {
           world.lockChecks.splice(world.lockChecks.indexOf(door), 1)
           if (door.jammed && world.rng() < world.memory.lockCheckChance) {
             door.jammed = false
-            g.say('Toothpaste in the lock?! Cheeky sod.', 3)
+            g.say(pick(world.rng, ['Toothpaste in the lock?! Cheeky sod.', 'Is that... Colgate? In MY lock?', 'Minty. Very minty. Very NICKED.']), 3)
             world.toothpasteFound(g, door)
           }
         }
@@ -408,7 +423,7 @@ function buildGuardTree(world: World): Node<Guard> {
       if (!wp.length) return 'failure'
       if (!g.patrolTarget || g.goTo(g.patrolTarget.tx, g.patrolTarget.ty, WALK) !== 'running') {
         g.patrolTarget = wp[Math.floor(world.rng() * wp.length)]
-        if (world.rng() < 0.3) g.say(pick(world.rng, ['Behind your doors, gents!', 'Bang-up! Come on!', 'Doors in five minutes!']), 2)
+        if (world.rng() < 0.3) g.say(pick(world.rng, ['Behind your doors, gents!', "Bang-up! Come on, I've got Corrie on at nine!", 'Doors in five minutes!', 'Chop chop! Teeth, wee, bed!']), 2)
       }
       g.body.pose = 'walk'
       return 'running'
@@ -539,7 +554,7 @@ function attendSick(world: World, g: Guard): Status {
     const s = g.goTo(door.tx, outsideTy, WALK * 1.4, 0.6)
     if (s !== 'running' && lead) {
       if (world.memory.sickNeedsFroth && p.frothing <= 0) {
-        g.say("You look fine to me. Get some kip.", 3)
+        g.say(pick(world.rng, ['You look fine to me. Have a glass of water and a word with yourself.', "That's not a groan, that's an amateur groan. Get some kip.", 'Dying, are we? Again? Shame. Night night.']), 3)
         g.wary = Math.min(1, g.wary + 0.3)
         world.toast('The officer is not convinced. You need real symptoms.', 'bad')
         world.sickCall = null
@@ -547,7 +562,7 @@ function attendSick(world: World, g: Guard): Status {
       }
       call.stage = 'atDoor'
       call.timer = 25
-      g.say(`Alright ${p.name}, out you come. Slowly.`, 3)
+      g.say(`Alright ${p.name}, out you come. Slowly. If you're sick on my shoes there'll be trouble.`, 3)
     }
     return 'running'
   }
@@ -583,7 +598,7 @@ function attendSick(world: World, g: Guard): Status {
     if (s !== 'running') {
       call.stage = 'treating'
       call.timer = 30
-      g.say('Sit on the bed. Nurse will be along.', 3)
+      g.say("Sit on the bed. Nurse'll be along. She's on her biscuit break, so, a while.", 3)
     }
     return 'running'
   }
@@ -596,7 +611,7 @@ function attendSick(world: World, g: Guard): Status {
     call.timer -= 1 / 6
     if (call.timer <= 0) {
       call.stage = 'returning'
-      g.say('Right, nurse says paracetamol and back to bed.', 3)
+      g.say('Right. Nurse says two paracetamol and stop being a drama queen. Back to bed.', 3)
     }
     return 'running'
   }

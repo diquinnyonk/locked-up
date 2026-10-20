@@ -221,6 +221,9 @@ export class Ui implements UiPort {
       </ol>
       <h3>Getting out of the prison</h3>
       <p>Over the yard wall with a grappling hook, or through the gatehouse with a key. Before you go, get word outside: a <b>phone call</b> that never says when (car waits three nights), the <b>flag</b> on the yard pole by day, or a <b>torch</b> from your window at night.</p>
+      <h3>Jobs</h3>
+      ${g.missions.active.length ? g.missions.active.map((m) => `<div class="gang" style="border-left-color:${m.done ? css(HEX.yardGrass) : css(HEX.gateYellow)}"><b>${escape(m.tpl.title)}</b>, for ${escape(m.giverName)}<br>${escape(m.brief)}<br><small>${escape(g.missions.describe(m))}</small></div>`).join('') : '<p class="hint">No jobs on. Gang bosses always have work. Look for "(has a job)" and "(wants a word)" when you talk to people: officers who want something done quietly change every morning.</p>'}
+      <p class="hint">Jobs done: ${g.missions.completedCount}. Gang jobs knock their riot price down. Officers pay in snout and, sometimes, in looking the other way once.</p>
       <h3>The firms</h3>
       ${GANG_IDS.map((id) => {
         const def = GANGS[id]
@@ -296,6 +299,16 @@ export class Ui implements UiPort {
     $('#contact').className = g.carPresent || g.signalTonight || g.contactNights > 0 ? 'on' : ''
     $('#attempt').textContent = p.attempt ? `Attempt: ${METHOD_NAMES[p.attempt]}` : ''
     $('#zone').textContent = g.grid.roomName(p.zone) || ''
+
+    // Jobs on the go.
+    const jobs = g.missions.active
+      .map((m) => `<div class="job${m.done ? ' done' : ''}"><b>${escape(m.tpl.title)}</b>${escape(g.missions.describe(m))}<br><small>for ${escape(m.giverName)}</small></div>`)
+      .join('')
+    const jobsEl = $('#jobs')
+    if (jobsEl.dataset.html !== jobs) {
+      jobsEl.innerHTML = jobs
+      jobsEl.dataset.html = jobs
+    }
 
     // Inventory strip.
     const inv = $('#inventory')
