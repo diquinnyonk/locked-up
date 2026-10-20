@@ -231,7 +231,16 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   game.player.body.x = officer.x + 3
   game.player.body.z = officer.z
   for (const gu of game.guards) if (gu !== officer) { gu.body.x = 140; gu.body.z = 115 }
-  run(game, 2)
+  const pin = { x: officer.x, z: officer.z }
+  run(game, 3, () => {
+    officer.body.x = pin.x
+    officer.body.z = pin.z
+    officer.body.yaw = Math.PI / 2
+    game.player.body.x = pin.x + 3
+    game.player.body.z = pin.z
+    return !officer.blindEye
+  })
+  run(game, 0.5)
   check('jobs: he looks the other way', !officer.blindEye && !officer.chasing && officer.ignoring > 0, log.filter((l) => l.includes('other way'))[0])
 }
 
@@ -343,6 +352,110 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   const { game } = fresh()
   const len = game.grid.rayLength(36.5 * 2, 14.5 * 2, Math.PI, 30)
   check('sight: the guide stops at walls', len < 6, `ray north from the corridor runs ${len.toFixed(1)}m`)
+}
+
+// ---- Dressed as an officer ----
+{
+  const { game, log } = fresh()
+  game.player.inventory.add('guardUniform')
+  game.useItem(game.player.inventory.items.findIndex((i) => i.id === 'guardUniform'))
+  check('disguise: uniform goes on', game.player.disguise === 'guard' && game.player.body.cap && game.player.body.uniform)
+  game.clock.skipTo(23 * 60)
+  run(game, 1)
+  const officer = game.guards.find((gu) => gu.block === 'A' && gu.duty === 'landing')!
+  officer.stop()
+  officer.body.x = 20.5 * TILE
+  officer.body.z = 14.5 * TILE
+  officer.body.yaw = Math.PI / 2
+  game.player.body.x = officer.x + 6
+  game.player.body.z = officer.z
+  run(game, 2)
+  check('disguise: an officer at a distance sees a colleague', game.player.illegal === 0 && game.player.attempt === null && !officer.chasing)
+  const pin = { x: officer.x, z: officer.z }
+  game.player.body.x = pin.x + 1.5
+  const blown = run(game, 8, () => {
+    // Keep him stood still, staring straight at you.
+    officer.stop()
+    officer.body.x = pin.x
+    officer.body.z = pin.z
+    officer.body.yaw = Math.PI / 2
+    game.player.body.x = pin.x + 1.5
+    game.player.body.z = pin.z
+    return game.player.disguiseBlown
+  })
+  check('disguise: up close for too long, it is blown', blown, log.filter((l) => l.includes('blown'))[0])
+}
+
+// ---- Clocking off ----
+{
+  const { game, log } = fresh()
+  game.player.inventory.add('guardUniform')
+  game.useItem(game.player.inventory.items.findIndex((i) => i.id === 'guardUniform'))
+  game.clock.skipTo(20 * 60 + 50)
+  run(game, 0.2)
+  const exit = game.fixtures.staffExit
+  game.player.body.x = exit.x
+  game.player.body.z = exit.z - 1.5
+  game.player.zone = 'bay'
+  ;(game as any).rng = () => 0.01
+  check('disguise: clock off at shift change', prompt(game, 'Clock off'))
+  check('disguise: walks out with the day shift', game.over && log.some((l) => l.startsWith('[end] true Clocked off')), log.slice(-1)[0])
+}
+
+// ---- Visitor in a frock, rumbled ----
+{
+  const { game, log } = fresh()
+  game.player.inventory.add('wig')
+  game.player.inventory.add('dress')
+  const recipe = (await import('../src/game/Items')).RECIPES.find((r) => r.makes === 'visitorDisguise')!
+  game.craft(recipe)
+  game.useItem(game.player.inventory.items.findIndex((i) => i.id === 'visitorDisguise'))
+  check('visitor: frock and wig on', game.player.disguise === 'visitor' && game.player.body.skirt !== null && game.player.body.longHair)
+  game.clock.skipTo(15 * 60 + 31)
+  run(game, 0.5)
+  const gate = game.fixtures.visitorsGate
+  game.player.body.x = gate.x
+  game.player.body.z = gate.z - 2
+  game.player.zone = 'visits'
+  check('visitor: visitors are on their way out', game.visitors.some((v) => v.body.visible && v.body.pose === 'walk'))
+  ;(game as any).rng = () => 0.99
+  check('visitor: shuffle out prompt', prompt(game, 'Shuffle out'))
+  check('visitor: rumbled at the gate counts as an attempt', game.memory.used.visitorDisguise === 1 && game.memory.attemptsUsed === 1, log.filter((l) => l.startsWith('[card]')).slice(-1)[0]?.slice(0, 80))
+  check('visitor: odds drop next time', game.memory.sillyExitChance('visitorDisguise') < 0.8)
+}
+
+// ---- The laundry van ----
+{
+  const { game, log } = fresh()
+  game.clock.skipTo(10 * 60 + 45)
+  run(game, 0.2)
+  const basket = game.fixtures.laundryBasket
+  game.player.body.x = basket.x
+  game.player.body.z = basket.z - 1
+  game.player.zone = 'laundry'
+  check('laundry: climb into the basket', prompt(game, 'Climb into the laundry basket') && game.player.inBasket)
+  ;(game as any).rng = () => 0.01
+  const out = run(game, 30, () => game.over)
+  check('laundry: the van takes you out', out && log.some((l) => l.startsWith('[end] true Spin cycle')), log.slice(-1)[0])
+}
+
+// ---- A knocked-out officer's uniform ----
+{
+  const { game, log } = fresh()
+  run(game, 1)
+  const g = game.guards[0]
+  g.ko = 20
+  game.player.body.x = g.x
+  game.player.body.z = g.z + 1
+  check('uniform: nick it off a knocked-out officer', prompt(game, 'uniform') && game.player.inventory.has('guardUniform') && g.uniformTaken, log.slice(-1)[0])
+}
+
+// ---- New rooms ----
+{
+  const { game } = fresh()
+  const rooms = ['chapel', 'visits', 'gym', 'library', 'mess', 'bay']
+  check('rooms: six new rooms on the map', rooms.every((r) => game.grid.rooms.has(r)))
+  check('rooms: each has a vent grille', rooms.every((r) => game.grid.grates.some((gr) => gr.zone === r)), game.grid.grates.map((g) => g.zone).join(','))
 }
 
 // ---- Eight failures end it ----

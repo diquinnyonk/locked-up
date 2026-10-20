@@ -133,11 +133,18 @@ export class Grid {
       'Exercise yard',
       [
         { x0: 33, y0: 36, x1: 46, y1: 41 },
-        { x0: 10, y0: 41, x1: 69, y1: 58 },
+        { x0: 23, y0: 41, x1: 56, y1: 58 },
       ],
       'yardTarmac',
       true,
     )
+    // The annexes either side of the yard.
+    this.room('chapel', 'Chapel', [{ x0: 10, y0: 42, x1: 21, y1: 46 }], 'floorWood')
+    this.room('visits', 'Visiting hall', [{ x0: 10, y0: 49, x1: 21, y1: 58 }], 'floorCanteen')
+    this.room('gym', 'Gym', [{ x0: 58, y0: 42, x1: 69, y1: 46 }], 'floorGym')
+    this.room('library', 'Library', [{ x0: 58, y0: 49, x1: 63, y1: 52 }], 'floorWood')
+    this.room('mess', "Officers' mess", [{ x0: 65, y0: 49, x1: 69, y1: 52 }], 'floorCarpet')
+    this.room('bay', 'Loading bay', [{ x0: 59, y0: 54, x1: 69, y1: 58 }], 'floorMaint')
 
     this.door('room', 36, 12, 'x', ['corridorN', 'showers'])
     this.door('room', 43, 12, 'x', ['corridorN', 'laundry'])
@@ -148,9 +155,17 @@ export class Grid {
     this.door('secure', 19, 24, 'y', ['infirmary', 'solitary'])
     this.door('room', 46, 24, 'y', ['hub', 'games'])
     this.door('secure', 59, 23, 'y', ['games', 'maint'])
-    this.door('perimeter', 64, 59, 'x', ['yard', 'outside'])
+    this.door('room', 22, 44, 'y', ['yard', 'chapel'])
+    this.door('room', 22, 53, 'y', ['yard', 'visits'])
+    this.door('room', 57, 44, 'y', ['yard', 'gym'])
+    this.door('room', 57, 50, 'y', ['yard', 'library'])
+    this.door('secure', 67, 53, 'x', ['bay', 'mess'])
+    this.door('secure', 57, 56, 'y', ['yard', 'bay'])
+    // The staff exit from the loading bay, and the visitors' gate.
+    this.door('perimeter', 64, 59, 'x', ['bay', 'outside'])
+    this.door('perimeter', 15, 59, 'x', ['visits', 'outside'])
 
-    for (let x = 12; x <= 68; x++) if (x < 62 || x > 66) this.climbable.push({ tx: x, ty: 59 })
+    for (let x = 24; x <= 55; x++) this.climbable.push({ tx: x, ty: 59 })
 
     // The vents. One-tile crawlspaces above the ceilings, so walls do not
     // matter to them: only the duct rectangles do.
@@ -163,6 +178,9 @@ export class Grid {
     duct(36, 9, 36, 14)
     duct(44, 9, 44, 14)
     duct(19, 14, 19, 19)
+    duct(16, 33, 16, 52)
+    duct(63, 33, 63, 56)
+    duct(63, 51, 67, 51)
 
     const grate = (id: string, tx: number, ty: number) =>
       this.grates.push({ id, tx, ty, zone: this.zone(tx, ty), sealed: false, open: false })
@@ -179,6 +197,12 @@ export class Grid {
     grate('south corridor', 44, 33)
     grate('C landing', 12, 33)
     grate('D landing', 68, 33)
+    grate('chapel', 16, 44)
+    grate('visiting hall', 16, 52)
+    grate('gym', 63, 44)
+    grate('library', 63, 50)
+    grate("officers' mess", 67, 51)
+    grate('loading bay', 63, 56)
   }
 
   /**

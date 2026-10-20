@@ -219,6 +219,13 @@ export class Ui implements UiPort {
         <li><b>Riot</b>: pay the boss of the firm that runs your wing, then press G. At night the landing goes up and the officers open the cells.</li>
         <li><b>The vent</b> behind your table. Nobody remembers it is there.</li>
       </ol>
+      <h3>Silly ways out</h3>
+      <ol class="methods">
+        <li><b>Dress as an officer</b>: a spare uniform from the officers' mess, or the one off an officer you have knocked out. Doors open for you. Clock off through the loading bay's staff gate at shift change (20:45 to 21:20). Don't let anyone stare at you up close.</li>
+        <li><b>Dress as a visitor</b>: the wig and frock from the chapel's panto box. Wear them in the visiting hall (14:30 to 15:45) and shuffle out of the visitors' gate when they leave at 15:30.</li>
+        <li><b>The laundry van</b>: during work, climb into the big basket by the laundry door before 11:00 and hope nobody pokes it.</li>
+      </ol>
+      <p class="hint">These are whole escapes on their own: no car needed. Odds now: officer ${Math.round(g.memory.sillyExitChance('guardDisguise') * 100)}%, visitor ${Math.round(g.memory.sillyExitChance('visitorDisguise') * 100)}%, laundry ${Math.round(g.memory.sillyExitChance('laundry') * 100)}%. They get worse each time one is rumbled.</p>
       <h3>Getting out of the prison</h3>
       <p>Over the yard wall with a grappling hook, or through the gatehouse with a key. Before you go, get word outside: a <b>phone call</b> that never says when (car waits three nights), the <b>flag</b> on the yard pole by day, or a <b>torch</b> from your window at night.</p>
       <h3>Jobs</h3>
@@ -277,8 +284,14 @@ export class Ui implements UiPort {
 
     const suspicion = Math.max(0, ...g.guards.map((gg) => (gg.chasing ? 1 : gg.suspicion)))
     const hunted = g.alarm.active || g.guards.some((gg) => gg.chasing)
+    const rumbled = Math.max(0, ...g.guards.map((gg) => gg.recognise))
+    const disguise = p.disguise && !p.disguiseBlown ? `Disguised as ${p.disguise === 'guard' ? 'an officer' : 'a visitor'}${rumbled > 0.05 ? `: ${Math.round(rumbled * 100)}% rumbled` : ''}` : ''
     const status = hunted
       ? 'HUNTED'
+      : p.inBasket
+        ? 'In a laundry basket'
+        : disguise
+          ? disguise
       : p.attempt
         ? 'SPOTTED: ESCAPE ATTEMPT'
         : p.illegal === 2
@@ -401,6 +414,12 @@ export class Ui implements UiPort {
     label('MAINT', 62, 24.5)
     label('HEALTH', 22, 24.5)
     label('SEG', 11, 24.5)
+    label('CHAPEL', 12, 45)
+    label('VISITS', 12.5, 54)
+    label('GYM', 61.5, 45)
+    label('LIB', 59, 51.5)
+    label('MESS', 65.3, 51.5)
+    label('BAY', 62, 57.5)
     return c
   }
 

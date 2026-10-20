@@ -183,7 +183,9 @@ export class CelPipeline {
 }
 
 function createTarget(width: number, height: number, withDepth: boolean): WebGLRenderTarget {
-  const target = new WebGLRenderTarget(width, height, { depthBuffer: true, stencilBuffer: false })
+  // The colour pass is multisampled for smooth silhouettes; the normal and
+  // depth prepass is not, because the edge detector wants hard texels.
+  const target = new WebGLRenderTarget(width, height, { depthBuffer: true, stencilBuffer: false, samples: withDepth ? 0 : 4 })
   target.texture.colorSpace = LinearSRGBColorSpace
   if (withDepth) {
     target.texture.minFilter = NearestFilter

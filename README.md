@@ -71,6 +71,49 @@ key. Before you go, someone has to be waiting on the road:
 Reach the car to win. Get over the wall with nobody waiting and the dog unit
 finds you.
 
+## Silly ways out
+
+Three escapes that need no car, no wall and no dignity. Each is a single roll
+at the exit, and each one that gets rumbled makes it harder next time.
+
+| Way out | You need | When and where |
+| --- | --- | --- |
+| **Dressed as an officer** | A spare uniform from the officers' mess, or the one off an officer you have knocked out (he is left in his vest and pink boxers until morning) | Wear it (Tab) and doors open for you. Clock off through the staff gate in the loading bay at shift change, 20:45 to 21:20. Mrs Battenberg gives you a lift and talks about her cats. |
+| **Dressed as a visitor** | The panto wig and floral frock from the chapel's costume box, made into a visitor disguise | Wear it in the visiting hall (14:30 to 15:45) and shuffle out of the visitors' gate with everyone else at 15:30. Big Dave's nan offers you a Werther's Original. |
+| **The laundry van** | Nothing but nerve | During work, climb into the big basket by the laundry door before 11:00. The van takes you to a laundrette in Wolverhampton. |
+
+A disguise holds at a distance, but an officer who gets a good look at you up
+close for long enough sees through it ("Madam, you appear to have a beard"),
+and the HUD shows how close you are to being rumbled. Prisoners comment on
+your outfit, and snitches tell the officers. After a failure, officers count
+moustaches at shift change, visitors get counted in and out, and laundry
+baskets get poked with a broom handle.
+
+## New rooms
+
+The yard is smaller now, with an annex down each side:
+
+- **Chapel**: pews, an organ, stained glass and the Christmas panto costume box.
+- **Visiting hall**: tables with blue chairs, a vending machine and a play corner.
+  Visitors arrive at 14:30 and leave at 15:30, and some prisoners sit with them.
+- **Gym**: weight benches, a dumbbell rack, a punchbag and a treadmill.
+- **Library**: shelves of paperbacks and a QUIET sign.
+- **Officers' mess** (restricted): a sofa, a kettle, the biscuit tin and a rack
+  of spare uniforms.
+- **Loading bay** (restricted): the laundry van, laundry cages and the staff gate.
+
+All six are on the vent network. Prisoners use the gym, library and chapel at
+association and yard time.
+
+## The look
+
+People have jointed limbs (knees and elbows bend as they walk, sit and fight),
+a neck, ears, eye whites, a belt and buckle, and vary in height and build.
+Officers have a collar, tie, epaulettes, a radio, pockets and a badge on the
+peaked cap. Visitors have skirts and long hair. Rooms carry posters, shelves,
+radiators, notice boards, extinguishers, CCTV, and plates and mugs on the
+canteen tables. The colour pass is multisampled for smoother edges.
+
 ## The firms
 
 Nobody kicks off a landing without the gang that runs it, and they only do it

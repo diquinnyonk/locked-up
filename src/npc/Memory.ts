@@ -14,7 +14,7 @@
  */
 import { GANGS, GANG_IDS, type GangId, type GangState } from './Gangs'
 
-export type Method = 'key' | 'toothpaste' | 'sick' | 'riot' | 'vent' | 'wall' | 'gate'
+export type Method = 'key' | 'toothpaste' | 'sick' | 'riot' | 'vent' | 'wall' | 'gate' | 'guardDisguise' | 'visitorDisguise' | 'laundry'
 
 export const METHOD_NAMES: Record<Method, string> = {
   key: 'Stolen or forged key',
@@ -24,6 +24,9 @@ export const METHOD_NAMES: Record<Method, string> = {
   vent: 'The vents',
   wall: 'Over the wall',
   gate: 'Through a gate',
+  guardDisguise: 'Dressed as an officer',
+  visitorDisguise: 'Dressed as a visitor',
+  laundry: 'In the laundry van',
 }
 
 export const ATTEMPTS_PER_ROUND = 4
@@ -37,7 +40,7 @@ export interface Lesson {
 export class PrisonMemory {
   round = 1
   attemptsUsed = 0
-  readonly used: Record<Method, number> = { key: 0, toothpaste: 0, sick: 0, riot: 0, vent: 0, wall: 0, gate: 0 }
+  readonly used: Record<Method, number> = { key: 0, toothpaste: 0, sick: 0, riot: 0, vent: 0, wall: 0, gate: 0, guardDisguise: 0, visitorDisguise: 0, laundry: 0 }
   readonly hotspots: { x: number; z: number; weight: number }[] = []
   /** Calls flagged by the wiretap; each makes the next listener stricter. */
   phoneFlags = 0
@@ -171,6 +174,16 @@ export class PrisonMemory {
     return this.used.wall >= 1
   }
 
+  /** How quickly officers see through a disguise up close. */
+  disguiseRecognition(kind: 'guard' | 'visitor'): number {
+    return 1 + this.used[kind === 'guard' ? 'guardDisguise' : 'visitorDisguise'] * 0.8
+  }
+
+  /** Odds of walking out of a silly exit without anyone looking twice. */
+  sillyExitChance(method: 'guardDisguise' | 'visitorDisguise' | 'laundry'): number {
+    return Math.max(0.1, 0.8 - this.used[method] * 0.3)
+  }
+
   /** The wiretap's vocabulary grows with every flagged call. */
   get phoneStrictness(): number {
     return Math.min(3, this.phoneFlags + Math.floor(this.totalFailures / 3))
@@ -195,5 +208,11 @@ function lessonFor(method: Method, times: number): string {
       return 'A dog handler walks the perimeter at night.'
     case 'gate':
       return 'Gate officers double-check who is behind them.'
+    case 'guardDisguise':
+      return times === 1 ? 'Officers now count heads at shift change. And moustaches.' : 'Staff must show a warrant card at the gate. Mr Crumpet has lost his twice already.'
+    case 'visitorDisguise':
+      return times === 1 ? 'Visitors are counted in and out, and stubble earns a second look.' : 'Every visitor is now asked their own birthday on the way out. Most get it right.'
+    case 'laundry':
+      return times === 1 ? 'The bay officer pokes every laundry basket with a broom handle.' : "Baskets are weighed now. 'That is a very heavy pillowcase, sunshine.'"
   }
 }

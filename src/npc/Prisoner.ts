@@ -83,6 +83,8 @@ export class Prisoner extends Agent {
   /** The last punch they took was yours: jobs that want someone flattened check this. */
   lastHitByPlayer = false
 
+  readonly index: number
+
   constructor(index: number, cell: CellInfo, bunk: number, world: World, rng: () => number) {
     const skins = [HEX.skin, HEX.skinTan, HEX.skinDeep, HEX.skinPale, HEX.skin]
     const hairs = [HEX.hairBlack, HEX.hairBrown, HEX.hairBlonde, HEX.hairGrey, HEX.hairRed, null]
@@ -96,6 +98,7 @@ export class Prisoner extends Agent {
       hair: temperament === 'old' ? HEX.hairGrey : hairs[Math.floor(rng() * hairs.length)],
     })
     super(body, world)
+    this.index = index
     this.cell = cell
     this.bunk = bunk
     this.block = cell.block
@@ -228,13 +231,27 @@ export class Prisoner extends Agent {
           const benches = f.benches.filter((b) => b.zone === 'yard')
           const b = benches[Math.floor(rng() * benches.length)]
           spot = { x: b.x + (rng() - 0.5) * 2.5, z: b.z, pose: 'sit', dwell: 20 }
-        } else spot = anyTile('yard', 'stand', 4 + rng() * 8)
+        } else if (r > 0.88) spot = anyTile('gym', 'fight', 12)
+        else spot = anyTile('yard', 'stand', 4 + rng() * 8)
         break
       }
       case 'association':
       case 'evening': {
         const r = rng()
-        if (r < 0.35) {
+        const m = w.clock.minuteOfDay
+        const visiting = m >= 14 * 60 + 30 && m < 15 * 60 + 30
+        if (visiting && r < 0.1 && f.visitTables.length) {
+          const t = f.visitTables[this.index % f.visitTables.length]
+          spot = { x: t.x, z: t.z + 0.9, pose: 'sit', yaw: Math.PI, dwell: 40 }
+        } else if (r < 0.27) {
+          // The annexes: lifting in the gym, a snooze in the library, or a
+          // quiet word with the Almighty in the chapel.
+          const room = ['gym', 'library', 'chapel'][Math.floor(rng() * 3)]
+          if (room === 'chapel' && f.pews.length) {
+            const pew = f.pews[Math.floor(rng() * f.pews.length)]
+            spot = { x: pew.x, z: pew.z + (rng() - 0.5) * 1.8, pose: 'sit', yaw: -Math.PI / 2, dwell: 20 }
+          } else spot = anyTile(room, room === 'gym' ? 'fight' : 'sit', 15)
+        } else if (r < 0.35) {
           const pt = f.poolTable
           const a = rng() * Math.PI * 2
           spot = { x: pt.x + Math.cos(a) * 2.8, z: pt.z + Math.sin(a) * 1.8, pose: 'stand', dwell: 12 }
@@ -468,7 +485,7 @@ function buildPrisonerTree(world: World): Node<Prisoner> {
     s.body.pose = spot.pose
     if (spot.yaw != null) s.lookYaw = spot.yaw
     // Watch the player if they are close and up to something.
-    if (s.temperament === 'snitch' && p.dodgy > 0 && s.distanceTo(p.body.x, p.body.z) < 7 && !s.report && s.grudge + 0.4 + s.reportsMade * 0.15 > world.rng() * 1.2) {
+    if (s.temperament === 'snitch' && (p.dodgy > 0 || p.disguise) && s.distanceTo(p.body.x, p.body.z) < 7 && !s.report && s.grudge + 0.4 + s.reportsMade * 0.15 > world.rng() * 1.2) {
       if (world.grid.sightClear(s.x, s.z, p.body.x, p.body.z)) s.report = true
     }
     return 'running'

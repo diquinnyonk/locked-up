@@ -102,6 +102,10 @@ export class Game implements World {
   private dodgyTimer = 0
   readonly log: string[] = []
   readonly missions: Missions
+  readonly visitors: { body: Body; seat: { x: number; z: number }; gone: boolean }[] = []
+  /** The player's own clothes, for when the disguise comes off. */
+  private readonly ownLook = { top: HEX.player, trousers: HEX.prisonGreyDark, hair: HEX.hairBrown as number | null }
+  private commentTimer = 0
 
   constructor(scene: Scene, readonly ui: UiPort, name: string) {
     const built = buildPrison(this.grid)
@@ -135,6 +139,9 @@ export class Game implements World {
       cell: PLAYER_CELL,
       block: 'A',
       escortedBy: null,
+      disguise: null,
+      disguiseBlown: false,
+      inBasket: false,
     }
 
     this.spawnPeople()
@@ -175,6 +182,26 @@ export class Game implements World {
       pool.slice(0, 5).forEach((p, i) => p.joinGang(home, i === 0))
       pool[5]?.joinGang(GANGS[home].rival, false)
     }
+    // Visitors: mums, nans, girlfriends and one very nervous solicitor. They
+    // only appear for visiting time.
+    const looks = [
+      { top: HEX.dress, skirt: HEX.dress, hair: HEX.hairBlonde, longHair: true },
+      { top: HEX.bookBlue, skirt: null, hair: HEX.hairGrey, longHair: false },
+      { top: HEX.peas, skirt: HEX.bookGreen, hair: HEX.hairGrey, longHair: true },
+      { top: HEX.clothesYellow, skirt: null, hair: HEX.hairBrown, longHair: false },
+      { top: HEX.boa, skirt: HEX.boa, hair: HEX.hairRed, longHair: true },
+      { top: HEX.guardTrousers, skirt: null, hair: HEX.hairBlack, longHair: false },
+    ]
+    this.fixtures.visitTables.forEach((t, i) => {
+      const look = looks[i % looks.length]
+      const body = makeBody({ ...look, trousers: look.skirt ? HEX.skin : HEX.carDark, skin: [HEX.skin, HEX.skinTan, HEX.skinDeep, HEX.skinPale][i % 4], visible: false })
+      const seat = { x: t.x, z: t.z - 0.9 }
+      body.x = seat.x
+      body.z = seat.z
+      this.visitors.push({ body, seat, gone: false })
+      this.bodies.push(body)
+    })
+
     // Officers: four per wing.
     const central: Record<BlockId, { tx: number; ty: number }> = {
       A: { tx: 39, ty: 15 },
@@ -386,11 +413,18 @@ export class Game implements World {
     p.health = 100
   }
 
-  private finish(won: boolean, how: 'escape' | 'gang' | 'solitary', gang: GangId = 'firm'): void {
+  private finish(won: boolean, how: 'escape' | 'gang' | 'solitary' | 'guardDisguise' | 'visitorDisguise' | 'laundry', gang: GangId = 'firm'): void {
     this.over = true
     this.input.enabled = false
     const name = this.player.name
-    if (won) {
+    const tally = `Day ${this.clock.day}. ${this.memory.totalFailures} failed attempt${this.memory.totalFailures === 1 ? '' : 's'}.`
+    if (won && how === 'guardDisguise') {
+      this.ui.end(true, 'Clocked off', `${name} walks out with the day shift, nods at the gatehouse and gets a lift to the station with Mrs Battenberg, who talks about her cats for forty minutes and never once looks at your face.\n${tally}\nThe count at nine comes up one short and one uniform missing. Nobody can work out which is more embarrassing.`)
+    } else if (won && how === 'visitorDisguise') {
+      this.ui.end(true, 'Gone with the visitors', `${name} shuffles out in a floral frock and catches the number 47 with Big Dave's nan, who offers you a Werther's Original and says you have lovely cheekbones.\n${tally}\nThe chaplain has asked for his wig back.`)
+    } else if (won && how === 'laundry') {
+      this.ui.end(true, 'Spin cycle', `The van rumbles out of the bay. Forty minutes later ${name} tumbles out of a basket at a laundrette in Wolverhampton, smelling of Persil and freedom.\n${tally}\nThe laundry contract has been "reviewed".`)
+    } else if (won) {
       this.ui.end(
         true,
         'Free',
@@ -494,6 +528,8 @@ export class Game implements World {
 
     // Visuals.
     this.updateSightGuide()
+    this.updateVisitors(delta)
+    this.updateDisguise(delta)
     this.dynamic.ducts.visible = this.player.inVent
     const carHere = this.carPresent
     this.dynamic.update(delta, {
@@ -566,6 +602,7 @@ export class Game implements World {
       this.lastPeriod = period
       if (previous) this.toast(`${this.clock.text}  ${this.clock.label}`, 'neutral')
       if (period === 'unlock') {
+        for (const g of this.guards) if (g.uniformTaken) this.dressGuard(g, true)
         this.restock(false)
         this.missions.newDay()
         if (this.contactNights > 0) this.contactNights--
@@ -654,6 +691,14 @@ export class Game implements World {
     }
     if (input.take('froth')) this.chewSoap()
 
+    if (p.inBasket) {
+      b.visible = false
+      b.speed = 0
+      this.prompts = [{ key: 'E', label: 'Climb out of the basket', run: () => this.leaveBasket() }]
+      if (input.take('interact')) this.leaveBasket()
+      p.illegal = 0
+      return
+    }
     if (this.punished || this.climb) {
       if (this.climb) this.updateClimb(delta)
       b.speed = 0
@@ -697,7 +742,8 @@ export class Game implements World {
       if (mv.x || mv.z) {
         const ahead = worldToTile(b.x + mv.x * 1.2, b.z + mv.z * 1.2)
         const door = this.grid.doorAtTile(ahead.tx, ahead.ty)
-        if (door && door.kind === 'gate') this.doors.request(door, 'player', p.block, false, p.zone)
+        if (door && p.disguise === 'guard' && !p.disguiseBlown && door.kind !== 'perimeter') this.doors.request(door, 'guard', p.block, false, p.zone)
+        else if (door && door.kind === 'gate') this.doors.request(door, 'player', p.block, false, p.zone)
       }
       const bx = b.x
       const bz = b.z
@@ -844,7 +890,10 @@ export class Game implements World {
         this.methodHint = this.methodHint ?? 'sick'
       }
     }
+    const disguised = p.disguise && !p.disguiseBlown
     if (p.escortedBy) level = 0
+    else if (disguised && p.disguise === 'guard' && !p.inVent && !this.climb && p.zone !== 'outside') level = 0
+    else if (disguised && p.disguise === 'visitor' && (p.zone === 'visits' || this.visitingTime)) level = 0
     else if (this.climb) level = 2
     else if (p.inVent) level = 2
     else if (RESTRICTED.has(p.zone)) level = 2
@@ -912,6 +961,9 @@ export class Game implements World {
       this.prompts = out
       return
     }
+
+    // The silly exits come first: they are the whole point of standing there.
+    this.sillyPrompts(add)
 
     // Loose items.
     let nearest: LooseItem | null = null
@@ -1484,6 +1536,253 @@ export class Game implements World {
     this.ui.talk('Loose brick behind the table', 'Four slots. Officers search cells after an attempt; they do not always find it.', options)
   }
 
+  // ---- Silly ways out ----
+
+  /** Visiting runs from half two to quarter to four. */
+  get visitingTime(): boolean {
+    const m = this.clock.minuteOfDay
+    return m >= 14 * 60 + 30 && m < 15 * 60 + 45
+  }
+
+  private toggleDisguise(kind: 'guard' | 'visitor'): void {
+    const p = this.player
+    if (p.disguise === kind) {
+      p.disguise = null
+      p.disguiseBlown = false
+      this.applyLook()
+      this.toast('You change back into your prison greys.', 'neutral')
+      return
+    }
+    p.disguise = kind
+    p.disguiseBlown = false
+    for (const g of this.guards) g.recognise = 0
+    this.applyLook()
+    this.dodgyTimer = 3
+    this.toast(
+      kind === 'guard'
+        ? "You are now an officer. Walk like you are on overtime: doors open for you. Don't let anyone get a long look at your face."
+        : 'You are now a visitor. Stunning. Get to the visiting hall and leave with the others when visiting ends at 15:30.',
+      'good',
+    )
+  }
+
+  /** Puts the player's body in whatever they are wearing. */
+  private applyLook(): void {
+    const p = this.player
+    const b = p.body
+    const own = this.ownLook
+    b.top = own.top
+    b.trousers = own.trousers
+    b.hair = own.hair
+    b.cap = false
+    b.uniform = false
+    b.skirt = null
+    b.longHair = false
+    if (p.disguise === 'guard') {
+      b.top = HEX.guardShirt
+      b.trousers = HEX.guardTrousers
+      b.cap = true
+      b.uniform = true
+    } else if (p.disguise === 'visitor') {
+      b.top = HEX.dress
+      b.skirt = HEX.dress
+      b.hair = HEX.hairBlonde
+      b.longHair = true
+    }
+    this.crowd?.paint(0, b)
+  }
+
+  /** Clothes confiscated or lost: the disguise goes with them. */
+  private updateDisguise(delta: number): void {
+    const p = this.player
+    if (p.disguise) {
+      const item = p.disguise === 'guard' ? 'guardUniform' : 'visitorDisguise'
+      if (!p.inventory.has(item)) {
+        p.disguise = null
+        p.disguiseBlown = false
+        this.applyLook()
+      }
+    }
+    // The lads have opinions about your outfit.
+    this.commentTimer -= delta
+    if (p.disguise && this.commentTimer <= 0) {
+      this.commentTimer = 4
+      const near = this.prisoners.find((pr) => pr.ko <= 0 && pr.distanceTo(p.body.x, p.body.z) < 4)
+      if (near && this.rng() < 0.5) {
+        near.say(
+          p.disguise === 'guard'
+            ? pick2(this.rng, ['Evening, officer... hang on.', "Since when do they let screws wear trainers?", 'Is that you? It is, isn\'t it. Say nothing. Say NOTHING.'])
+            : pick2(this.rng, ['Nice frock.', 'Alright, darling? ...Oh no.', 'Is that the panto wig? Bold.', "You've got lovely ankles, I'll give you that."]),
+          2.5,
+        )
+      }
+    }
+  }
+
+  private takeUniform(g: Guard): void {
+    if (this.player.inventory.full) {
+      this.toast('No room in your pockets for a whole uniform.', 'bad')
+      return
+    }
+    this.player.inventory.add('guardUniform')
+    this.dressGuard(g, false)
+    this.dodgyTimer = 4
+    this.toast(`You strip ${g.name} to his vest and a pair of pink boxers. Dignity: confiscated. Wear the uniform from your pockets (Tab).`, 'good')
+  }
+
+  /** Strip an officer to vest and boxers, or dress him again at unlock. */
+  private dressGuard(g: Guard, dressed: boolean): void {
+    g.uniformTaken = !dressed
+    g.wary = dressed ? g.wary : 1
+    const b = g.body
+    b.top = dressed ? HEX.guardShirt : 0xf6f6f6
+    b.trousers = dressed ? HEX.guardTrousers : HEX.boa
+    b.cap = dressed
+    b.uniform = dressed
+    this.crowd.paint(this.bodies.indexOf(b), b)
+    if (dressed) g.say('Right. New uniform. Nobody mention the boxers.', 3)
+  }
+
+  private sillyPrompts(add: (key: string, label: string, run: () => void) => void): void {
+    const p = this.player
+    const b = p.body
+    const f = this.fixtures
+    const m = this.clock.minuteOfDay
+    const near = (pt: { x: number; z: number }, r: number) => Math.hypot(b.x - pt.x, b.z - pt.z) < r
+    for (const g of this.guards) {
+      if (g.ko > 0 && !g.uniformTaken && !p.inventory.has('guardUniform') && near(g.body, 1.8)) {
+        add('E', `Nick ${g.name}'s uniform`, () => this.takeUniform(g))
+        break
+      }
+    }
+    if (p.zone === 'bay' && near(f.staffExit, 3.5)) {
+      if (p.disguise === 'guard' && !p.disguiseBlown) {
+        const shift = m >= 20 * 60 + 45 && m < 21 * 60 + 20
+        add('E', shift ? 'Clock off with the day shift' : 'Staff gate (opens at shift change, 20:45 to 21:20)', () => {
+          if (shift) this.sillyExit('guardDisguise')
+        })
+      } else add('E', 'Staff gate: officers only', () => this.toast('Only staff leave this way. You would need to look like one.', 'neutral'))
+    }
+    if (p.zone === 'visits' && near(f.visitorsGate, 4)) {
+      if (p.disguise === 'visitor' && !p.disguiseBlown) {
+        const out = m >= 15 * 60 + 25 && m < 15 * 60 + 45
+        add('E', out ? 'Shuffle out with the visitors' : "Visitors' gate (visitors leave at 15:30)", () => {
+          if (out) this.sillyExit('visitorDisguise')
+        })
+      }
+    }
+    if (p.zone === 'laundry' && near(f.laundryBasket, 2)) {
+      const before = this.clock.period === 'work' && m < 11 * 60
+      add('E', before ? 'Climb into the laundry basket (the van leaves at 11:00)' : 'Laundry basket (the van takes them at 11:00 during work)', () => {
+        if (!before) return
+        p.inBasket = true
+        this.methodHint = 'laundry'
+        this.toast('You burrow under a pile of damp towels. Somebody\'s sock is in your ear. Now wait for the van.', 'neutral')
+      })
+    }
+  }
+
+  private leaveBasket(): void {
+    const p = this.player
+    p.inBasket = false
+    p.body.visible = true
+    p.body.z += 0.8
+    this.methodHint = null
+    this.toast('You climb out, covered in fluff.', 'neutral')
+  }
+
+  /** The visitors and the laundry van run to their own little timetables. */
+  private updateVisitors(delta: number): void {
+    const m = this.clock.minuteOfDay
+    const visiting = this.visitingTime
+    const leaving = m >= 15 * 60 + 30
+    const gate = this.grid.doorAtTile(15, 59)
+    if (visiting && leaving && gate) this.doors.hold(gate)
+    for (const v of this.visitors) {
+      const b = v.body
+      if (!visiting) {
+        b.visible = false
+        v.gone = false
+        b.x = v.seat.x
+        b.z = v.seat.z
+        continue
+      }
+      if (v.gone) continue
+      b.visible = true
+      if (!leaving) {
+        b.x = v.seat.x
+        b.z = v.seat.z
+        b.yaw = 0
+        b.pose = 'sit'
+        b.speed = 0
+        continue
+      }
+      const target = { x: this.fixtures.visitorsGate.x, z: this.fixtures.visitorsGate.z + 2 }
+      const dx = target.x - b.x
+      const dz = target.z - b.z
+      const d = Math.hypot(dx, dz)
+      if (d < 0.5) {
+        v.gone = true
+        b.visible = false
+        continue
+      }
+      b.pose = 'walk'
+      b.speed = 1.6
+      b.x += (dx / d) * 1.6 * delta
+      b.z += (dz / d) * 1.6 * delta
+      b.yaw = Math.atan2(dx, dz)
+    }
+    // The van leaves at eleven with whatever is in the baskets.
+    const p = this.player
+    if (p.inBasket && m >= 10 * 60 + 55 && !this.vanWarned) {
+      this.vanWarned = true
+      this.toast('You hear the van reversing into the bay. Beep. Beep. Beep. Hold your breath...', 'neutral')
+    }
+    if (p.inBasket && m >= 11 * 60 && this.clock.period === 'work') {
+      this.vanWarned = false
+      this.sillyExit('laundry')
+    }
+    if (p.inBasket && this.clock.period !== 'work') {
+      p.inBasket = false
+      p.body.visible = true
+    }
+  }
+
+  private vanWarned = false
+
+  /**
+   * One roll of the dice at the silly exits. Better odds the first time;
+   * the prison remembers each one that got rumbled.
+   */
+  private sillyExit(method: 'guardDisguise' | 'visitorDisguise' | 'laundry'): void {
+    const p = this.player
+    this.methodHint = method
+    p.attempt = method
+    if (this.rng() < this.memory.sillyExitChance(method)) {
+      this.sounds.push({ sound: 'good', volume: 1 })
+      this.finish(true, method)
+      return
+    }
+    p.inBasket = false
+    p.body.visible = true
+    if (method === 'laundry') {
+      const bay = this.fixtures.van
+      p.body.x = bay.x - 1.5
+      p.body.z = bay.z
+      p.zone = 'bay'
+    }
+    const officer = this.guards.filter((g) => g.ko <= 0).sort((a, b) => a.distanceTo(p.body.x, p.body.z) - b.distanceTo(p.body.x, p.body.z))[0]
+    officer.say(
+      method === 'guardDisguise'
+        ? pick2(this.rng, [`Hang about. ${officer.colleague()} is six foot four with a moustache. You are neither.`, "Warrant card? ...That's a Tesco Clubcard."])
+        : method === 'visitorDisguise'
+          ? pick2(this.rng, ['Madam, you have a prison number on your neck. And a beard.', "Lovely to see you, Mrs... Mrs... that's a pillowcase, not a handbag."])
+          : pick2(this.rng, ['This pillowcase is breathing.', "Since when do towels wear trainers?"]),
+      3.5,
+    )
+    this.caught(officer)
+  }
+
   // ---- Crafting (called by the UI) ----
 
   craftable(recipe: Recipe): boolean {
@@ -1513,7 +1812,8 @@ export class Game implements World {
   useItem(index: number): void {
     const it = this.player.inventory.items[index]
     if (!it) return
-    if (it.id === 'soap') this.chewSoap()
+    if (it.id === 'guardUniform' || it.id === 'visitorDisguise') this.toggleDisguise(it.id === 'guardUniform' ? 'guard' : 'visitor')
+    else if (it.id === 'soap') this.chewSoap()
     else if (ITEMS[it.id].uses.includes('distract')) {
       // Throw it ahead: officers go and look.
       const b = this.player.body

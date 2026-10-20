@@ -123,7 +123,7 @@ export function allowedZones(period: Period, block: string): Set<string> {
     case 'unlock':
       return new Set(base)
     case 'bangUp':
-      return new Set([...base, corridor, 'corridorN', 'corridorS', 'hub', 'yard', 'games', 'showers', 'laundry'])
+      return new Set([...base, corridor, 'corridorN', 'corridorS', 'hub', 'yard', 'games', 'showers', 'laundry', 'chapel', 'gym', 'library', 'visits'])
     case 'breakfast':
     case 'lunch':
     case 'dinner':
@@ -131,12 +131,12 @@ export function allowedZones(period: Period, block: string): Set<string> {
     case 'work':
       return new Set([...base, corridor, 'corridorN', 'hub', 'laundry', 'showers'])
     case 'yard':
-      return new Set([...base, corridor, 'corridorN', 'corridorS', 'hub', 'yard'])
+      return new Set([...base, corridor, 'corridorN', 'corridorS', 'hub', 'yard', 'gym'])
     case 'association':
     case 'evening':
-      return new Set([...base, corridor, 'corridorN', 'corridorS', 'hub', 'games', 'showers'])
+      return new Set([...base, corridor, 'corridorN', 'corridorS', 'hub', 'games', 'showers', 'yard', 'chapel', 'gym', 'library', 'visits'])
   }
 }
 
 /** Places nobody is allowed without an officer, at any hour. */
-export const RESTRICTED = new Set(['maint', 'solitary', 'outside'])
+export const RESTRICTED = new Set(['maint', 'solitary', 'outside', 'mess', 'bay'])

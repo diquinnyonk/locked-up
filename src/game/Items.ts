@@ -34,6 +34,11 @@ export type ItemId =
   | 'letter'
   | 'glasses'
   | 'racingPost'
+  // Disguises
+  | 'guardUniform'
+  | 'wig'
+  | 'dress'
+  | 'visitorDisguise'
   // Crafted
   | 'shiv'
   | 'sockCosh'
@@ -48,7 +53,7 @@ export type ItemId =
   | 'spear'
   | 'flag'
 
-export type Use = 'jamLock' | 'openVent' | 'openDoor' | 'climb' | 'signal' | 'bribe' | 'froth' | 'mould' | 'heat' | 'distract'
+export type Use = 'jamLock' | 'openVent' | 'openDoor' | 'climb' | 'signal' | 'bribe' | 'froth' | 'mould' | 'heat' | 'distract' | 'disguise'
 
 export interface ItemDef {
   id: ItemId
@@ -92,6 +97,11 @@ export const ITEMS: Record<ItemId, ItemDef> = {
   glasses: { id: 'glasses', name: 'Reading glasses', hex: HEX.steelDark, damage: 0, uses: [], contraband: false, blurb: 'Leopard print, on a beaded chain. Unmistakably an officer\'s.' },
   racingPost: { id: 'racingPost', name: 'The Racing Post', hex: HEX.clothesRed, damage: 1, uses: ['distract'], contraband: false, blurb: 'Confiscated, then lost. Three horses are circled in biro.' },
 
+  guardUniform: { id: 'guardUniform', name: "Officer's uniform", hex: HEX.guardShirt, damage: 0, uses: ['disguise'], contraband: true, blurb: 'Shirt, tie, trousers, peaked cap. Slightly too big. Smells of Brut and disappointment. Wear it (Tab).' },
+  wig: { id: 'wig', name: 'Panto wig', hex: HEX.hairBlonde, damage: 0, uses: [], contraband: false, blurb: 'Big, blonde and last worn by the chaplain as Widow Twankey in 2009.' },
+  dress: { id: 'dress', name: 'Floral frock', hex: HEX.dress, damage: 0, uses: [], contraband: false, blurb: 'From the panto box. Size: generous. Pattern: alarming.' },
+  visitorDisguise: { id: 'visitorDisguise', name: 'Visitor disguise', hex: HEX.dress, damage: 0, uses: ['disguise'], contraband: true, blurb: 'Wig, frock and a brave face. Wear it (Tab) in the visiting hall and leave with the visitors.' },
+
   shiv: { id: 'shiv', name: 'Shiv', hex: HEX.metal, damage: 6, uses: [], contraband: true, blurb: 'Toothbrush and a razor blade, melted together.' },
   sockCosh: { id: 'sockCosh', name: 'Sock cosh', hex: HEX.cloth, damage: 5, uses: [], contraband: true, blurb: 'A pool ball in a sock. Puts a man down.' },
   keyMould: { id: 'keyMould', name: 'Key mould', hex: HEX.soap, damage: 0, uses: [], contraband: true, blurb: 'A guard key, pressed into soap.' },
@@ -126,6 +136,7 @@ export const RECIPES: Recipe[] = [
   { makes: 'lockpick', needs: ['wire'], tools: ['tape'] },
   { makes: 'spear', needs: ['mopHandle', 'shiv', 'tape'] },
   { makes: 'flag', needs: ['bedsheet', 'sock'] },
+  { makes: 'visitorDisguise', needs: ['wig', 'dress'] },
 ]
 
 export const INVENTORY_SLOTS = 8
@@ -227,4 +238,9 @@ export const SPAWNS: { zone: string; items: ItemId[] }[] = [
   { zone: 'infirmary', items: ['tape', 'bleach', 'teabags'] },
   { zone: 'yard', items: ['snout'] },
   { zone: 'blockA', items: ['magazine', 'mopHandle'] },
+  { zone: 'chapel', items: ['wig', 'dress', 'bedsheet'] },
+  { zone: 'mess', items: ['guardUniform', 'biscuits', 'teabags'] },
+  { zone: 'library', items: ['magazine', 'battery'] },
+  { zone: 'gym', items: ['sock', 'tape'] },
+  { zone: 'bay', items: ['tape', 'wire'] },
 ]

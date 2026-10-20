@@ -27,22 +27,31 @@ export function box(w: number, h: number, d: number, at: Place, hex: number): Bu
   return paint(g, hex)
 }
 
-export function cyl(rTop: number, rBottom: number, h: number, at: Place, hex: number, segments = 10): BufferGeometry {
+export function cyl(rTop: number, rBottom: number, h: number, at: Place, hex: number, segments = 16): BufferGeometry {
   const g = new CylinderGeometry(rTop, rBottom, h, segments)
   if (at.ry) g.rotateY(at.ry)
   g.translate(at.x, at.y + h / 2, at.z)
   return paint(g, hex)
 }
 
+/** A cylinder lying along x (wheels, barbells, pipes), centred on `at`. */
+export function cylX(r: number, length: number, at: Place, hex: number, segments = 16): BufferGeometry {
+  const g = new CylinderGeometry(r, r, length, segments)
+  g.rotateZ(Math.PI / 2)
+  if (at.ry) g.rotateY(at.ry)
+  g.translate(at.x, at.y, at.z)
+  return paint(g, hex)
+}
+
 export function ball(r: number, at: Place, hex: number, sx = 1, sy = 1, sz = 1): BufferGeometry {
-  const g = new SphereGeometry(r, 10, 8)
+  const g = new SphereGeometry(r, 16, 12)
   g.scale(sx, sy, sz)
   g.translate(at.x, at.y, at.z)
   return paint(g, hex)
 }
 
 export function ring(r: number, tube: number, at: Place, hex: number, tilt = Math.PI / 2): BufferGeometry {
-  const g = new TorusGeometry(r, tube, 6, 16)
+  const g = new TorusGeometry(r, tube, 8, 28)
   g.rotateX(tilt)
   if (at.ry) g.rotateY(at.ry)
   g.translate(at.x, at.y, at.z)

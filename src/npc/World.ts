@@ -40,6 +40,11 @@ export interface PlayerView {
   block: string
   /** Under escort, so not illegal wherever the officer takes you. */
   escortedBy: Guard | null
+  /** Wearing a disguise, and whether someone has seen through it. */
+  disguise: 'guard' | 'visitor' | null
+  disguiseBlown: boolean
+  /** Curled up in a laundry basket. */
+  inBasket: boolean
 }
 
 export interface Riot {

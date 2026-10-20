@@ -10,6 +10,7 @@ import { toon } from '../art/toonMaterial'
 import { type Place, ball, bandedBox, box, cyl, ring } from '../art/shapes'
 import { SOLID_LAYER } from '../render/CelPipeline'
 import { type Grid, MAP_H, MAP_W, PLAYER_CELL, type Rect, TILE, Tile } from './Grid'
+import { type AnnexFixtures, detailPass, furnishAnnexes } from './Furnish'
 
 export const WALL_H = 2.6
 export const PERIMETER_H = 5.2
@@ -25,11 +26,13 @@ const FLOOR: Record<string, number> = {
   floorInfirmary: HEX.floorInfirmary,
   floorSolitary: HEX.floorSolitary,
   floorMaint: HEX.floorMaint,
+  floorGym: HEX.floorGym,
+  floorCarpet: HEX.floorCarpet,
   yardTarmac: HEX.yardTarmac,
 }
 
 /** Interactive fixtures the game needs to find again after building. */
-export interface Fixtures {
+export interface Fixtures extends AnnexFixtures {
   phones: { x: number; z: number }[]
   flagpole: { x: number; z: number }
   benches: { x: number; z: number; zone: string }[]
@@ -114,12 +117,15 @@ export function buildPrison(grid: Grid): { group: Group; fixtures: Fixtures } {
     }
   }
   // Floodlight masts at the yard corners.
-  for (const [tx, ty] of [[11, 57], [68, 57], [11, 42], [68, 42]] as const) {
+  for (const [tx, ty] of [[24, 57], [55, 57], [24, 42], [55, 42]] as const) {
     add(cyl(0.15, 0.2, 7, at(tx, ty), HEX.steel, 6))
     add(box(1.2, 0.5, 0.6, at(tx, ty, 7), HEX.steelDark))
   }
 
+  const annex = furnishAnnexes(add)
+  detailPass(add, grid)
   const fixtures: Fixtures = {
+    ...annex,
     phones: [],
     flagpole: { x: 0, z: 0 },
     benches: [],
@@ -230,10 +236,10 @@ export function buildPrison(grid: Grid): { group: Group; fixtures: Fixtures } {
 
   // ---- Yard: court markings, a hoop, benches, weights, the flagpole ----
   // A running track round the edge of the yard.
-  for (const [x0, z0, x1, z1] of [[11, 42, 68, 42], [11, 57, 68, 57], [11, 42, 11, 57], [68, 42, 68, 57]]) {
+  for (const [x0, z0, x1, z1] of [[24, 42, 55, 42], [24, 57, 55, 57], [24, 42, 24, 57], [55, 42, 55, 57]]) {
     add(box(Math.abs(x1 - x0) * TILE + 0.25, 0.02, Math.abs(z1 - z0) * TILE + 0.25, { x: ((x0 + x1) / 2 + 0.5) * TILE, y: 0.005, z: ((z0 + z1) / 2 + 0.5) * TILE }, HEX.yardLines))
   }
-  const court = at(25, 49)
+  const court = at(33, 49)
   add(box(20, 0.02, 0.2, { ...court, z: court.z - 7 }, HEX.yardLines))
   add(box(20, 0.02, 0.2, { ...court, z: court.z + 7 }, HEX.yardLines))
   add(box(0.2, 0.02, 14, { ...court, x: court.x - 10 }, HEX.yardLines))
@@ -242,18 +248,18 @@ export function buildPrison(grid: Grid): { group: Group; fixtures: Fixtures } {
   add(cyl(0.12, 0.12, 3.4, { ...court, x: court.x - 9.6 }, HEX.steel, 6))
   add(box(0.1, 1.1, 1.8, { ...court, x: court.x - 9.4, y: 3.0 }, HEX.paper))
   add(ring(0.35, 0.04, { ...court, x: court.x - 8.9, y: 3.1 }, HEX.hoop, Math.PI / 2))
-  const grass = new PlaneGeometry(14 * TILE, 7 * TILE)
+  const grass = new PlaneGeometry(11 * TILE, 7 * TILE)
   grass.rotateX(-Math.PI / 2)
-  grass.translate(52 * TILE, 0.012, 53 * TILE)
+  grass.translate(49 * TILE, 0.012, 53 * TILE)
   add(paint(grass, HEX.yardGrass))
-  for (const [tx, ty] of [[40, 44], [46, 44], [16, 56], [30, 56], [56, 47], [62, 47]] as const) {
+  for (const [tx, ty] of [[40, 44], [46, 44], [27, 56], [33, 56], [51, 46], [44, 56]] as const) {
     add(box(3.4, 0.5, 0.7, at(tx, ty), HEX.wood))
     fixtures.benches.push({ x: at(tx, ty).x, z: at(tx, ty).z, zone: 'yard' })
   }
   add(box(1.5, 0.6, 0.5, at(44, 52), HEX.steelDark))
   add(box(2.2, 0.08, 0.08, at(44, 52, 1.0), HEX.metal))
   for (const s of [-1, 1]) add(cyl(0.3, 0.3, 0.12, { ...at(44, 52, 0.94), x: at(44, 52).x + s * 0.9 }, HEX.ink, 10))
-  const pole = at(20, 57)
+  const pole = at(27, 57)
   fixtures.flagpole = { x: pole.x, z: pole.z }
   add(cyl(0.08, 0.1, 6.5, pole, HEX.metal, 8))
   add(ball(0.18, { ...pole, y: 6.6 }, HEX.gateYellow))

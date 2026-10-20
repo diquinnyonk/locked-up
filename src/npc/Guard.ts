@@ -65,6 +65,10 @@ export class Guard extends Agent {
   blindEye = false
   /** Seconds they are pointedly not looking at you. */
   ignoring = 0
+  /** 0..1: how sure they are that the 'officer' or 'visitor' is you. */
+  recognise = 0
+  /** Stripped of their uniform by you, and left in vest and boxers. */
+  uniformTaken = false
   patrolTarget: { tx: number; ty: number } | null = null
   dwell = 0
   lockIndex = 0
@@ -81,6 +85,7 @@ export class Guard extends Agent {
       skin: skins[index % skins.length],
       hair: female ? HEX.hairBlack : null,
       cap: true,
+      uniform: true,
     })
     super(body, world)
     this.name = NAMES[index]
@@ -117,6 +122,26 @@ export class Guard extends Agent {
     this.seesPlayer = sees
     if (sees) this.lastSeen = { x: p.body.x, z: p.body.z, t: 0 }
     else if (this.lastSeen) this.lastSeen.t += delta
+
+    // A disguise holds at a distance. Up close, for long enough, it does not.
+    if (p.disguise && !p.disguiseBlown && sees && this.distanceTo(p.body.x, p.body.z) < 3.6) {
+      const base = p.disguise === 'guard' ? 0.4 : 0.3
+      this.recognise += delta * base * w.memory.disguiseRecognition(p.disguise) * (1 + this.wary) * (w.hard ? 1.25 : 1) * (p.running ? 1.8 : 1)
+      if (this.recognise >= 1) {
+        p.disguiseBlown = true
+        this.suspicion = 1
+        this.say(
+          pick(
+            w.rng,
+            p.disguise === 'guard'
+              ? [`Hang about. Since when has ${this.colleague()} had a prison tattoo?`, "You're not on the rota. Nobody that ugly is on the rota.", `Nice try, ${p.name}. Your tie's a sock.`]
+              : ["Madam... you appear to have a beard.", `That's not a visitor, that's ${p.name} in a frock!`, "Excuse me, love, your wig's on backwards. And you're a prisoner."],
+          ),
+          3,
+        )
+        w.toast('Your disguise is blown!', 'bad')
+      }
+    } else if (this.recognise > 0) this.recognise = Math.max(0, this.recognise - delta * 0.15)
 
     const escorting = p.escortedBy === this
     if (this.ignoring > 0) this.ignoring -= delta
@@ -173,6 +198,12 @@ export class Guard extends Agent {
       if (a > Guard.HALF_ANGLE) return false
     }
     return this.world.grid.sightClear(this.x, this.z, p.body.x, p.body.z)
+  }
+
+  /** Somebody else on the staff, for blaming. */
+  colleague(): string {
+    const others = this.world.guards.filter((g) => g !== this)
+    return others[Math.floor(this.world.rng() * others.length)]?.name ?? 'Mr Crumpet'
   }
 
   /** How far they would see you right now, given how you are moving. */
