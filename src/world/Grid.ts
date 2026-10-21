@@ -1,5 +1,5 @@
 /**
- * HMP Blackmoor, as a tile grid.
+ * HMP Grim-on-the-Moor, as a tile grid.
  *
  * One tile is two metres. Everything that needs to know where things are -
  * collision, pathfinding, vision, the minimap, the mesh builder: reads this
@@ -100,7 +100,7 @@ export class Grid {
   /** Somewhere to sit: a bench, a chair, a pew, a bunk edge. */
   readonly seats: { x: number; z: number; yaw: number }[] = []
   /** Furniture nobody walks through, as world rectangles. */
-  readonly props: { x0: number; z0: number; x1: number; z1: number }[] = []
+  readonly props: { x0: number; z0: number; x1: number; z1: number; enter: boolean }[] = []
   /** Tiles whose middle a prop covers: paths go round them. */
   private readonly propTiles = new Set<number>()
   readonly cells = new Map<string, CellInfo>()
@@ -313,10 +313,11 @@ export class Grid {
   /**
    * Registers a solid piece of furniture centred on x/z. `nav` false keeps
    * small things against walls out of path planning: bodies still bump off
-   * them, but they never close a route.
+   * them, but they never close a route. `enter` marks a seat or a bed: the
+   * one kind someone heading for it may step into.
    */
-  addProp(x: number, z: number, w: number, d: number, nav = true): void {
-    const p = { x0: x - w / 2, z0: z - d / 2, x1: x + w / 2, z1: z + d / 2 }
+  addProp(x: number, z: number, w: number, d: number, nav = true, enter = false): void {
+    const p = { x0: x - w / 2, z0: z - d / 2, x1: x + w / 2, z1: z + d / 2, enter }
     this.props.push(p)
     if (!nav) return
     for (let ty = Math.floor(p.z0 / TILE); ty <= Math.floor(p.z1 / TILE); ty++) {
@@ -346,7 +347,7 @@ export class Grid {
    */
   pushOutOfProps(pos: { x: number; z: number }, r: number, except?: { x: number; z: number } | null): void {
     for (const p of this.props) {
-      if (except && except.x > p.x0 - 0.05 && except.x < p.x1 + 0.05 && except.z > p.z0 - 0.05 && except.z < p.z1 + 0.05) continue
+      if (except && p.enter && except.x > p.x0 - 0.05 && except.x < p.x1 + 0.05 && except.z > p.z0 - 0.05 && except.z < p.z1 + 0.05) continue
       const nx = Math.max(p.x0, Math.min(pos.x, p.x1))
       const nz = Math.max(p.z0, Math.min(pos.z, p.z1))
       const dx = pos.x - nx

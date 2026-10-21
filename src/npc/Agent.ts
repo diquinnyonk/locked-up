@@ -65,10 +65,34 @@ export abstract class Agent {
    * Walks toward a tile. Plans once per goal, re-plans now and then (doors
    * change state; people get in the way). 'success' on arrival.
    */
-  goTo(tx: number, ty: number, speed: number, arriveWithin = 0.6): Status {
+  goTo(tx: number, ty: number, speed: number, arriveWithin = 0.6, exact = false): Status {
+    // A tile under a washing machine or a table is never a place to stand:
+    // head for the nearest clear tile beside it instead. (`exact` is a trip
+    // to a point, a seat or a bed, which keeps its tile.)
+    const grid = this.world.grid
+    if (!exact && grid.underProp(tx, ty)) {
+      let best: { tx: number; ty: number } | null = null
+      let bd = Infinity
+      for (let dy = -2; dy <= 2; dy++) {
+        for (let dx = -2; dx <= 2; dx++) {
+          const nx = tx + dx
+          const ny = ty + dy
+          if (!grid.passable(nx, ny) || grid.underProp(nx, ny) || grid.zone(nx, ny) !== grid.zone(tx, ty)) continue
+          const d = dx * dx + dy * dy
+          if (d < bd) {
+            bd = d
+            best = { tx: nx, ty: ny }
+          }
+        }
+      }
+      if (best) {
+        tx = best.tx
+        ty = best.ty
+      }
+    }
+    if (!exact) this.heading = null
     const key = ty * 1000 + tx
     const tc = { x: (tx + 0.5) * TILE, z: (ty + 0.5) * TILE }
-    if (!this.direct) this.heading = tc
     if (this.distanceTo(tc.x, tc.z) < arriveWithin) {
       this.path.length = 0
       this.wantSpeed = 0
@@ -90,6 +114,12 @@ export abstract class Agent {
   }
 
   goToWorld(x: number, z: number, speed: number, arriveWithin = 0.6): Status {
+    // A spot that landed inside a machine or a table moves to just outside
+    // it; seats and beds keep their spot.
+    const spot = { x, z }
+    this.world.grid.pushOutOfProps(spot, RADIUS + 0.02, spot)
+    x = spot.x
+    z = spot.z
     const t = worldToTile(x, z)
     this.heading = { x, z }
     if (this.distanceTo(x, z) < arriveWithin) {
@@ -105,7 +135,7 @@ export abstract class Agent {
       return 'running'
     }
     this.direct = null
-    const st = this.goTo(t.tx, t.ty, speed, arriveWithin)
+    const st = this.goTo(t.tx, t.ty, speed, arriveWithin, true)
     this.heading = { x, z }
     return st
   }

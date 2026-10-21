@@ -1226,7 +1226,14 @@ export class Game implements World {
         }
       }
       const taken = seat && this.bodies.some((o) => o !== b && o.visible && o.pose === 'sit' && Math.hypot(o.x - seat!.x, o.z - seat!.z) < 0.45)
-      if (seat && !taken) add('E', 'Sit down', () => this.sitDown(seat!))
+      if (seat && !taken) {
+        // Right at a free seat, sitting beats a chat with whoever is next to it.
+        if (sd < 0.8) {
+          const chat = out.findIndex((o) => o.key === 'E' && o.label.startsWith('Talk to'))
+          if (chat >= 0) out.splice(chat, 1)
+        }
+        add('E', 'Sit down', () => this.sitDown(seat!))
+      }
     }
 
     this.prompts = out
@@ -1611,7 +1618,7 @@ export class Game implements World {
         enabled: !backing && inv.count('voucher') >= price,
         run: () => {
           if (state.hostility >= 0.7) {
-            this.ui.talk(pr.name, `After what you have done to my lads? Not for all the sausage rolls in Blackmoor.`, [])
+            this.ui.talk(pr.name, `After what you have done to my lads? Not for all the sausage rolls in Grim-on-the-Moor.`, [])
             return
           }
           for (let i = 0; i < price; i++) inv.remove('voucher')

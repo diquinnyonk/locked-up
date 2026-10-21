@@ -237,7 +237,7 @@ export class Ui implements UiPort {
     const contact = g.carPresent || g.signalTonight || g.contactNights > 0
     body.innerHTML = `
       <section class="mission">
-        <h3 class="title">Escape HMP Blackmoor</h3>
+        <h3 class="title">Escape HMP Grim-on-the-Moor</h3>
         <p>Everyone in here knows your name, ${escape(p.name)}: the one who robbed the Greggs. Attempts left this round: <b>${m.attemptsLeft} of ${ATTEMPTS_PER_ROUND}</b> (round ${m.round} of ${ROUNDS}).</p>
         <h4>Out of your cell at night</h4>
         <ul class="checks">
@@ -378,7 +378,7 @@ export class Ui implements UiPort {
     const body = this.panel.querySelector('.body') as HTMLElement
     body.innerHTML = `
       <article class="letter">
-        <span class="stamp">Opened and read, HMP Blackmoor</span>
+        <span class="stamp">Read by the censor</span>
         <p class="salute">Dear ${escape(g.player.name)},</p>
         <p>${escape(letter.body)}</p>
         <p class="sign">${escape(letter.sign)}</p>

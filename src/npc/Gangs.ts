@@ -1,5 +1,5 @@
 /**
- * The firms of HMP Blackmoor.
+ * The firms of HMP Grim-on-the-Moor.
  *
  * Every wing has a gang that runs it, plus a couple of their rivals'
  * soldiers living among them. Nobody kicks off on a wing without the gang

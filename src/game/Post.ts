@@ -10,7 +10,7 @@ import type { ItemId } from './Items'
  * The notes are different. One a day, left on your bunk while you are out,
  * unsigned, each a real clue to a way out. Whoever writes them knows things
  * nobody on a landing could know. At the end you find out who: Governor
- * Pettigrew, who runs Blackmoor as a test of itself, and who has been
+ * Pettigrew, who runs Grim-on-the-Moor as a test of itself, and who has been
  * watching every attempt you make with a stopwatch and a clipboard.
  */
 export interface Letter {
@@ -89,7 +89,7 @@ const LETTERS: LetterTemplate[] = [
     id: 'kev-2',
     from: 'Kev (best mate)',
     sign: "Kev. PS. I've enclosed a crossword. It's blank. I couldn't do it either.",
-    body: "Here, my cousin's mate did time at Blackmoor. Says the laundry van is the dream but the X-ray bloke is a nightmare. Says he's a sucker for a blue drink. Not sure what that means. Thought you'd want to know. Or not. Burn this.",
+    body: "Here, my cousin's mate did time at Grim-on-the-Moor. Says the laundry van is the dream but the X-ray bloke is a nightmare. Says he's a sucker for a blue drink. Not sure what that means. Thought you'd want to know. Or not. Burn this.",
   },
   {
     id: 'nan-2',
@@ -99,10 +99,10 @@ const LETTERS: LetterTemplate[] = [
     gift: { item: 'voucher', count: 1, line: 'Taped inside the envelope: one Greggs voucher. "For emergencies."' },
   },
   {
-    id: 'blackmoor-bugle',
-    from: 'The Blackmoor Bugle, Letters Desk',
+    id: 'grim-bugle',
+    from: 'The Grim-on-the-Moor Bugle, Letters Desk',
     sign: 'The Editor',
-    body: "We are writing to every inmate to ask for comment on our Pastry Crime Week special. Is it true that inside HMP Blackmoor the sausage roll is now the currency of choice? Is it true the X-ray operator can be bought with one? We pay £20 for a good quote.",
+    body: "We are writing to every inmate to ask for comment on our Pastry Crime Week special. Is it true that inside HMP Grim-on-the-Moor the sausage roll is now the currency of choice? Is it true the X-ray operator can be bought with one? We pay £20 for a good quote.",
   },
   {
     id: 'mum-3',
@@ -170,7 +170,7 @@ const NOTES: Omit<BunkNote, 'day'>[] = [
   {
     id: 'note-office',
     paper: "A compliments slip. It says \"With the Governor's compliments\". It does not even try to hide it any more.",
-    text: "Very well. You have found me out, or you will soon. Carry on regardless. Every hole you find, I fill. Every hole I fill makes Blackmoor better. Escape, and you will have done me a great service. Fail, and you will have done me a slightly smaller one. R.P.",
+    text: "Very well. You have found me out, or you will soon. Carry on regardless. Every hole you find, I fill. Every hole I fill makes Grim-on-the-Moor better. Escape, and you will have done me a great service. Fail, and you will have done me a slightly smaller one. R.P.",
   },
 ]
 
@@ -227,6 +227,6 @@ export class Post {
 export function governorsLetter(name: string, won: boolean, days: number, attempts: number, notes: number): string {
   const clues = notes === 0 ? 'You never read a single one of my notes. Admirable, in its way.' : `You read ${notes} of my notes. ${notes >= 6 ? 'I think you guessed.' : 'I doubt you guessed.'}`
   return won
-    ? `Dear ${name},\n\nCongratulations. ${days} day${days === 1 ? '' : 's'} and ${attempts} failed attempt${attempts === 1 ? '' : 's'}. The last man took fourteen days and went out in a bin lorry, which I thought was rather vulgar.\n\nYes, the notes were mine. I run Blackmoor as a test of itself. Every route you found, I have already had welded, bricked up or sacked. You have made this the most secure prison in England, and for that I am grateful.\n\n${clues}\n\nGreggs have been informed of your release. They have asked that you keep at least fifty yards from any branch.\n\nYours, with a stopwatch,\nRupert Pettigrew\nGovernor, HMP Blackmoor`
-    : `Dear ${name},\n\nHard luck. Eight attempts, and every one of them taught me something.\n\nYes, the notes were mine. I run Blackmoor as a test of itself. I leave a clue, I see who takes it, and I fix whatever they find. You have been the finest test my prison has ever had.\n\n${clues}\n\nI have had a small plaque made for the laundry. It says "The Greggs Bandit Tried Here".\n\nYours, with a stopwatch,\nRupert Pettigrew\nGovernor, HMP Blackmoor`
+    ? `Dear ${name},\n\nCongratulations. ${days} day${days === 1 ? '' : 's'} and ${attempts} failed attempt${attempts === 1 ? '' : 's'}. The last man took fourteen days and went out in a bin lorry, which I thought was rather vulgar.\n\nYes, the notes were mine. I run Grim-on-the-Moor as a test of itself. Every route you found, I have already had welded, bricked up or sacked. You have made this the most secure prison in England, and for that I am grateful.\n\n${clues}\n\nGreggs have been informed of your release. They have asked that you keep at least fifty yards from any branch.\n\nYours, with a stopwatch,\nRupert Pettigrew\nGovernor, HMP Grim-on-the-Moor`
+    : `Dear ${name},\n\nHard luck. Eight attempts, and every one of them taught me something.\n\nYes, the notes were mine. I run Grim-on-the-Moor as a test of itself. I leave a clue, I see who takes it, and I fix whatever they find. You have been the finest test my prison has ever had.\n\n${clues}\n\nI have had a small plaque made for the laundry. It says "The Greggs Bandit Tried Here".\n\nYours, with a stopwatch,\nRupert Pettigrew\nGovernor, HMP Grim-on-the-Moor`
 }

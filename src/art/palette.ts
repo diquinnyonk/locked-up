@@ -9,7 +9,7 @@ import { Color, ColorManagement } from 'three'
 ColorManagement.enabled = false
 
 /**
- * HMP Blackmoor.
+ * HMP Grim-on-the-Moor.
  *
  * The single source of truth for colour in the whole game. Institutional
  * paint, Victorian brick and prison-issue grey, kept warm enough that the

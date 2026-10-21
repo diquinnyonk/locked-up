@@ -302,7 +302,7 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   // A free seat on a canteen bench.
   const seat = game.grid.seats.find((st) => game.grid.zoneAtWorld(st.x, st.z) === 'hub' && !game.prisoners.some((p) => Math.hypot(p.x - st.x, p.z - st.z) < 0.6))!
   game.player.body.x = seat.x
-  game.player.body.z = seat.z + (seat.yaw === 0 ? -0.9 : 0.9)
+  game.player.body.z = seat.z + (seat.yaw === 0 ? -0.6 : 0.6)
   check('sit: offered at a canteen bench', prompt(game, 'Sit down'))
   check('sit: sat on the bench, facing the table', game.player.body.pose === 'sit' && game.player.body.x === seat.x && game.player.body.z === seat.z && game.player.body.yaw === seat.yaw)
   run(game, 0.5)

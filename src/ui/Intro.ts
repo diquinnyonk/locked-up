@@ -1,5 +1,5 @@
 /**
- * How you ended up in HMP Blackmoor. A handful of cards over the slow
+ * How you ended up in HMP Grim-on-the-Moor. A handful of cards over the slow
  * flyover, read at your own pace and skippable at any point.
  */
 interface Slide {
@@ -11,7 +11,7 @@ interface Slide {
 function slides(name: string): Slide[] {
   return [
     {
-      kicker: 'Tuesday, 11:42. Market Street, Blackmoor',
+      kicker: 'Tuesday, 11:42. Market Street, Grim-on-the-Moor',
       text: 'It started, as these things always do, with a craving.',
     },
     {
@@ -19,22 +19,22 @@ function slides(name: string): Slide[] {
       text: `${name} walked into Greggs. ${name} walked out with a steak bake, four sausage rolls and a festive bake. In October. ${name} did not walk past the till.`,
     },
     {
-      kicker: 'The Blackmoor Bugle, front page',
+      kicker: 'The Grim-on-the-Moor Bugle, front page',
       headline: 'PASTRY OUTRAGE: LOCAL FIEND HELD',
-      text: 'In most towns that is a caution and a stern word. In Blackmoor, under the Pastry Protection Act of 1987, robbing a Greggs is classed as worse than murder. Three people fainted in the queue.',
+      text: 'In most towns that is a caution and a stern word. In Grim-on-the-Moor, under the Pastry Protection Act of 1987, robbing a Greggs is classed as worse than murder. Three people fainted in the queue.',
     },
     {
-      kicker: 'Blackmoor Crown Court',
+      kicker: 'Grim-on-the-Moor Crown Court',
       headline: 'GUILTY',
       text: "The judge removed his glasses. 'In thirty years on the bench I have seen arson, fraud, and a man who married a swan. I have never seen anything like this.' Sentence: as long as it takes.",
     },
     {
-      kicker: 'HMP Blackmoor, reception',
+      kicker: 'HMP Grim-on-the-Moor, reception',
       text: `Word travels fast on a landing. By the time the van pulls in, every prisoner and every officer knows your name. ${name}. The Greggs Bandit.`,
     },
     {
       kicker: 'Day one',
-      text: 'Nobody has ever escaped from Blackmoor. You get four attempts, then four more. Make the first one count.',
+      text: 'Nobody has ever escaped from Grim-on-the-Moor. You get four attempts, then four more. Make the first one count.',
     },
   ]
 }

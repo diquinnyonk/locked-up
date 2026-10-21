@@ -12,9 +12,11 @@ const at = (tx: number, ty: number) => ({ x: (tx + 0.5) * TILE, z: (ty + 0.5) * 
 
 export function registerSolids(grid: Grid): void {
   const solid = (x: number, z: number, w: number, d: number, nav = true) => grid.addProp(x, z, w, d, nav)
+  /** A bed: solid, but someone lying down in it may step in. */
+  const bed = (x: number, z: number, w: number, d: number) => grid.addProp(x, z, w, d, true, true)
   /** A bench or sofa: solid, with seats spaced along its length. */
   const bench = (x: number, z: number, w: number, d: number, yaw: number, seats: number, alongX = true) => {
-    solid(x, z, w, d)
+    grid.addProp(x, z, w, d, true, true)
     const len = alongX ? w : d
     for (let i = 0; i < seats; i++) {
       const o = seats === 1 ? 0 : -len / 2 + (len / seats) * (i + 0.5)
@@ -34,7 +36,7 @@ export function registerSolids(grid: Grid): void {
     const front = doorNorth ? z0 + 0.5 : z1 - 0.5
     const midZ = (z0 + z1) / 2
     const bunkX = x0 + 0.75
-    solid(bunkX + 0.05, midZ + (doorNorth ? 0.6 : -0.6), 1.1, 2.6)
+    bed(bunkX + 0.05, midZ + (doorNorth ? 0.6 : -0.6), 1.1, 2.6)
     grid.addSeat(cell.bunks[0].x + 0.55, cell.bunks[0].z, Math.PI / 2)
     solid(x1 - 0.5, front + (doorNorth ? 0.4 : -0.4), 0.55, 0.55, false)
     solid(x1 - 0.55, back + (doorNorth ? -0.2 : 0.2), 0.9, 0.6, false)
@@ -72,14 +74,14 @@ export function registerSolids(grid: Grid): void {
   // ---- Healthcare ----
   for (let i = 0; i < 4; i++) {
     const p = at(21.5 + i * 2.6, 22.6)
-    solid(p.x, p.z, 1.1, 2.2)
+    bed(p.x, p.z, 1.1, 2.2)
     solid(p.x + 1.1, p.z, 0.08, 2.4, false)
   }
   solid(at(31, 22).x, at(31, 22).z, 1.6, 0.6, false)
   solid(at(28.5, 25).x, at(28.5, 25).z, 2.4, 1.2)
 
   // ---- Segregation ----
-  solid(at(10, 22.8).x, at(10, 22.8).z, 1.3, 2.4)
+  bed(at(10, 22.8).x, at(10, 22.8).z, 1.3, 2.4)
   solid(at(13, 22.3).x, at(13, 22.3).z, 0.6, 0.6, false)
 
   // ---- Games room: pool, table tennis, the telly and its sofa ----

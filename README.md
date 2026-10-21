@@ -15,7 +15,7 @@ npm run sim        # headless day of the regime, printed by period
 ```
 
 Type your name on the title screen, pick a difficulty, and you are booked in to
-HMP Blackmoor, cell A8, with one cellmate.
+HMP Grim-on-the-Moor, cell A8, with one cellmate.
 
 - **Normal**: every officer's sight is drawn on the floor. The wide fan is how
   far they see ahead, cut off by walls and shut doors, and it shrinks while you
@@ -27,7 +27,7 @@ HMP Blackmoor, cell A8, with one cellmate.
 ## How you got here
 
 A short, skippable intro: you robbed a Greggs (a steak bake, four sausage
-rolls and a festive bake), which in Blackmoor, under the Pastry Protection Act
+rolls and a festive bake), which in Grim-on-the-Moor, under the Pastry Protection Act
 of 1987, is worse than murder. Everyone inside knows your name. Prisoners and
 officers call you the Greggs Bandit.
 
@@ -47,7 +47,7 @@ drink, the panto box, the shift change, the Firm's prices, the toothpaste. The
 paper gets fancier as they go on: lined paper, then cream, then headed paper
 with half a crest, then a compliments slip. At the end, whichever way it ends,
 a letter on headed paper explains: Governor Rupert Pettigrew wrote them all.
-He runs Blackmoor as a test of itself, leaves a clue, watches who takes it,
+He runs Grim-on-the-Moor as a test of itself, leaves a clue, watches who takes it,
 and welds shut whatever they find.
 
 Letters and notes are kept in the notebook under Post.
@@ -67,7 +67,7 @@ in `public/voices/<key>.mp3` and add the key to `VOICE_LINES` in
 
 `J`, `Tab` or the Menu button opens the notebook, in four tabs:
 
-- **Main mission**: escape HMP Blackmoor, as a checklist that ticks itself as
+- **Main mission**: escape HMP Grim-on-the-Moor, as a checklist that ticks itself as
   you get ready (a key, toothpaste in the lock, a paid firm, a car outside, a
   grappling hook, a disguise, Keith paid off).
 - **Jobs**: your side missions and who has work going today.
@@ -121,7 +121,7 @@ mode shows none of it.
 ## Money
 
 The currency is the **Greggs voucher**: good for one sausage roll at any
-branch, and in Blackmoor the only money that matters. You earn them folding
+branch, and in Grim-on-the-Moor the only money that matters. You earn them folding
 sheets in the laundry, from jobs, and from Nan. They buy riots, favours,
 fixers' stock and blue drink.
 

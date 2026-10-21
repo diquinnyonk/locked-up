@@ -86,7 +86,7 @@ export const ITEMS: Record<ItemId, ItemDef> = {
   battery: { id: 'battery', name: 'Batteries', hex: HEX.battery, damage: 1, uses: [], contraband: false, blurb: 'From the telly remote.' },
   wire: { id: 'wire', name: 'Copper wire', hex: HEX.clothesYellow, damage: 0, uses: [], contraband: true, blurb: 'Bend it into anything.' },
   tape: { id: 'tape', name: 'Gaffer tape', hex: HEX.steelDark, damage: 0, uses: [], contraband: false, blurb: 'Holds everything together.' },
-  voucher: { id: 'voucher', name: 'Greggs voucher', hex: HEX.voucher, damage: 0, uses: ['bribe'], contraband: false, blurb: 'Good for one sausage roll at any branch. In Blackmoor it is the only money that matters. Buys friends, buys silence.' },
+  voucher: { id: 'voucher', name: 'Greggs voucher', hex: HEX.voucher, damage: 0, uses: ['bribe'], contraband: false, blurb: 'Good for one sausage roll at any branch. In Grim-on-the-Moor it is the only money that matters. Buys friends, buys silence.' },
   magazine: { id: 'magazine', name: 'Rolled magazine', hex: HEX.clothesYellow, damage: 1, uses: ['distract'], contraband: false, blurb: 'Roll it tight and tape it: it is a club.' },
   lighter: { id: 'lighter', name: 'Lighter', hex: HEX.clothesRed, damage: 0, uses: ['heat'], contraband: true, blurb: 'Melts plastic. Lights mattresses.' },
   dart: { id: 'dart', name: 'Dart', hex: HEX.metal, damage: 2, uses: [], contraband: true, blurb: 'From the games room board.' },
@@ -102,7 +102,7 @@ export const ITEMS: Record<ItemId, ItemDef> = {
 
   blueDrink: { id: 'blueDrink', name: 'Blue drink', hex: HEX.stainedBlue, damage: 1, uses: ['bribe'], contraband: false, blurb: 'Two litres of something fizzy. Flavour: blue. Keith on the X-ray would sell his nan for one.' },
   sausageRoll: { id: 'sausageRoll', name: 'Sausage roll', hex: HEX.chipsOrange, damage: 0, uses: ['bribe'], contraband: false, blurb: 'Flaky, lukewarm, magnificent. Half of the laundry X-ray bribe.' },
-  hymnBook: { id: 'hymnBook', name: 'Hymn book', hex: HEX.bookRed, damage: 1, uses: [], contraband: false, blurb: 'Hymns Ancient and Modern, property of HMP Blackmoor chapel. Somebody has drawn a moustache on every bishop.' },
+  hymnBook: { id: 'hymnBook', name: 'Hymn book', hex: HEX.bookRed, damage: 1, uses: [], contraband: false, blurb: 'Hymns Ancient and Modern, property of HMP Grim-on-the-Moor chapel. Somebody has drawn a moustache on every bishop.' },
   guardUniform: { id: 'guardUniform', name: "Officer's uniform", hex: HEX.guardShirt, damage: 0, uses: ['disguise'], contraband: true, blurb: 'Shirt, tie, trousers, peaked cap. Slightly too big. Smells of Brut and disappointment. Wear it (Tab).' },
   wig: { id: 'wig', name: 'Panto wig', hex: HEX.hairBlonde, damage: 0, uses: [], contraband: false, blurb: 'Big, blonde and last worn by the chaplain as Widow Twankey in 2009.' },
   dress: { id: 'dress', name: 'Floral frock', hex: HEX.dress, damage: 0, uses: [], contraband: false, blurb: 'From the panto box. Size: generous. Pattern: alarming.' },
