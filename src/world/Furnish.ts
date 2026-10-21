@@ -21,6 +21,7 @@ export interface AnnexFixtures {
   staffExit: { x: number; z: number }
   visitorsGate: { x: number; z: number }
   pews: { x: number; z: number }[]
+  xray: { x: number; z: number }
 }
 
 const at = (tx: number, ty: number, y = 0, ry = 0): Place => ({ x: (tx + 0.5) * TILE, y, z: (ty + 0.5) * TILE, ry })
@@ -57,6 +58,7 @@ export function furnishAnnexes(add: Add): AnnexFixtures {
     staffExit: { x: (64 + 0.5) * TILE, z: (58 + 0.5) * TILE },
     visitorsGate: { x: (15 + 0.5) * TILE, z: (58 + 0.5) * TILE },
     pews: [],
+    xray: { x: 0, z: 0 },
   }
 
   // ---- Chapel: pews facing an altar, stained glass, an organ, and the
@@ -164,6 +166,16 @@ export function furnishAnnexes(add: Add): AnnexFixtures {
   }
   for (let i = 0; i < 2; i++) add(box(1.2, 0.15, 1.2, at(68.5, 54.6 + i * 1.4), HEX.pallet), box(1.0, 0.8, 1.0, at(68.5, 54.6 + i * 1.4, 0.15), HEX.basket))
   add(box(2, 0.4, 0.3, { ...at(64, 58.6), y: WALL_H - 0.2 }, HEX.steelDark))
+
+  // The X-ray: a tunnel on a conveyor with a monitor on a stand. Every
+  // basket goes through it on the way to the van.
+  const xr = at(61, 57)
+  f.xray = { x: xr.x + 1.8, z: xr.z }
+  add(box(2.4, 0.5, 1.2, { ...xr, y: 0 }, HEX.steelDark), box(2.6, 0.08, 1.0, { ...xr, y: 0.5 }, HEX.ink))
+  add(box(1.3, 1.4, 1.3, { ...xr, y: 0.55 }, HEX.paper), box(1.32, 0.6, 1.0, { ...xr, y: 0.6 }, HEX.ink))
+  add(box(0.08, 0.6, 1.34, { ...xr, x: xr.x - 0.66, y: 0.55 }, HEX.clothesYellow), box(0.08, 0.6, 1.34, { ...xr, x: xr.x + 0.66, y: 0.55 }, HEX.clothesYellow))
+  add(cyl(0.04, 0.04, 1.2, { x: xr.x + 1.4, y: 0, z: xr.z - 0.5 }, HEX.steel, 8), box(0.7, 0.5, 0.08, { x: xr.x + 1.4, y: 1.2, z: xr.z - 0.48 }, HEX.tv), box(0.6, 0.4, 0.02, { x: xr.x + 1.4, y: 1.25, z: xr.z - 0.43 }, HEX.stainedBlue))
+  add(cyl(0.12, 0.1, 0.2, { x: xr.x + 1.0, y: 0.58, z: xr.z + 0.45 }, HEX.paper, 12))
 
   // The laundry basket you can climb into, by the laundry door.
   f.laundryBasket = { x: at(46, 11).x, z: at(46, 11).z }

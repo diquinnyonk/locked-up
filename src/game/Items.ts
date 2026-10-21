@@ -34,6 +34,8 @@ export type ItemId =
   | 'letter'
   | 'glasses'
   | 'racingPost'
+  | 'blueDrink'
+  | 'sausageRoll'
   // Disguises
   | 'guardUniform'
   | 'wig'
@@ -97,6 +99,8 @@ export const ITEMS: Record<ItemId, ItemDef> = {
   glasses: { id: 'glasses', name: 'Reading glasses', hex: HEX.steelDark, damage: 0, uses: [], contraband: false, blurb: 'Leopard print, on a beaded chain. Unmistakably an officer\'s.' },
   racingPost: { id: 'racingPost', name: 'The Racing Post', hex: HEX.clothesRed, damage: 1, uses: ['distract'], contraband: false, blurb: 'Confiscated, then lost. Three horses are circled in biro.' },
 
+  blueDrink: { id: 'blueDrink', name: 'Blue drink', hex: HEX.stainedBlue, damage: 1, uses: ['bribe'], contraband: false, blurb: 'Two litres of something fizzy. Flavour: blue. Keith on the X-ray would sell his nan for one.' },
+  sausageRoll: { id: 'sausageRoll', name: 'Sausage roll', hex: HEX.chipsOrange, damage: 0, uses: ['bribe'], contraband: false, blurb: 'Flaky, lukewarm, magnificent. Half of the laundry X-ray bribe.' },
   guardUniform: { id: 'guardUniform', name: "Officer's uniform", hex: HEX.guardShirt, damage: 0, uses: ['disguise'], contraband: true, blurb: 'Shirt, tie, trousers, peaked cap. Slightly too big. Smells of Brut and disappointment. Wear it (Tab).' },
   wig: { id: 'wig', name: 'Panto wig', hex: HEX.hairBlonde, damage: 0, uses: [], contraband: false, blurb: 'Big, blonde and last worn by the chaplain as Widow Twankey in 2009.' },
   dress: { id: 'dress', name: 'Floral frock', hex: HEX.dress, damage: 0, uses: [], contraband: false, blurb: 'From the panto box. Size: generous. Pattern: alarming.' },
@@ -232,7 +236,7 @@ export class Inventory {
 export const SPAWNS: { zone: string; items: ItemId[] }[] = [
   { zone: 'showers', items: ['soap', 'razor', 'toothbrush', 'toothpaste', 'sock'] },
   { zone: 'laundry', items: ['bedsheet', 'bedsheet', 'sock', 'bleach', 'mopHandle', 'snout'] },
-  { zone: 'hub', items: ['spoon', 'fork', 'tray', 'spoon', 'fork', 'biscuits'] },
+  { zone: 'hub', items: ['spoon', 'fork', 'tray', 'spoon', 'fork', 'biscuits', 'sausageRoll'] },
   { zone: 'games', items: ['poolBall', 'poolCue', 'dart', 'battery', 'magazine', 'snout'] },
   { zone: 'maint', items: ['screwdriver', 'wire', 'tape', 'lighter', 'tape'] },
   { zone: 'infirmary', items: ['tape', 'bleach', 'teabags'] },
@@ -241,6 +245,6 @@ export const SPAWNS: { zone: string; items: ItemId[] }[] = [
   { zone: 'chapel', items: ['wig', 'dress', 'bedsheet'] },
   { zone: 'mess', items: ['guardUniform', 'biscuits', 'teabags'] },
   { zone: 'library', items: ['magazine', 'battery'] },
-  { zone: 'gym', items: ['sock', 'tape'] },
+  { zone: 'gym', items: ['sock', 'tape', 'blueDrink'] },
   { zone: 'bay', items: ['tape', 'wire'] },
 ]

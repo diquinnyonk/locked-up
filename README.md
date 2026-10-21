@@ -80,14 +80,15 @@ at the exit, and each one that gets rumbled makes it harder next time.
 | --- | --- | --- |
 | **Dressed as an officer** | A spare uniform from the officers' mess, or the one off an officer you have knocked out (he is left in his vest and pink boxers until morning) | Wear it (Tab) and doors open for you. Clock off through the staff gate in the loading bay at shift change, 20:45 to 21:20. Mrs Battenberg gives you a lift and talks about her cats. |
 | **Dressed as a visitor** | The panto wig and floral frock from the chapel's costume box, made into a visitor disguise | Wear it in the visiting hall (14:30 to 15:45) and shuffle out of the visitors' gate with everyone else at 15:30. Big Dave's nan offers you a Werther's Original. |
-| **The laundry van** | Nothing but nerve | During work, climb into the big basket by the laundry door before 11:00. The van takes you to a laundrette in Wolverhampton. |
+| **The laundry van** | A blue drink (the vending machine in the visiting hall, 1 snout) and a sausage roll (the canteen), to bribe Keith on the X-ray | Every basket goes through Keith's X-ray in the loading bay on its way to the van, and unbribed he always spots you ("That basket's got a skeleton in it. A WALKING skeleton."). Find him having a cuppa in the canteen at breakfast or lunch, or collecting baskets in the laundry from 10:00, and pay him off. Then climb into the big basket by the laundry door before 11:00, and the van takes you to a laundrette in Wolverhampton. |
 
 A disguise holds at a distance, but an officer who gets a good look at you up
 close for long enough sees through it ("Madam, you appear to have a beard"),
 and the HUD shows how close you are to being rumbled. Prisoners comment on
 your outfit, and snitches tell the officers. After a failure, officers count
-moustaches at shift change, visitors get counted in and out, and laundry
-baskets get poked with a broom handle.
+moustaches at shift change and visitors get counted in and out. If you are
+caught in the laundry even after paying Keith, he is sacked; Brenda replaces
+him and wants two of everything, then Clive, who wants three.
 
 ## New rooms
 

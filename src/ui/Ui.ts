@@ -223,7 +223,7 @@ export class Ui implements UiPort {
       <ol class="methods">
         <li><b>Dress as an officer</b>: a spare uniform from the officers' mess, or the one off an officer you have knocked out. Doors open for you. Clock off through the loading bay's staff gate at shift change (20:45 to 21:20). Don't let anyone stare at you up close.</li>
         <li><b>Dress as a visitor</b>: the wig and frock from the chapel's panto box. Wear them in the visiting hall (14:30 to 15:45) and shuffle out of the visitors' gate when they leave at 15:30.</li>
-        <li><b>The laundry van</b>: during work, climb into the big basket by the laundry door before 11:00 and hope nobody pokes it.</li>
+        <li><b>The laundry van</b>: every basket goes through the X-ray in the loading bay. Bribe the operator first with a blue drink (the vending machine in visits) and a sausage roll (the canteen); he has a cuppa in the canteen at breakfast and lunch, and collects baskets from the laundry from 10:00. Then climb into the big basket by the laundry door before 11:00. Unbribed, the X-ray always finds you.</li>
       </ol>
       <p class="hint">These are whole escapes on their own: no car needed. Odds now: officer ${Math.round(g.memory.sillyExitChance('guardDisguise') * 100)}%, visitor ${Math.round(g.memory.sillyExitChance('visitorDisguise') * 100)}%, laundry ${Math.round(g.memory.sillyExitChance('laundry') * 100)}%. They get worse each time one is rumbled.</p>
       <h3>Getting out of the prison</h3>

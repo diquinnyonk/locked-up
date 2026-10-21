@@ -184,6 +184,11 @@ export class PrisonMemory {
     return Math.max(0.1, 0.8 - this.used[method] * 0.3)
   }
 
+  /** Blue drinks and sausage rolls the X-ray operator wants to look away. */
+  get xrayBribe(): number {
+    return 1 + this.used.laundry
+  }
+
   /** The wiretap's vocabulary grows with every flagged call. */
   get phoneStrictness(): number {
     return Math.min(3, this.phoneFlags + Math.floor(this.totalFailures / 3))
@@ -213,6 +218,8 @@ function lessonFor(method: Method, times: number): string {
     case 'visitorDisguise':
       return times === 1 ? 'Visitors are counted in and out, and stubble earns a second look.' : 'Every visitor is now asked their own birthday on the way out. Most get it right.'
     case 'laundry':
-      return times === 1 ? 'The bay officer pokes every laundry basket with a broom handle.' : "Baskets are weighed now. 'That is a very heavy pillowcase, sunshine.'"
+      return times === 1
+        ? 'Keith on the X-ray has been sacked. His replacement wants two of everything.'
+        : "The new X-ray operator wants three of everything, and he's watching the screen."
   }
 }

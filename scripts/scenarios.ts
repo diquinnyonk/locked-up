@@ -424,7 +424,7 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   check('visitor: odds drop next time', game.memory.sillyExitChance('visitorDisguise') < 0.8)
 }
 
-// ---- The laundry van ----
+// ---- The laundry van, without paying off the X-ray ----
 {
   const { game, log } = fresh()
   game.clock.skipTo(10 * 60 + 45)
@@ -434,9 +434,44 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   game.player.body.z = basket.z - 1
   game.player.zone = 'laundry'
   check('laundry: climb into the basket', prompt(game, 'Climb into the laundry basket') && game.player.inBasket)
+  ;(game as any).rng = () => 0.0
+  run(game, 30, () => game.memory.attemptsUsed > 0)
+  check('laundry: unbribed, the X-ray always finds you', game.memory.attemptsUsed === 1 && !game.over && game.memory.used.laundry === 1, log.filter((l) => l.startsWith('[card]')).slice(-1)[0]?.slice(0, 60))
+}
+
+// ---- The laundry van, with Keith paid off ----
+{
+  const { game, log } = fresh()
+  game.clock.skipTo(10 * 60 + 30)
+  run(game, 0.3)
+  const k = game.keith.body
+  check('keith: collecting baskets in the laundry before the van', game.grid.zoneAtWorld(k.x, k.z) === 'laundry', game.grid.zoneAtWorld(k.x, k.z))
+  game.player.inventory.add('blueDrink')
+  game.player.inventory.add('sausageRoll')
+  game.player.body.x = k.x + 1
+  game.player.body.z = k.z
+  game.player.zone = 'laundry'
+  check('keith: talk to him', prompt(game, 'Talk to Keith'))
+  lastTalk?.options.find((o) => o.label.startsWith('Slip'))?.run()
+  check('keith: a blue drink and a sausage roll buy his cataract', game.keith.bribedDay === game.clock.day && !game.player.inventory.has('blueDrink'), log.slice(-1)[0])
+  const basket = game.fixtures.laundryBasket
+  game.player.body.x = basket.x
+  game.player.body.z = basket.z - 1
+  check('laundry: into the basket', prompt(game, 'Climb into the laundry basket') && game.player.inBasket)
   ;(game as any).rng = () => 0.01
   const out = run(game, 30, () => game.over)
   check('laundry: the van takes you out', out && log.some((l) => l.startsWith('[end] true Spin cycle')), log.slice(-1)[0])
+}
+
+// ---- The vending machine ----
+{
+  const { game } = fresh()
+  run(game, 0.2)
+  game.player.body.x = 43
+  game.player.body.z = 100.4
+  game.player.zone = 'visits'
+  const before = game.player.inventory.count('snout')
+  check('vending: blue drink for a snout', prompt(game, 'Vending machine') && game.player.inventory.has('blueDrink') && game.player.inventory.count('snout') === before - 1)
 }
 
 // ---- A knocked-out officer's uniform ----

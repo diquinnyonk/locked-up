@@ -106,6 +106,14 @@ export class Game implements World {
   /** The player's own clothes, for when the disguise comes off. */
   private readonly ownLook = { top: HEX.player, trousers: HEX.prisonGreyDark, hair: HEX.hairBrown as number | null }
   private commentTimer = 0
+  /** The laundry X-ray operator, and the day he was last paid off. */
+  readonly keith = {
+    body: makeBody({ top: HEX.hiVis, trousers: HEX.carDark, hair: HEX.hairGrey, skin: HEX.skinPale, build: 1.25, height: 0.95 }),
+    bribedDay: -1,
+    name: 'Keith',
+    speech: '',
+    speechTimer: 0,
+  }
 
   constructor(scene: Scene, readonly ui: UiPort, name: string) {
     const built = buildPrison(this.grid)
@@ -192,6 +200,12 @@ export class Game implements World {
       { top: HEX.boa, skirt: HEX.boa, hair: HEX.hairRed, longHair: true },
       { top: HEX.guardTrousers, skirt: null, hair: HEX.hairBlack, longHair: false },
     ]
+    // Keith, the X-ray contractor. Not an officer, not interested, not paid
+    // enough. Hi-vis, a mug, and twenty-two years of seeing everything.
+    this.keith.body.x = this.fixtures.xray.x
+    this.keith.body.z = this.fixtures.xray.z
+    this.bodies.push(this.keith.body)
+
     this.fixtures.visitTables.forEach((t, i) => {
       const look = looks[i % looks.length]
       const body = makeBody({ ...look, trousers: look.skirt ? HEX.skin : HEX.carDark, skin: [HEX.skin, HEX.skinTan, HEX.skinDeep, HEX.skinPale][i % 4], visible: false })
@@ -529,6 +543,7 @@ export class Game implements World {
     // Visuals.
     this.updateSightGuide()
     this.updateVisitors(delta)
+    this.updateKeith(delta)
     this.updateDisguise(delta)
     this.dynamic.ducts.visible = this.player.inVent
     const carHere = this.carPresent
@@ -975,16 +990,19 @@ export class Game implements World {
         nearest = it
       }
     }
-    if (nearest) {
-      const it = nearest
-      add('E', `Pick up ${ITEMS[it.id].name}`, () => {
-        if (inv.add(it.id)) {
-          this.dynamic.removeItem(it)
-          this.toast(`${ITEMS[it.id].name}: ${ITEMS[it.id].blurb}`, 'neutral')
-          if (ITEMS[it.id].contraband) this.dodgyTimer = 3
-        } else this.toast('Your pockets are full. Craft something or drop something (Tab).', 'bad')
-      })
-    }
+    // Picking things up yields the key to anything more important nearby
+    // (a door, a person, an exit), so it is added last, below.
+    const item = nearest
+    const pickup = item
+      ? () =>
+          add('E', `Pick up ${ITEMS[item.id].name}`, () => {
+            if (inv.add(item.id)) {
+              this.dynamic.removeItem(item)
+              this.toast(`${ITEMS[item.id].name}: ${ITEMS[item.id].blurb}`, 'neutral')
+              if (ITEMS[item.id].contraband) this.dodgyTimer = 3
+            } else this.toast('Your pockets are full. Craft something or drop something (Tab).', 'bad')
+          })
+      : null
 
     // Vent grilles.
     for (const g of this.grid.grates) {
@@ -1076,6 +1094,7 @@ export class Game implements World {
     }
     if (inv.has('spoon') && p.zone === 'yard') add('R', 'Grind the spoon flat on the concrete', () => this.craftNamed('flatSpoon'))
     this.missions.prompts(add)
+    pickup?.()
 
     this.prompts = out
   }
@@ -1677,7 +1696,24 @@ export class Game implements World {
         if (!before) return
         p.inBasket = true
         this.methodHint = 'laundry'
-        this.toast('You burrow under a pile of damp towels. Somebody\'s sock is in your ear. Now wait for the van.', 'neutral')
+        const paid = this.keith.bribedDay === this.clock.day
+        this.toast(
+          paid
+            ? `You burrow under a pile of damp towels. Somebody's sock is in your ear. ${this.keith.name} has been paid. Now wait for the van.`
+            : `You burrow under the towels... but every basket goes through ${this.keith.name}'s X-ray on the way out, and nobody has bought him off. Climb out (E) unless you fancy your chances.`,
+          paid ? 'neutral' : 'bad',
+        )
+      })
+    }
+    if (near(this.keith.body, 1.9) && this.keith.body.visible) add('E', `Talk to ${this.keith.name} (X-ray, hi-vis, mug)`, () => this.talkToKeith())
+    const vend = { x: (21 + 0.5) * 2, z: (49.2 + 0.5) * 2 + 0.6 }
+    if (p.zone === 'visits' && near(vend, 1.6) && !this.clock.locked) {
+      add('R', 'Vending machine: blue drink (1 snout)', () => {
+        if (!p.inventory.has('snout')) return this.toast('Out of snout. The machine stares at you.', 'bad')
+        if (p.inventory.full) return this.toast('No room in your pockets.', 'bad')
+        p.inventory.remove('snout')
+        p.inventory.add('blueDrink')
+        this.toast('Clunk. One blue drink. The label just says BLUE.', 'good')
       })
     }
   }
@@ -1758,7 +1794,9 @@ export class Game implements World {
     const p = this.player
     this.methodHint = method
     p.attempt = method
-    if (this.rng() < this.memory.sillyExitChance(method)) {
+    // The laundry only ever works if the X-ray man is looking at his phone.
+    const xrayFooled = method !== 'laundry' || this.keith.bribedDay === this.clock.day
+    if (xrayFooled && this.rng() < this.memory.sillyExitChance(method)) {
       this.sounds.push({ sound: 'good', volume: 1 })
       this.finish(true, method)
       return
@@ -1771,6 +1809,17 @@ export class Game implements World {
       p.body.z = bay.z
       p.zone = 'bay'
     }
+    if (method === 'laundry') {
+      this.keithSays(
+        xrayFooled
+          ? "I KNOW I said I'd look away but the governor was standing RIGHT behind me."
+          : pick2(this.rng, ["That basket's got a skeleton in it. A WALKING skeleton.", "Twenty-two years. Phones in pies, a ferret in a duvet, and now YOU."]),
+      )
+      if (xrayFooled) {
+        this.keith.name = this.memory.used.laundry === 0 ? 'Brenda' : 'Clive'
+        this.keith.bribedDay = -1
+      }
+    }
     const officer = this.guards.filter((g) => g.ko <= 0).sort((a, b) => a.distanceTo(p.body.x, p.body.z) - b.distanceTo(p.body.x, p.body.z))[0]
     officer.say(
       method === 'guardDisguise'
@@ -1781,6 +1830,72 @@ export class Game implements World {
       3.5,
     )
     this.caught(officer)
+  }
+
+  private keithSays(text: string): void {
+    this.keith.speech = text
+    this.keith.speechTimer = 3.5
+  }
+
+  /**
+   * The X-ray operator's day: a cuppa in the canteen at breakfast and lunch,
+   * collecting baskets from the laundry before the van, and the rest of the
+   * time sat at his machine in the bay doing the crossword.
+   */
+  private updateKeith(delta: number): void {
+    const k = this.keith
+    const m = this.clock.minuteOfDay
+    const period = this.clock.period
+    let spot = { x: this.fixtures.xray.x, z: this.fixtures.xray.z, pose: 'sit' as const as 'sit' | 'stand' | 'search' }
+    if (period === 'breakfast' || period === 'lunch') spot = { x: 45 * 2, z: 27 * 2, pose: 'sit' }
+    else if (period === 'work' && m >= 10 * 60) spot = { x: this.fixtures.laundryBasket.x - 3.4, z: this.fixtures.laundryBasket.z - 1.8, pose: 'search' }
+    k.body.visible = !this.clock.locked
+    k.body.x = spot.x
+    k.body.z = spot.z
+    k.body.pose = spot.pose
+    k.body.speed = 0
+    k.body.yaw = period === 'work' ? Math.PI / 2 : 0
+    if (k.speechTimer > 0) k.speechTimer -= delta
+    if (k.speechTimer > 0) this.bubbles.push({ body: k.body, text: k.speech })
+  }
+
+  private talkToKeith(): void {
+    const k = this.keith
+    const inv = this.player.inventory
+    const need = this.memory.xrayBribe
+    const paid = k.bribedDay === this.clock.day
+    const intro =
+      k.name === 'Keith'
+        ? "Alright? Keith. I do the X-ray. Twenty-two years. Seen it all: phones in pies, a ferret in a duvet, a whole set of drums in a mattress once. Don't ask."
+        : `${k.name}. I replaced Keith. Keith is now "between opportunities". I am not Keith. I want ${need} of everything.`
+    this.ui.talk(`${k.name}, X-ray operator`, paid ? "We never spoke. My eyes are terrible today. Terrible." : intro, [
+      {
+        label: `Slip ${k.name} ${need} blue drink${need > 1 ? 's' : ''} and ${need} sausage roll${need > 1 ? 's' : ''}`,
+        enabled: !paid && inv.count('blueDrink') >= need && inv.count('sausageRoll') >= need,
+        run: () => {
+          for (let i = 0; i < need; i++) {
+            inv.remove('blueDrink')
+            inv.remove('sausageRoll')
+          }
+          k.bribedDay = this.clock.day
+          this.ui.talk(
+            `${k.name}, X-ray operator`,
+            pick2(this.rng, [
+              "Blue raspberry? And a sausage roll? ...You know, I get this cataract on Thursdays. Today feels like a Thursday. Eleven o'clock van. I'll be very busy with my sausage roll.",
+              "Oh, that's the good blue. Right. If a basket comes through looking like a person, I'll assume it's a very lumpy duvet. Today only, mind.",
+            ]),
+            [],
+          )
+          this.toast(`${k.name} is paid off for today. Get in a laundry basket before 11:00.`, 'good')
+        },
+      },
+      {
+        label: 'Ask what he fancies',
+        enabled: true,
+        run: () =>
+          this.ui.talk(`${k.name}, X-ray operator`, `A blue drink. The proper blue, from the vending machine in visits. And a sausage roll from the canteen. ${need > 1 ? `${need} of each, mind. Inflation.` : 'One of each. I am a man of simple tastes.'}`, []),
+      },
+    ])
   }
 
   // ---- Crafting (called by the UI) ----
