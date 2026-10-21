@@ -112,7 +112,7 @@ export class Game implements World {
   private commentTimer = 0
   /** The laundry X-ray operator, and the day he was last paid off. */
   readonly keith = {
-    body: makeBody({ top: HEX.hiVis, trousers: HEX.carDark, hair: HEX.hairGrey, skin: HEX.skinPale, build: 1.25, height: 0.95 }),
+    body: makeBody({ top: HEX.hiVis, trousers: HEX.carDark, hair: HEX.hairGrey, skin: HEX.skinPale, build: 1.25, height: 0.95, tache: true }),
     bribedDay: -1,
     name: 'Keith',
     speech: '',

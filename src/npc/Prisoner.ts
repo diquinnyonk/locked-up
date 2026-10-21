@@ -95,6 +95,9 @@ export class Prisoner extends Agent {
       top: rng() < 0.15 ? HEX.prisonBlue : HEX.prisonGrey,
       trousers: HEX.prisonGreyDark,
       skin: skins[Math.floor(rng() * skins.length)],
+      beard: rng() < (temperament === 'old' ? 0.5 : 0.22),
+      tache: rng() < 0.15,
+      tuft: rng() < 0.25,
       hair: temperament === 'old' ? HEX.hairGrey : hairs[Math.floor(rng() * hairs.length)],
     })
     super(body, world)

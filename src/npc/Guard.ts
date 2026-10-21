@@ -84,6 +84,7 @@ export class Guard extends Agent {
       trousers: HEX.guardTrousers,
       skin: skins[index % skins.length],
       hair: female ? HEX.hairBlack : null,
+      tache: !female && world.rng() < 0.3,
       cap: true,
       uniform: true,
     })

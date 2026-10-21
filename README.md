@@ -114,6 +114,19 @@ of a doorway), and they jostle each other the same way. Anyone sitting, in
 the middle of a conversation, or rooted to their post like Keith and the
 Reverend does not budge at all.
 
+## How people move
+
+Everyone is built from jointed parts (hips, knees, shoulders, elbows, a
+spine that twists) and animated in code, so a hundred people cost a handful
+of draw calls. Walking swings the hips and turns the shoulders against them;
+running pumps bent arms and leans in; a fight is a boxer's guard with jabs
+and crosses and a bounce; sitting puts thighs on the seat and hands on the
+knees with the odd shift of weight; crawling is hands and knees with a
+diagonal gait. Prisoners get beards, moustaches and quiffs, and a fair few
+officers have a moustache. `npm run dev` then `/poses.html` shows every pose
+side by side, with `?t=0.4` to freeze a moment and `?cam=side` to look from
+the side.
+
 ## The map
 
 The minimap sits top right with your cell number on the card beside it.

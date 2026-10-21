@@ -65,6 +65,10 @@ export interface Body {
   uniform: boolean
   /** A vicar's white dog collar and a little wooden cross. */
   clergy: boolean
+  /** Facial hair and a quiff, in the hair colour. */
+  beard: boolean
+  tache: boolean
+  tuft: boolean
   /** A skirt in this colour, over the trousers. */
   skirt: number | null
   /** Overall height, ~0.9..1.1. */
@@ -92,6 +96,9 @@ export function makeBody(style: Partial<Body>): Body {
     cap: false,
     uniform: false,
     clergy: false,
+    beard: false,
+    tache: false,
+    tuft: false,
     skirt: null,
     height: 0.92 + Math.random() * 0.16,
     build: 0.92 + Math.random() * 0.26,
@@ -134,33 +141,68 @@ function shinGeometry(): BufferGeometry {
 }
 
 function upperArmGeometry(): BufferGeometry {
-  const arm = new CylinderGeometry(0.19 * S, 0.165 * S, ELBOW, 14)
+  const arm = new CylinderGeometry(0.215 * S, 0.18 * S, ELBOW, 14)
   arm.translate(0, -ELBOW / 2, 0)
-  const shoulder = new SphereGeometry(0.21 * S, 14, 10)
+  const shoulder = new SphereGeometry(0.235 * S, 14, 10)
   return nonIndexed(arm, shoulder)
 }
 
 function forearmGeometry(): BufferGeometry {
   const len = ARM - ELBOW
-  const arm = new CylinderGeometry(0.16 * S, 0.13 * S, len, 14)
+  const arm = new CylinderGeometry(0.18 * S, 0.145 * S, len, 14)
   arm.translate(0, -len / 2, 0)
-  const elbow = new SphereGeometry(0.165 * S, 12, 8)
+  const elbow = new SphereGeometry(0.185 * S, 12, 8)
   return nonIndexed(arm, elbow)
 }
 
-/** A hand with a thumb and the fingers suggested by a split. */
+/** A rounded mitten of a hand: palm, curled fingers and a thumb, chunky
+ *  enough to read as a fist from the camera. */
 function handGeometry(): BufferGeometry {
   const len = ARM - ELBOW
-  const palm = new SphereGeometry(0.16 * S, 12, 10)
-  palm.scale(0.85, 1.2, 0.68)
-  palm.translate(0, -len - 0.08 * S, 0)
-  const fingers = new SphereGeometry(0.12 * S, 10, 8)
-  fingers.scale(0.9, 1.1, 0.6)
-  fingers.translate(0, -len - 0.22 * S, 0.01 * S)
-  const thumb = new SphereGeometry(0.065 * S, 8, 6)
-  thumb.scale(1, 1.6, 1)
-  thumb.translate(0, -len - 0.04 * S, 0.13 * S)
+  const palm = new SphereGeometry(0.17 * S, 14, 10)
+  palm.scale(0.9, 1.05, 0.78)
+  palm.translate(0, -len - 0.1 * S, 0)
+  const fingers = new SphereGeometry(0.15 * S, 12, 8)
+  fingers.scale(0.95, 0.85, 0.85)
+  fingers.translate(0, -len - 0.24 * S, 0.04 * S)
+  const thumb = new SphereGeometry(0.075 * S, 8, 6)
+  thumb.scale(1, 1.5, 1)
+  thumb.translate(0, -len - 0.08 * S, 0.15 * S)
   return mergeGeometries([palm, fingers, thumb])
+}
+
+/** A full beard round the jaw and chin, open where the mouth is. */
+function beardGeometry(): BufferGeometry {
+  const shell = new SphereGeometry(HEAD * 1.04, 20, 12, Math.PI * 0.2, Math.PI * 0.6, Math.PI * 0.55, Math.PI * 0.4)
+  shell.rotateY(Math.PI * 0.5 - Math.PI * 0.5)
+  shell.scale(1, 1.1, 1)
+  shell.translate(0, -0.02 * S, 0.01 * S)
+  const chin = new SphereGeometry(0.16 * S, 12, 8)
+  chin.scale(1.1, 0.9, 0.8)
+  chin.translate(0, -HEAD * 0.95, HEAD * 0.55)
+  return nonIndexed(shell, chin)
+}
+
+/** A proper British moustache, the kind that has opinions. */
+function tacheGeometry(): BufferGeometry {
+  const parts: BufferGeometry[] = []
+  for (const side of [1, -1]) {
+    const half = new SphereGeometry(0.075 * S, 10, 6)
+    half.scale(1.6, 0.6, 0.7)
+    half.rotateZ(side * -0.25)
+    half.translate(side * 0.08 * S, -0.15 * S, HEAD * 0.95)
+    parts.push(half)
+  }
+  return mergeGeometries(parts)
+}
+
+/** A quiff swept up at the front of the hair. */
+function tuftGeometry(): BufferGeometry {
+  const tuft = new SphereGeometry(HEAD * 0.55, 14, 8)
+  tuft.scale(1.25, 0.55, 0.9)
+  tuft.rotateX(-0.5)
+  tuft.translate(0, HEAD * 0.9, HEAD * 0.45)
+  return tuft
 }
 
 /** Chest, shoulders and a collar band, flattened front to back. */
@@ -395,6 +437,9 @@ export class Crowd {
   private readonly cap: Part
   private readonly uniform: Part
   private readonly clergy: Part
+  private readonly beard: Part
+  private readonly tache: Part
+  private readonly tuft: Part
   private readonly skirt: Part
   private readonly thighs: Part
   private readonly shins: Part
@@ -435,13 +480,16 @@ export class Crowd {
     this.cap = make(capGeometry(), 1, { tinted: true, shade: HEX.ink, outline: true, spec: 0.35 })
     this.uniform = make(uniformGeometry(), 1, { tinted: true })
     this.clergy = make(clergyGeometry(), 1, { tinted: true })
+    this.beard = make(beardGeometry(), 1, { shade: HEX.ink })
+    this.tache = make(tacheGeometry(), 1, { shade: HEX.ink })
+    this.tuft = make(tuftGeometry(), 1, { shade: HEX.ink, outline: true })
     this.skirt = make(skirtGeometry(), 1, { outline: true })
     this.thighs = make(thighGeometry(), 2, { outline: true })
     this.shins = make(shinGeometry(), 2, { tinted: true, outline: true })
     this.upperArms = make(upperArmGeometry(), 2, { outline: true })
     this.forearms = make(forearmGeometry(), 2, { outline: true })
     this.hands = make(handGeometry(), 2, { shade: HEX.skinShade })
-    this.parts = [this.torso, this.pelvis, this.belt, this.neck, this.head, this.face, this.hair, this.longHair, this.cap, this.uniform, this.clergy, this.skirt, this.thighs, this.shins, this.upperArms, this.forearms, this.hands]
+    this.parts = [this.torso, this.pelvis, this.belt, this.neck, this.head, this.face, this.hair, this.longHair, this.cap, this.uniform, this.clergy, this.beard, this.tache, this.tuft, this.skirt, this.thighs, this.shins, this.upperArms, this.forearms, this.hands]
   }
 
   /** Colours only change when someone is created or changes clothes. */
@@ -457,6 +505,10 @@ export class Crowd {
     this.cap.mesh.setColorAt(index, c.setHex(HEX.guardCap))
     this.uniform.mesh.setColorAt(index, c.setHex(0xffffff))
     this.clergy.mesh.setColorAt(index, c.setHex(0xffffff))
+    const fur = body.hair ?? HEX.hairBrown
+    this.beard.mesh.setColorAt(index, c.setHex(fur))
+    this.tache.mesh.setColorAt(index, c.setHex(fur))
+    this.tuft.mesh.setColorAt(index, c.setHex(fur))
     this.skirt.mesh.setColorAt(index, c.setHex(body.skirt ?? 0))
     for (let k = 0; k < 2; k++) {
       this.thighs.mesh.setColorAt(index * 2 + k, c.setHex(body.trousers))
@@ -499,6 +551,12 @@ export class Crowd {
     let armR: [number, number, number] = [0, -0.1, -0.15]
     let headTilt = 0
     let headTurn = 0
+    // Spine: the hips turn and rock with the stride, the chest turns against
+    // them (twist) and leans sideways (roll), as people actually walk.
+    let hipYaw = 0
+    let hipRoll = 0
+    let twist = 0
+    let roll = 0
 
     const gait = Math.min(1, b.speed / 5)
     const moving = Math.min(1, b.speed * 1.5)
@@ -509,28 +567,60 @@ export class Crowd {
     const kneeR = Math.max(0, Math.sin(phase + Math.PI + 1.2)) * (0.35 + gait * 0.9) * moving + 0.05
     switch (b.pose) {
       case 'stand':
-      case 'walk':
-        legL = [swing, kneeL]
-        legR = [-swing, kneeR]
-        armL = [-swing * 0.85, 0.1, -0.2 - gait * 0.9]
-        armR = [swing * 0.85, -0.1, -0.2 - gait * 0.9]
-        bob = Math.abs(Math.sin(phase)) * (0.025 + gait * 0.08) * moving
-        lean = gait * 0.2
-        // Idle: a slow breath and the odd glance round.
+      case 'walk': {
+        const run = Math.max(0, (b.speed - 3) / 2.5)
+        legL = [swing, kneeL + run * 0.35 * Math.max(0, Math.sin(phase + 1.6))]
+        legR = [-swing, kneeR + run * 0.35 * Math.max(0, Math.sin(phase + Math.PI + 1.6))]
+        // Walking arms swing loose with a soft elbow; running arms pump at
+        // a right angle, close to the body.
+        const armSwing = swing * (0.9 + run * 0.5)
+        const elbow = -0.25 - gait * 0.35 - run * 1.0
+        armL = [-armSwing, 0.12 - run * 0.05, elbow + Math.max(0, -Math.sin(phase)) * -0.35 * moving]
+        armR = [armSwing, -0.12 + run * 0.05, elbow + Math.max(0, Math.sin(phase)) * -0.35 * moving]
+        bob = Math.abs(Math.cos(phase)) * (0.02 + gait * 0.07) * moving
+        lean = gait * 0.12 + run * 0.18
+        hipYaw = Math.sin(phase) * 0.14 * moving
+        hipRoll = Math.cos(phase) * 0.05 * moving
+        twist = -Math.sin(phase) * (0.2 + run * 0.1) * moving
+        roll = -Math.cos(phase) * 0.04 * moving
+        headTurn = -hipYaw - twist * 0.6
+        // Idle: a slow breath, weight on one hip, the odd glance round.
         if (b.speed < 0.2) {
-          bob = Math.sin(b.poseTime * 1.6 + b.stride) * 0.008
+          const breath = Math.sin(b.poseTime * 1.6 + b.stride)
+          bob = breath * 0.008
+          hipRoll = 0.04
+          legL = [0.04, 0.06]
+          legR = [-0.06, 0.16]
+          armL = [0.02, 0.1 + breath * 0.01, -0.18]
+          armR = [-0.03, -0.12 - breath * 0.01, -0.22]
+          roll = -0.02
           headTurn = Math.sin(b.poseTime * 0.4 + b.stride * 3) * 0.35
+          headTilt = Math.sin(b.poseTime * 0.27 + b.stride) * 0.06
         }
         break
+      }
       case 'fight': {
-        const jab = Math.max(0, Math.sin(b.poseTime * 11))
-        const jab2 = Math.max(0, Math.sin(b.poseTime * 11 + Math.PI))
-        armL = [-1.1 - jab * 0.5, 0.35, -1.4 + jab * 1.2]
-        armR = [-1.1 - jab2 * 0.5, -0.35, -1.4 + jab2 * 1.2]
-        legL = [-0.35, 0.45]
-        legR = [0.3, 0.3]
-        bob = Math.abs(Math.sin(b.poseTime * 8)) * 0.05 - 0.04
-        lean = 0.18
+        // A boxer's guard: fists by the chin, left foot forward, knees soft,
+        // bouncing. Jab and cross alternate, the shoulders turning into each.
+        const t = b.poseTime * 2.2 + b.stride * 0.1
+        const which = Math.floor(t) % 2
+        const f = t % 1
+        const hit = f < 0.35 ? Math.sin((f / 0.35) * Math.PI) : 0
+        const guardL: [number, number, number] = [-0.85, -0.12, -2.05]
+        const guardR: [number, number, number] = [-0.7, 0.14, -2.15]
+        const punch = (g: [number, number, number], k: number): [number, number, number] => [g[0] + (-1.55 - g[0]) * k, g[1] * (1 - k), g[2] + (-0.12 - g[2]) * k]
+        armL = which === 0 ? punch(guardL, hit) : guardL
+        armR = which === 1 ? punch(guardR, hit) : guardR
+        const bounce = Math.sin(b.poseTime * 9)
+        legL = [-0.38, 0.42 + bounce * 0.05]
+        legR = [0.28, 0.48 - bounce * 0.05]
+        bob = Math.abs(bounce) * 0.035 - 0.07
+        lean = 0.16
+        twist = 0.35 + (which === 0 ? -0.45 : 0.55) * hit
+        hipYaw = 0.3
+        roll = Math.sin(b.poseTime * 3.3) * 0.06
+        headTilt = 0.18
+        headTurn = -twist - hipYaw * 0.8
         break
       }
       case 'down':
@@ -550,23 +640,41 @@ export class Crowd {
         legR = [0, 0.1]
         headTurn = 0.3
         break
-      case 'sit':
-        legL = [-1.5, 1.5]
-        legR = [-1.45, 1.4]
-        armL = [-0.45, 0.1, -0.9]
-        armR = [-0.45, -0.1, -0.9]
-        lift = -LEG * 0.5
-        headTilt = 0.08
+      case 'sit': {
+        // Thighs flat on the seat, shins straight down, hands on the knees.
+        // A slow breath, and now and then a shift of weight.
+        const breath = Math.sin(b.poseTime * 1.5 + b.stride)
+        const shift = Math.sin(b.poseTime * 0.23 + b.stride * 2)
+        legL = [-Math.PI / 2 + 0.06, Math.PI / 2 - 0.12 + shift * 0.08]
+        legR = [-Math.PI / 2 + 0.02, Math.PI / 2 - 0.02 - shift * 0.08]
+        armL = [-0.22, 0.16, -0.62 + breath * 0.02]
+        armR = [-0.18, -0.16, -0.66 + breath * 0.02]
+        lift = -(LEG - KNEE) + 0.02
+        bob = breath * 0.006
+        lean = 0.1 + shift * 0.03
+        roll = shift * 0.03
+        headTilt = 0.06
+        headTurn = Math.sin(b.poseTime * 0.35 + b.stride * 5) * 0.4
         break
-      case 'crawl':
-        lieX = Math.PI / 2 - 0.15
-        lift = 0.35
-        legL = [Math.sin(phase) * 0.4 - 0.6, 1.3]
-        legR = [-Math.sin(phase) * 0.4 - 0.6, 1.3]
-        armL = [Math.PI - 0.6 + Math.sin(phase) * 0.5, 0.25, -0.8]
-        armR = [Math.PI - 0.6 - Math.sin(phase) * 0.5, -0.25, -0.8]
-        headTilt = -1.0
+      }
+      case 'crawl': {
+        // Hands and knees: thighs straight down to the knees, shins flat
+        // behind, arms straight down to the floor, head up looking ahead.
+        // The gait is diagonal: left hand with right knee.
+        const a = 1.2
+        const c = Math.sin(phase * 0.8) * moving
+        legL = [0.12 + c * 0.32, Math.PI / 2 - 0.1 - c * 0.2]
+        legR = [0.12 - c * 0.32, Math.PI / 2 - 0.1 + c * 0.2]
+        armL = [-a - 0.15 - c * 0.3, 0.06, -0.08 + Math.max(0, c) * -0.4]
+        armR = [-a - 0.15 + c * 0.3, -0.06, -0.08 + Math.max(0, -c) * -0.4]
+        lift = KNEE * 0.92 - LEG + 0.14
+        lean = a
+        hipRoll = c * 0.06
+        roll = -c * 0.05
+        headTilt = -a + 0.25
+        bob = Math.abs(c) * 0.02
         break
+      }
       case 'cuffed':
         legL = [swing, kneeL]
         legR = [-swing, kneeR]
@@ -631,9 +739,9 @@ export class Crowd {
     const put = (part: Part, k: number, m: Matrix4) => part.mesh.setMatrixAt(i * part.per + k, m)
 
     // Hips and upper body. Leaning tilts everything above the pelvis.
-    const hips = at(hip, root, 0, LEG, 0, 0, 0, 0)
+    const hips = at(hip, root, 0, LEG, 0, 0, hipYaw, hipRoll)
     put(this.pelvis, 0, hips)
-    const chest = at(mChest, hips, 0, 0, 0, lean, 0, 0)
+    const chest = at(mChest, hips, 0, 0, 0, lean, twist - hipYaw, roll)
     put(this.belt, 0, at(joint, chest, 0, 0.02 * S, 0, 0, 0, 0))
     put(this.torso, 0, at(joint, chest, 0, TORSO / 2, 0, 0, 0, 0))
     put(this.uniform, 0, b.uniform ? at(joint, chest, 0, -LEG, 0, 0, 0, 0) : hidden)
@@ -644,6 +752,9 @@ export class Crowd {
     const head = at(mHead, neck, 0, NECK + HEAD * 0.9, 0.02, headTilt * 0.6, headTurn * 0.6, 0)
     put(this.head, 0, head)
     put(this.face, 0, head)
+    put(this.beard, 0, b.beard ? head : hidden)
+    put(this.tache, 0, b.tache || b.beard ? head : hidden)
+    put(this.tuft, 0, b.tuft && !b.cap && b.hair != null && !b.longHair ? head : hidden)
     if (b.cap) {
       put(this.cap, 0, head)
       put(this.hair, 0, hidden)
