@@ -1,0 +1,436 @@
+<title>Blackmoor Voice Studio</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rokkitt:wght@600;800&family=Literata:opsz,wght@7..72,400;7..72,600&display=swap">
+<style>
+/* Layout: a recording-session script on prison paper. One column of lines
+   grouped by who says them, a sticky tally bar, filters by character. */
+:root {
+  --ground: #dad7cd;
+  --paper: #f3f1ea;
+  --ink: #12222b;
+  --quiet: #55636a;
+  --rule: #c9c5b8;
+  --cover: #3f6a8f;
+  --accent: #f2c14e;
+  --stamp: #b5473f;
+  --good: #3f7a4f;
+  --display: 'Rokkitt', 'Rockwell', Georgia, serif;
+  --text: 'Literata', Georgia, 'Times New Roman', serif;
+  --mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #0d191f; --paper: #172a33; --ink: #ece9e0; --quiet: #9aa8ae; --rule: #2a404b;
+    --cover: #8fb4d6; --accent: #f2c14e; --stamp: #e07a70; --good: #7cc48e; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #0d191f; --paper: #172a33; --ink: #ece9e0; --quiet: #9aa8ae; --rule: #2a404b;
+  --cover: #8fb4d6; --accent: #f2c14e; --stamp: #e07a70; --good: #7cc48e; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font: 400 1rem/1.55 var(--text);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 48px;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--ground); }
+.wrap { max-width: 46rem; margin: 0 auto; display: grid; gap: 1.25rem; }
+header.top { padding-block: 1.5rem 0.25rem; display: grid; gap: 0.6rem; }
+h1 {
+  font: 800 clamp(2.2rem, 1.4rem + 4vw, 3.4rem) / 0.9 var(--display);
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  margin: 0;
+  text-wrap: balance;
+}
+.lede { margin: 0; max-width: 38rem; }
+.how { margin: 0; padding-left: 1.2rem; display: grid; gap: 0.25rem; color: var(--ink); }
+.how li::marker { color: var(--quiet); }
+.note { color: var(--quiet); font-size: 0.9rem; margin: 0; }
+
+.bar {
+  position: sticky;
+  top: env(safe-area-inset-top, 0px);
+  z-index: 5;
+  background: var(--ink);
+  color: var(--paper);
+  padding: 0.7rem 0.9rem;
+  display: grid;
+  gap: 0.6rem;
+}
+.tally { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+.tally b { font: 800 1.6rem/1 var(--display); font-variant-numeric: tabular-nums; }
+.tally span { font-size: 0.9rem; }
+.meter { height: 6px; background: color-mix(in srgb, var(--paper) 22%, transparent); }
+.meter i { display: block; height: 100%; width: 0; background: var(--accent); transition: width 0.3s; }
+.filters { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.filters button {
+  font: 600 0.8rem/1 var(--text);
+  border: 0;
+  padding: 0.45rem 0.6rem;
+  background: color-mix(in srgb, var(--paper) 14%, transparent);
+  color: var(--paper);
+  cursor: pointer;
+}
+.filters button[aria-pressed="true"] { background: var(--accent); color: #12222b; }
+.filters button:focus-visible, .btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+.saving { padding: 0.7rem 0.9rem; background: var(--paper); border-left: 5px solid var(--stamp); font-size: 0.92rem; }
+.saving[data-ok="true"] { border-left-color: var(--good); }
+
+section.who { display: grid; gap: 0.6rem; }
+section.who h2 {
+  font: 800 1.35rem/1.05 var(--display);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin: 0.6rem 0 0;
+  text-wrap: balance;
+}
+.count { font: 600 0.85rem var(--text); color: var(--quiet); text-transform: none; letter-spacing: 0; margin-left: 0.4rem; }
+
+article.line {
+  background: var(--paper);
+  padding: 0.9rem 1rem 1rem;
+  display: grid;
+  gap: 0.6rem;
+  border-left: 5px solid var(--rule);
+}
+article.line[data-done="true"] { border-left-color: var(--good); }
+.line .key { font: 0.78rem/1.2 var(--mono); color: var(--quiet); overflow-wrap: anywhere; display: flex; justify-content: space-between; gap: 0.6rem; }
+.line .state { font: 800 0.8rem/1.2 var(--display); text-transform: uppercase; letter-spacing: 0.04em; color: var(--quiet); white-space: nowrap; }
+.line[data-done="true"] .state { color: var(--good); }
+.line blockquote { margin: 0; font-size: 1.08rem; line-height: 1.5; max-width: 62ch; }
+.line blockquote .slot { background: color-mix(in srgb, var(--accent) 38%, transparent); padding: 0 0.2em; font-style: italic; }
+.line .hint { font-size: 0.85rem; color: var(--quiet); margin: 0; }
+.actions { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
+.btn {
+  font: 600 0.9rem/1 var(--text);
+  border: 0;
+  padding: 0.65rem 0.85rem;
+  background: var(--accent);
+  color: #12222b;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.btn.alt { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 2px var(--ink); }
+.btn.quiet { background: transparent; color: var(--stamp); padding-inline: 0.4rem; }
+.btn:disabled { opacity: 0.5; cursor: progress; }
+.btn:active { transform: translateY(1px); }
+.status { font-size: 0.85rem; color: var(--quiet); }
+.status.bad { color: var(--stamp); }
+audio { width: 100%; max-width: 100%; height: 36px; }
+input[type="file"] { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.empty { padding: 1rem; background: var(--paper); }
+@media (prefers-reduced-motion: reduce) { .meter i { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <h1>Blackmoor Voice Studio</h1>
+    <p class="lede">Every line in Locked Up that can be spoken. Record each one on your phone, and it is saved here for Claude to put into the game.</p>
+    <ol class="how">
+      <li><b>Record</b> opens your camera in video mode. Film yourself saying the line (point it anywhere), stop, and tap Use Video. The studio keeps only the sound.</li>
+      <li><b>Choose a file</b> takes a recording you already have: a voice memo, a video or an audio file. On an iPhone, Voice Memos need Share, Save to Files first.</li>
+      <li>Play it back. If you want another go, record it again and the new take replaces the old one.</li>
+    </ol>
+    <p class="note">Highlighted words in a line are filled in by the game, like a prisoner's name. Say a stand-in such as "him" or "that wing" instead; the subtitle shows the real one.</p>
+  </header>
+
+  <div class="bar" role="region" aria-label="Progress">
+    <div class="tally"><b id="tally">0 of 0</b><span id="tally-note">recorded</span></div>
+    <div class="meter" aria-hidden="true"><i id="meter"></i></div>
+    <div class="filters" id="filters" role="group" aria-label="Show lines for"></div>
+  </div>
+
+  <div class="saving" id="saving">Connecting to the studio's storage...</div>
+
+  <main id="script"></main>
+</div>
+
+<script id="lines" type="application/json">__LINES__</script>
+<script>
+(() => {
+  const LINES = JSON.parse(document.getElementById('lines').textContent)
+  const takes = new Map() // key -> { assetId, mime, name, size, at }
+  const blobUrls = new Map() // assetId -> object URL, once fetched
+  const busy = new Set()
+  const notes = new Map() // key -> { text, bad }
+  let db = null
+  let assets = null
+  let filter = 'All'
+  let todoOnly = false
+
+  const docId = (key) => key.replace(/[^A-Za-z0-9_-]/g, '_')
+  const speakers = ['All', ...new Set(LINES.map((l) => l.speaker))]
+  const short = (s) => s.replace(/ \(.*\)$/, '')
+  const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
+  const slots = { target: 'a name', wing: 'a wing', cell: 'a cell', time: 'a time', giver: 'a name' }
+  const lineHtml = (t) => esc(t).replace(/\{(\w+)\}/g, (_m, k) => `<span class="slot">${slots[k] || k}</span>`)
+
+  function setSaving(text, ok) {
+    const el = document.getElementById('saving')
+    el.textContent = text
+    el.dataset.ok = ok ? 'true' : 'false'
+  }
+
+  function renderFilters() {
+    const el = document.getElementById('filters')
+    el.innerHTML = ''
+    for (const s of speakers) {
+      const b = document.createElement('button')
+      b.type = 'button'
+      b.textContent = s === 'All' ? 'Everyone' : short(s)
+      b.setAttribute('aria-pressed', String(filter === s))
+      b.onclick = () => { filter = s; renderFilters(); render() }
+      el.append(b)
+    }
+    const t = document.createElement('button')
+    t.type = 'button'
+    t.textContent = 'Still to record'
+    t.setAttribute('aria-pressed', String(todoOnly))
+    t.onclick = () => { todoOnly = !todoOnly; renderFilters(); render() }
+    el.append(t)
+  }
+
+  function renderTally() {
+    const done = LINES.filter((l) => takes.has(l.key)).length
+    document.getElementById('tally').textContent = `${done} of ${LINES.length}`
+    document.getElementById('tally-note').textContent = done === LINES.length ? 'all recorded. Tell Claude.' : 'lines recorded'
+    document.getElementById('meter').style.width = `${(done / LINES.length) * 100}%`
+  }
+
+  function render() {
+    renderTally()
+    const main = document.getElementById('script')
+    const shown = LINES.filter((l) => (filter === 'All' || l.speaker === filter) && (!todoOnly || !takes.has(l.key)))
+    if (!shown.length) {
+      main.innerHTML = '<p class="empty">Nothing left to record here.</p>'
+      return
+    }
+    const groups = new Map()
+    for (const l of shown) {
+      if (!groups.has(l.speaker)) groups.set(l.speaker, [])
+      groups.get(l.speaker).push(l)
+    }
+    main.innerHTML = ''
+    for (const [speaker, lines] of groups) {
+      const sec = document.createElement('section')
+      sec.className = 'who'
+      const all = LINES.filter((l) => l.speaker === speaker)
+      const done = all.filter((l) => takes.has(l.key)).length
+      sec.innerHTML = `<h2>${esc(speaker)}<span class="count">${done} of ${all.length}</span></h2>`
+      for (const l of lines) sec.append(card(l))
+      main.append(sec)
+    }
+  }
+
+  function card(l) {
+    const take = takes.get(l.key)
+    const id = docId(l.key)
+    const a = document.createElement('article')
+    a.className = 'line'
+    a.dataset.done = take ? 'true' : 'false'
+    const canSave = !!(db && assets)
+    const note = notes.get(l.key)
+    a.innerHTML = `
+      <div class="key"><span>${esc(l.key)}</span><span class="state">${take ? 'Recorded' : 'Not yet'}</span></div>
+      <blockquote>${lineHtml(l.line)}</blockquote>
+      ${take ? `<audio controls preload="none" id="play-${id}"></audio>` : ''}
+      <div class="actions">
+        <label class="btn" for="rec-${id}">${take ? 'Record again' : 'Record'}</label>
+        <input type="file" id="rec-${id}" accept="video/*,audio/*" capture="user">
+        <label class="btn alt" for="pick-${id}">Choose a file</label>
+        <input type="file" id="pick-${id}" accept="audio/*,video/*,.m4a,.mp3,.wav,.aac,.ogg,.webm,.3gp,.amr,.mov">
+        ${take ? `<button type="button" class="btn quiet" id="del-${id}">Delete take</button>` : ''}
+        <span class="status${note?.bad ? ' bad' : ''}" id="st-${id}">${note ? esc(note.text) : canSave ? '' : 'Saving is off in this view.'}</span>
+      </div>`
+    const onFile = (e) => {
+      const f = e.target.files && e.target.files[0]
+      e.target.value = ''
+      if (f) saveTake(l, f)
+    }
+    a.querySelector(`#rec-${id}`).addEventListener('change', onFile)
+    a.querySelector(`#pick-${id}`).addEventListener('change', onFile)
+    for (const lab of a.querySelectorAll('label.btn')) {
+      lab.tabIndex = 0
+      lab.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); document.getElementById(lab.htmlFor).click() } })
+      if (busy.has(l.key)) lab.setAttribute('aria-disabled', 'true')
+    }
+    const del = a.querySelector(`#del-${id}`)
+    if (del) del.onclick = () => deleteTake(l)
+    const audio = a.querySelector('audio')
+    if (audio && take) {
+      const cached = blobUrls.get(take.assetId)
+      if (cached) audio.src = cached
+      else audio.addEventListener('play', () => loadAudio(take, audio), { once: true })
+    }
+    return a
+  }
+
+  function status(l, text, bad) {
+    if (text) notes.set(l.key, { text, bad: !!bad })
+    else notes.delete(l.key)
+    const el = document.getElementById(`st-${docId(l.key)}`)
+    if (el) {
+      el.textContent = text
+      el.className = 'status' + (bad ? ' bad' : '')
+    }
+  }
+
+  // A phone video or voice memo is decoded here and only its sound kept, as
+  // a small mono WAV (about 44 KB a second), so long takes fit and any
+  // format the phone makes works. If the browser cannot decode it, the
+  // original file is kept instead and Claude converts it.
+  const RATE = 22050
+  function decode(ctx, buf) {
+    return new Promise((resolve, reject) => {
+      const p = ctx.decodeAudioData(buf, resolve, reject)
+      if (p && p.then) p.then(resolve, reject)
+    })
+  }
+  async function toWav(file) {
+    const AC = window.AudioContext || window.webkitAudioContext
+    if (!AC) throw new Error('no audio')
+    const ctx = new AC()
+    try {
+      const audio = await decode(ctx, await file.arrayBuffer())
+      const frames = Math.max(1, Math.ceil(audio.duration * RATE))
+      const OAC = window.OfflineAudioContext || window.webkitOfflineAudioContext
+      const off = new OAC(1, frames, RATE)
+      const src = off.createBufferSource()
+      src.buffer = audio
+      src.connect(off.destination)
+      src.start()
+      const mono = (await off.startRendering()).getChannelData(0)
+      const out = new DataView(new ArrayBuffer(44 + mono.length * 2))
+      const str = (o, t) => { for (let i = 0; i < t.length; i++) out.setUint8(o + i, t.charCodeAt(i)) }
+      str(0, 'RIFF'); out.setUint32(4, 36 + mono.length * 2, true); str(8, 'WAVEfmt ')
+      out.setUint32(16, 16, true); out.setUint16(20, 1, true); out.setUint16(22, 1, true)
+      out.setUint32(24, RATE, true); out.setUint32(28, RATE * 2, true); out.setUint16(32, 2, true); out.setUint16(34, 16, true)
+      str(36, 'data'); out.setUint32(40, mono.length * 2, true)
+      for (let i = 0; i < mono.length; i++) out.setInt16(44 + i * 2, Math.max(-1, Math.min(1, mono[i])) * 0x7fff, true)
+      return { blob: new Blob([out.buffer], { type: 'audio/wav' }), seconds: audio.duration }
+    } finally {
+      if (ctx.close) ctx.close().catch(() => {})
+    }
+  }
+
+  // Takes are kept as base64 text, the one stored type that holds any
+  // audio; Claude decodes and converts them for the game.
+  function toBase64(file) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader()
+      r.onload = () => resolve(String(r.result).replace(/^data:[^,]*,/, ''))
+      r.onerror = () => reject(r.error)
+      r.readAsDataURL(file)
+    })
+  }
+
+  async function loadAudio(take, audio) {
+    try {
+      let url = blobUrls.get(take.assetId)
+      if (!url) {
+        const res = await fetch('/_blob/' + take.assetId)
+        if (!res.ok) throw new Error(String(res.status))
+        const b64 = (await res.text()).trim()
+        const bin = atob(b64)
+        const bytes = new Uint8Array(bin.length)
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+        url = URL.createObjectURL(new Blob([bytes], { type: take.mime || 'audio/mp4' }))
+        blobUrls.set(take.assetId, url)
+      }
+      audio.src = url
+      audio.play().catch(() => {})
+    } catch {
+      audio.replaceWith(Object.assign(document.createElement('p'), { className: 'status bad', textContent: 'This take would not load. Record it again.' }))
+    }
+  }
+
+  async function saveTake(l, file) {
+    if (!db || !assets) {
+      status(l, 'Saving is off in this view. Open the studio on claude.ai, signed in.', true)
+      return
+    }
+    busy.add(l.key)
+    status(l, 'Taking the sound out of your recording...')
+    const old = takes.get(l.key)
+    try {
+      let keep = file
+      let mime = file.type || ''
+      let seconds = null
+      try {
+        const w = await toWav(file)
+        keep = w.blob
+        mime = 'audio/wav'
+        seconds = w.seconds
+      } catch {
+        // Not decodable here: keep the original if it fits.
+      }
+      if (keep.size > 14 * 1024 * 1024) {
+        busy.delete(l.key)
+        status(l, 'That recording is too long to keep. Try a shorter take of just the line.', true)
+        return
+      }
+      status(l, 'Saving the take...')
+      const b64 = await toBase64(keep)
+      const up = await assets.upload(new Blob([b64], { type: 'text/plain' }), { type: 'text/plain' })
+      const take = { key: l.key, speaker: l.speaker, assetId: up.id, mime, name: file.name || '', size: keep.size, seconds, at: new Date().toISOString() }
+      await db.collection('takes').doc(docId(l.key)).set(take)
+      takes.set(l.key, take)
+      if (old && old.assetId !== up.id) assets.delete(old.assetId).catch(() => {})
+      busy.delete(l.key)
+      notes.delete(l.key)
+      render()
+      status(l, seconds ? `Saved, ${seconds.toFixed(1)} seconds.` : 'Saved.')
+    } catch (e) {
+      busy.delete(l.key)
+      const code = e && e.code
+      status(l, code === 'rate_limited' ? 'Saving too fast. Wait a moment and try again.' : code === 'quota_or_state' ? 'The studio is out of space. Tell Claude.' : code === 'not_granted' ? 'You need edit access to this page to save takes.' : 'That take did not save. Try again.', true)
+    }
+  }
+
+  async function deleteTake(l) {
+    const take = takes.get(l.key)
+    if (!take || !db) return
+    try {
+      await db.collection('takes').doc(docId(l.key)).delete()
+      takes.delete(l.key)
+      if (assets) assets.delete(take.assetId).catch(() => {})
+      render()
+      status(l, 'Take deleted.')
+    } catch {
+      status(l, 'Could not delete that take. Try again.', true)
+    }
+  }
+
+  renderFilters()
+  render()
+
+  const use = window.claude && window.claude.use ? (n) => window.claude.use(n) : () => Promise.resolve(null)
+  Promise.all([use('db'), use('assets')]).then(([d, a]) => {
+    db = d
+    assets = a
+    if (!db || !assets) {
+      setSaving(db ? 'You can listen to takes here, but only the page owner can record. Ask for edit access.' : 'Saving is off in this view. Open the studio on claude.ai, signed in, to record.', false)
+      render()
+      if (!db) return
+    } else setSaving('Recordings save here automatically. Claude collects them for the game.', true)
+    db.collection('takes').onSnapshot((snap) => {
+      takes.clear()
+      for (const doc of snap.docs) {
+        const t = doc.data()
+        if (t && t.key && t.assetId) takes.set(t.key, t)
+      }
+      render()
+    }, () => setSaving('The studio lost its connection. Reload the page to carry on.', false))
+  })
+})()
+</script>
