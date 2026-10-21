@@ -6,6 +6,7 @@ import { Game } from './game/Game'
 import { CelPipeline } from './render/CelPipeline'
 import { Ui } from './ui/Ui'
 import { Sfx } from './audio/Sfx'
+import { buildTouchControls } from './ui/Touch'
 
 /**
  * Locked Up. A UK prison break, drawn in Windward's cel style: banded toon
@@ -42,6 +43,7 @@ form.addEventListener('submit', (e) => {
   sfx.unlock()
   snap = true
   ui.attach(game)
+  buildTouchControls(game.input)
   document.getElementById('start')!.classList.add('gone')
   nameInput.blur()
   ui.card(

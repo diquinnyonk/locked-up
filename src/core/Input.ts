@@ -40,6 +40,9 @@ export class Input {
   enabled = true
   /** Scripted movement for the headless test scenarios. */
   forced: { x: number; z: number } | null = null
+  /** The on-screen thumb stick, when there is one. */
+  touchMove: { x: number; z: number } | null = null
+  touchRun = false
 
   constructor() {
     window.addEventListener('keydown', (e) => {
@@ -59,6 +62,7 @@ export class Input {
   get move(): { x: number; z: number } {
     if (this.forced) return this.forced
     if (!this.enabled) return { x: 0, z: 0 }
+    if (this.touchMove && (this.touchMove.x || this.touchMove.z)) return this.touchMove
     let x = 0
     let z = 0
     if (this.held.has('KeyW') || this.held.has('ArrowUp')) z -= 1
@@ -70,7 +74,7 @@ export class Input {
   }
 
   get running(): boolean {
-    return this.enabled && (this.held.has('ShiftLeft') || this.held.has('ShiftRight'))
+    return this.enabled && (this.touchRun || this.held.has('ShiftLeft') || this.held.has('ShiftRight'))
   }
 
   /** Consumes a queued press. */
@@ -78,6 +82,11 @@ export class Input {
     if (!this.queued.has(action)) return false
     this.queued.delete(action)
     return this.enabled || action === 'pause' || action === 'craft' || action === 'journal' || action === 'map'
+  }
+
+  /** An on-screen button press, same as the key. */
+  press(action: ActionKey): void {
+    this.queued.add(action)
   }
 
   clear(): void {

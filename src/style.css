@@ -615,3 +615,73 @@ body.playing #hud {
     width: 180px;
   }
 }
+
+/* ---- Touch controls ---- */
+#touchpad {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  width: 50vw;
+  height: 60vh;
+  touch-action: none;
+  z-index: 5;
+}
+#stickbase,
+#knob {
+  position: fixed;
+  left: 0;
+  top: 0;
+  display: none;
+  pointer-events: none;
+  border: 3px solid var(--ink);
+  border-radius: 50%;
+}
+#stickbase {
+  width: 112px;
+  height: 112px;
+  background: rgb(242 251 250 / 25%);
+}
+#knob {
+  width: 48px;
+  height: 48px;
+  background: var(--gate);
+}
+#touchbuttons {
+  position: fixed;
+  right: max(10px, env(safe-area-inset-right, 0px));
+  bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+  display: grid;
+  grid-template-columns: repeat(3, 64px);
+  gap: 6px;
+  z-index: 6;
+  touch-action: none;
+}
+#touchbuttons button {
+  height: 44px;
+  padding: 0;
+  font-size: 0.72rem;
+  background: rgb(242 193 78 / 85%);
+  box-shadow: 2px 2px 0 var(--ink);
+}
+#touchbuttons button.wide {
+  grid-column: span 3;
+  height: 52px;
+  font-size: 0.95rem;
+}
+#touchbuttons button.on {
+  background: var(--danger);
+  color: var(--paper);
+}
+body.touch #inventory {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  width: min(420px, calc(50vw - 16px));
+  left: 12px;
+  transform: none;
+}
+body.touch #prompts {
+  bottom: auto;
+  top: 70px;
+}
+body.touch #jobs {
+  display: none;
+}
