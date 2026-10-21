@@ -47,7 +47,7 @@ export interface Template {
   give?: ItemId
 }
 
-const BOSS_JOBS: Record<GangId, Template[]> = {
+export const BOSS_JOBS: Record<GangId, Template[]> = {
   firm: [
     {
       id: 'soap-opera',
@@ -155,7 +155,7 @@ const BOSS_JOBS: Record<GangId, Template[]> = {
   ],
 }
 
-const ERRANDS: Template[] = [
+export const ERRANDS: Template[] = [
   {
     id: 'brush',
     title: 'A Brush with Danger',
@@ -183,7 +183,7 @@ const ERRANDS: Template[] = [
   },
 ]
 
-const OFFICER_JOBS: Template[] = [
+export const OFFICER_JOBS: Template[] = [
   {
     id: 'racing-certainty',
     title: 'A Racing Certainty',
@@ -282,6 +282,19 @@ export class Missions {
     }
   }
 
+  /** Everyone with a job going today, for the notebook. */
+  whoHasWork(): { name: string; where: string }[] {
+    const out: { name: string; where: string }[] = []
+    for (const gang of GANG_IDS) {
+      if (this.bossProgress[gang] >= BOSS_JOBS[gang].length) continue
+      const boss = this.game.gangLeader(gang)
+      if (boss && !this.active.some((m) => m.giver === boss)) out.push({ name: boss.name, where: `boss of ${GANGS[gang].name}, ${GANGS[gang].wing} wing` })
+    }
+    for (const [g] of this.officerOffers) out.push({ name: g.name, where: `officer, usually around ${g.block} wing. Wants a quiet word.` })
+    for (const [p] of this.memberOffers) out.push({ name: p.name, where: `${p.gang ? GANGS[p.gang].name : 'prisoner'}, ${p.block} wing` })
+    return out
+  }
+
   hasOffer(who: Prisoner | Guard): boolean {
     if (this.active.some((m) => m.giver === who)) return this.active.some((m) => m.giver === who && m.done)
     if ('leader' in who && who.leader && who.gang) return this.bossProgress[who.gang] < BOSS_JOBS[who.gang].length
@@ -336,7 +349,7 @@ export class Missions {
           }
           if (o.kind === 'fetch') for (let i = 0; i < (o.count ?? 1); i++) g.player.inventory.remove(o.item)
           this.pay(mine)
-          g.ui.talk(mine.giverName, mine.tpl.thanks, [])
+          g.ui.talk(mine.giverName, mine.tpl.thanks, [], `mission.${mine.tpl.id}.thanks`)
         },
       })
       return out
@@ -377,7 +390,7 @@ export class Missions {
         },
       },
       { label: '"Not today, ta."', enabled: true, run: () => g.ui.talk(nameOf(who), pick(g.rng, ['Your loss. Literally.', 'Suit yourself, sunshine.', 'Fine. I will remember this. I remember everything.']), []) },
-    ])
+    ], `mission.${tpl.id}.brief`)
   }
 
   /** Works out who and where a job is about, before you say yes. */

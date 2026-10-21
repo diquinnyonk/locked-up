@@ -112,12 +112,12 @@ kbd {
   display: grid;
   gap: 0.5rem;
 }
-#name-form label {
+#name-form > label {
   font: 700 0.8rem var(--sans);
   text-transform: uppercase;
   letter-spacing: 0.1em;
 }
-#name-form input,
+#name-form #name,
 textarea {
   font: 1.15rem var(--sans);
   padding: 0.6rem 0.7rem;
@@ -403,9 +403,26 @@ body.playing #hud {
 #panel.show {
   display: block;
 }
+#panel header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+  margin-bottom: 0.6rem;
+}
 #panel h2 {
   font: 700 1.35rem var(--display);
-  margin-bottom: 0.6rem;
+  text-wrap: balance;
+}
+#panel .x {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  font-size: 1.5rem;
+  line-height: 1;
+  background: var(--paper);
+  box-shadow: 2px 2px 0 var(--ink);
 }
 #panel h3 {
   font: 700 0.8rem var(--sans);
@@ -683,5 +700,261 @@ body.touch #prompts {
   top: 70px;
 }
 body.touch #jobs {
+  display: none;
+}
+
+#difficulty input[type='radio'] {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--ink);
+  transform: translateY(3px);
+}
+#difficulty label span,
+#difficulty label {
+  min-width: 0;
+}
+
+/* ---- Menu button ---- */
+#menubtn {
+  position: absolute;
+  top: 12px;
+  left: 254px;
+  pointer-events: auto;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.85rem;
+}
+
+/* ---- Notebook ---- */
+#panel.menu {
+  width: min(560px, calc(100vw - 32px));
+}
+#panel .tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 0.8rem;
+  border-bottom: 2px solid var(--ink);
+  padding-bottom: 6px;
+}
+#panel .tabs button {
+  padding: 0.35rem 0.7rem;
+  font-size: 0.82rem;
+  background: transparent;
+  box-shadow: none;
+}
+#panel .tabs button.on {
+  background: var(--ink);
+  color: var(--paper);
+}
+#panel .mission .title {
+  font: 700 1.3rem var(--display);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink);
+  margin: 0.2rem 0 0.4rem;
+}
+#panel .mission p {
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+#panel .mission h4 {
+  font: 700 0.85rem var(--sans);
+  margin: 0.9rem 0 0.35rem;
+}
+#panel .checks {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+#panel .checks li {
+  display: flex;
+  gap: 0.55rem;
+  align-items: flex-start;
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+#panel .checks li small {
+  display: block;
+  font-weight: 400;
+  color: var(--steel);
+  font-size: 0.76rem;
+}
+#panel .checks .box {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--ink);
+  display: grid;
+  place-items: center;
+  font-size: 0.8rem;
+  background: var(--paper);
+}
+#panel .checks li.done .box {
+  background: var(--good);
+}
+
+/* ---- Conversations: a subtitle sheet under the over-the-shoulder shot ---- */
+#panel.dialogue {
+  top: auto;
+  bottom: max(12px, env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+  width: min(760px, calc(100vw - 24px));
+  max-height: 46vh;
+  background: rgb(18 34 43 / 94%);
+  color: var(--paper);
+  border-color: var(--paper);
+}
+#panel.dialogue h2 {
+  color: var(--gate);
+  font-size: 1.1rem;
+}
+#panel.dialogue .line {
+  font-size: 1.05rem;
+  font-style: normal;
+  line-height: 1.5;
+}
+#panel.dialogue .options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+#panel.dialogue .options button {
+  font-size: 0.85rem;
+  padding: 0.4rem 0.7rem;
+}
+#panel.dialogue .options button.ghost {
+  color: var(--paper);
+  border-color: var(--paper);
+}
+#panel .options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+#panel .options button {
+  text-align: left;
+}
+#letterbox > div {
+  position: fixed;
+  left: 0;
+  right: 0;
+  height: 0;
+  background: #000;
+  z-index: 3;
+  transition: height 350ms ease;
+  pointer-events: none;
+}
+#letterbox > div:first-child {
+  top: 0;
+}
+#letterbox > div:last-child {
+  bottom: 0;
+}
+body.talking #letterbox > div {
+  height: 9vh;
+}
+body.talking #hud,
+body.talking #touchbuttons,
+body.talking #touchpad,
+body.talking #bubbles {
+  display: none;
+}
+
+/* ---- Intro story ---- */
+#story {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding-block: 24px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  background: rgb(18 34 43 / 72%);
+  z-index: 20;
+}
+#story[hidden] {
+  display: none;
+}
+#story .frame {
+  width: min(620px, 100%);
+  background: var(--cream);
+  border: 3px solid var(--ink);
+  box-shadow: 8px 8px 0 var(--ink);
+  padding: clamp(1.2rem, 4vw, 2.2rem);
+  display: grid;
+  gap: 1rem;
+}
+#story.turn .frame {
+  animation: turn 380ms ease;
+}
+@keyframes turn {
+  from {
+    transform: translateY(8px) rotate(-0.6deg);
+    opacity: 0.4;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #story.turn .frame {
+    animation: none;
+  }
+}
+#story .text {
+  font: 500 clamp(1.15rem, 3.6vw, 1.55rem) / 1.45 var(--display);
+  text-wrap: pretty;
+}
+#story .headline {
+  display: block;
+  font: 900 clamp(1.6rem, 6vw, 2.6rem) / 1.05 var(--display);
+  letter-spacing: 0.01em;
+  margin-bottom: 0.6rem;
+  border-top: 3px solid var(--ink);
+  border-bottom: 3px solid var(--ink);
+  padding: 0.3rem 0;
+}
+#story .controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+#story-dots {
+  font: 700 0.8rem var(--sans);
+  color: var(--steel);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 720px) {
+  #menubtn {
+    left: auto;
+    right: 12px;
+    top: auto;
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+  #panel:not(.dialogue) {
+    left: 8px;
+    right: 8px;
+    top: auto;
+    bottom: 8px;
+    transform: none;
+    width: auto;
+    max-height: 82vh;
+  }
+  #panel.dialogue {
+    max-height: 52vh;
+  }
+}
+body.touch #menubtn {
+  display: none;
+}
+
+body.panel-open #touchbuttons,
+body.panel-open #touchpad,
+body.panel-open #prompts,
+body.talking #card {
   display: none;
 }

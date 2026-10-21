@@ -42,7 +42,7 @@ const KNEE = LEG * 0.5
 const ELBOW = ARM * 0.48
 const NECK = 0.16 * S
 
-export type Pose = 'stand' | 'walk' | 'fight' | 'down' | 'sleep' | 'sit' | 'crawl' | 'cuffed' | 'phone' | 'wave' | 'search'
+export type Pose = 'stand' | 'walk' | 'fight' | 'down' | 'sleep' | 'sit' | 'crawl' | 'cuffed' | 'phone' | 'wave' | 'search' | 'talk'
 
 export interface Body {
   x: number
@@ -569,6 +569,17 @@ export class Crowd {
         bob = Math.abs(Math.sin(b.poseTime * 6)) * 0.08
         legL = [0, 0.1 + Math.abs(w) * 0.3]
         legR = [0, 0.1]
+        break
+      }
+      case 'talk': {
+        // Talking with the hands: one arm out, palm up, beating time.
+        const beat = Math.sin(b.poseTime * 4.2)
+        const beat2 = Math.sin(b.poseTime * 2.3 + 1)
+        armR = [-0.7 - beat * 0.25, -0.25, -1.1 + beat * 0.3]
+        armL = [-0.25 + beat2 * 0.2, 0.15, -0.5 - Math.max(0, beat2) * 0.6]
+        headTilt = Math.sin(b.poseTime * 3.1) * 0.08
+        headTurn = Math.sin(b.poseTime * 1.3) * 0.12
+        bob = Math.abs(beat) * 0.01
         break
       }
       case 'search':

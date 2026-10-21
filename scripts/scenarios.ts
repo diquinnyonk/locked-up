@@ -36,6 +36,9 @@ function fresh(): { game: Game; log: string[]; g: any } {
 }
 const dt = 1 / 30
 function run(game: Game, seconds: number, until?: () => boolean): boolean {
+  // The real interface ends a conversation when its panel closes; the test
+  // harness has no panel, so walk away before time moves on.
+  game.endConversation()
   for (let i = 0; i < seconds / dt; i++) {
     game.update(dt)
     if (until?.()) return true
@@ -491,6 +494,20 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   const rooms = ['chapel', 'visits', 'gym', 'library', 'mess', 'bay']
   check('rooms: six new rooms on the map', rooms.every((r) => game.grid.rooms.has(r)))
   check('rooms: each has a vent grille', rooms.every((r) => game.grid.grates.some((gr) => gr.zone === r)), game.grid.grates.map((g) => g.zone).join(','))
+}
+
+// ---- Conversations stop the clock ----
+{
+  const { game } = fresh()
+  run(game, 0.5)
+  const boss = game.gangLeader('firm')!
+  game.talkTo(boss)
+  const before = game.clock.minutes
+  for (let i = 0; i < 60; i++) game.update(1 / 30)
+  check('talk: the world waits while you talk', game.talkingTo === boss.body && game.clock.minutes === before && boss.body.pose !== 'walk')
+  game.endConversation()
+  game.update(1 / 30)
+  check('talk: and carries on after', game.clock.minutes > before)
 }
 
 // ---- Eight failures end it ----

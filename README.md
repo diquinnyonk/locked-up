@@ -24,6 +24,36 @@ HMP Blackmoor, cell A8, with one cellmate.
 - **Hard**: no sight guide, no officers on the map, and they spot you a quarter
   faster.
 
+## How you got here
+
+A short, skippable intro: you robbed a Greggs (a steak bake, four sausage
+rolls and a festive bake), which in Blackmoor, under the Pastry Protection Act
+of 1987, is worse than murder. Everyone inside knows your name. Prisoners and
+officers call you the Greggs Bandit.
+
+## Talking to people
+
+Talk to anyone and the camera cuts to over your shoulder, framing their face
+while they speak and gesture, with the dialogue as subtitles along the bottom
+and a close button for thumbs. The prison waits while you talk.
+
+Job lines carry stable keys for voice recording. `npm run dialogue` writes the
+full script to `dialogue/script.csv` (key, speaker, line). Put each recording
+in `public/voices/<key>.mp3` and add the key to `VOICE_LINES` in
+`src/audio/Voice.ts`; from then on it plays when the line comes up.
+
+## The notebook
+
+`J`, `Tab` or the Menu button opens the notebook, in four tabs:
+
+- **Main mission**: escape HMP Blackmoor, as a checklist that ticks itself as
+  you get ready (a key, toothpaste in the lock, a paid firm, a car outside, a
+  grappling hook, a disguise, Keith paid off).
+- **Jobs**: your side missions and who has work going today.
+- **Pockets**: inventory and crafting.
+- **Notes**: your record, every way out, the firms, and what the prison has
+  learned.
+
 ## The prison
 
 - **Four wings (A–D)**: ten cells each, two prisoners to a cell, so 20 per wing

@@ -12,7 +12,7 @@ const BUTTONS: { label: string; action: ActionKey | 'run'; wide?: boolean }[] = 
   { label: 'Sneak', action: 'sneak' },
   { label: 'Run', action: 'run' },
   { label: 'Pockets', action: 'craft' },
-  { label: 'Journal', action: 'journal' },
+  { label: 'Notebook', action: 'journal' },
   { label: 'Map', action: 'map' },
   { label: 'Sick', action: 'sick' },
   { label: 'Kick off', action: 'riot' },
@@ -24,7 +24,7 @@ export function isTouch(): boolean {
   return 'ontouchstart' in window || navigator.maxTouchPoints > 0
 }
 
-export function buildTouchControls(input: Input): void {
+export function buildTouchControls(input: Input, openMenu: () => void): void {
   if (!isTouch()) return
   document.body.classList.add('touch')
   const pad = document.createElement('div')
@@ -83,7 +83,8 @@ export function buildTouchControls(input: Input): void {
       if (b.action === 'run') {
         input.touchRun = !input.touchRun
         el.classList.toggle('on', input.touchRun)
-      } else input.press(b.action)
+      } else if (b.action === 'journal') openMenu()
+      else input.press(b.action)
     })
     grid.append(el)
   }

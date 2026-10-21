@@ -19,16 +19,30 @@
           <input id="name" maxlength="18" placeholder="Surname will do" required />
           <fieldset id="difficulty">
             <legend>Difficulty</legend>
-            <label><input type="radio" name="mode" value="normal" checked /> <b>Normal</b>: officers' sight drawn on the floor</label>
-            <label><input type="radio" name="mode" value="hard" /> <b>Hard</b>: no sight guide, officers off the map, and they spot you faster</label>
+            <label><input type="radio" name="mode" value="normal" checked /><span><b>Normal</b>: officers' sight drawn on the floor</span></label>
+            <label><input type="radio" name="mode" value="hard" /><span><b>Hard</b>: no sight guide, officers off the map, and they spot you faster</span></label>
           </fieldset>
           <button type="submit">Begin your sentence</button>
         </form>
-        <p class="keys">WASD move · Shift run · C sneak · E use · R alternate · F fight · Tab pockets &amp; crafting · J journal · M map</p>
+        <p class="keys">WASD move · Shift run · C sneak · E use · R alternate · F fight · Tab pockets · J notebook · M map. On a phone, on-screen controls appear.</p>
       </div>
     </div>
 
+    <div id="story" hidden>
+      <div class="frame">
+        <p class="kicker" id="story-kicker"></p>
+        <p class="text" id="story-text"></p>
+        <div class="controls">
+          <button type="button" class="ghost" id="story-skip">Skip</button>
+          <span id="story-dots"></span>
+          <button type="button" id="story-next">Next</button>
+        </div>
+      </div>
+    </div>
+    <div id="letterbox"><div></div><div></div></div>
+
     <div id="hud">
+      <button id="menubtn" type="button">Menu</button>
       <div id="info">
         <div id="who"></div>
         <div id="time"></div>

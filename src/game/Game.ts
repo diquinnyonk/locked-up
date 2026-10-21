@@ -20,7 +20,7 @@ import { Missions } from './Missions'
 /** What the game needs from the interface. Implemented in ui/Ui.ts. */
 export interface UiPort {
   toast(text: string, tone?: 'good' | 'bad' | 'neutral'): void
-  talk(title: string, line: string, options: { label: string; enabled: boolean; run: () => void }[]): void
+  talk(title: string, line: string, options: { label: string; enabled: boolean; run: () => void }[], voice?: string): void
   phone(onSend: (message: string) => string): void
   card(title: string, body: string, seconds?: number): void
   end(won: boolean, title: string, body: string): void
@@ -317,6 +317,21 @@ export class Game implements World {
     }
   }
 
+  /** Who you are in conversation with: the camera cuts to over your
+   *  shoulder, and the prison holds its breath until you are done. */
+  talkingTo: Body | null = null
+
+  private converse(body: Body): void {
+    this.talkingTo = body
+    const p = this.player.body
+    p.speed = 0
+    p.pose = 'stand'
+  }
+
+  endConversation(): void {
+    this.talkingTo = null
+  }
+
   /** Red flash for the UI, decays per frame. */
   flash = 0
   /** Hard mode: no sight-cone guide, and officers spot you faster. */
@@ -497,6 +512,21 @@ export class Game implements World {
 
   update(delta: number): void {
     if (this.sounds.length > 64) this.sounds.length = 0
+    // Mid-conversation the world waits. The two of you face each other and
+    // whoever is talking gestures; nothing else moves.
+    if (this.talkingTo) {
+      const p = this.player.body
+      const n = this.talkingTo
+      p.yaw = Math.atan2(n.x - p.x, n.z - p.z)
+      n.yaw = Math.atan2(p.x - n.x, p.z - n.z)
+      p.pose = 'stand'
+      p.speed = 0
+      n.speed = 0
+      if (n.pose !== 'sit') n.pose = 'talk'
+      this.input.clear()
+      this.crowd.update(this.bodies, delta)
+      return
+    }
     if (this.over) {
       this.crowd.update(this.bodies, delta)
       return
@@ -1399,18 +1429,22 @@ export class Game implements World {
   }
 
   private talkToGuard(g: Guard): void {
+    g.stop()
+    this.converse(g.body)
     const offer = this.missions.hasOffer(g)
     const lines =
       g.wary > 0.6
         ? ["I've got my eye on you. Both of them. This one's glass.", "Don't even think about it. I can see you thinking. Your lips move.", 'Move along before I find a reason.']
         : offer
           ? ["Ah. You. Just the person. Keep your voice down.", "Psst. Over here. No, act natural. NATURAL.", "You look like someone who can keep their mouth shut. Can you? Good."]
-          : ['What do you want? If it is the telly remote, the answer is no.', 'Keep your nose clean and we will get along famously.', "Not now, I'm on my break. I'm always on my break.", 'Lovely weather for it. Not that you would know.', "If you're after the toilet roll, there is none. There's never any."]
+          : ["Ah, the Greggs Bandit. I've got my eye on you. And on my lunch.", 'What do you want? If it is the telly remote, the answer is no.', 'Keep your nose clean and we will get along famously.', "Not now, I'm on my break. I'm always on my break.", 'Lovely weather for it. Not that you would know.', "If you're after the toilet roll, there is none. There's never any."]
     const line = lines[Math.floor(this.rng() * lines.length)]
     this.ui.talk(g.name, line, this.missions.options(g))
   }
 
   talkTo(pr: Prisoner): void {
+    pr.stop()
+    this.converse(pr.body)
     const inv = this.player.inventory
     const options: { label: string; enabled: boolean; run: () => void }[] = []
     const refresh = () => this.talkTo(pr)
@@ -1490,7 +1524,7 @@ export class Game implements World {
             ? pick2(this.rng, ['Looking for something? I can get things. Not Freddos. Never ask me for Freddos.', "Psst. Batteries, wire, a lighter, a screwdriver. Cash or snout. Mostly snout. Only snout."])
             : pr.isCellmate
               ? `Alright, ${this.player.name}.`
-              : pick2(this.rng, ['Alright?', 'Y\'alright, our kid?', 'Wotcha.', 'Ey up.', 'Alright, chief? Kettle on?', 'Do I know you? I feel like I know you. Did you do my mum\'s guttering?'])
+              : pick2(this.rng, ['Oi oi, it\'s the Greggs Bandit!', 'Is it true you nicked a festive bake? In OCTOBER? Respect.', 'My cousin works in that Greggs. She has nightmares.', 'Alright?', 'Y\'alright, our kid?', 'Wotcha.', 'Ey up.', 'Alright, chief? Kettle on?', 'Do I know you? I feel like I know you. Did you do my mum\'s guttering?'])
     const firm = pr.gang ? `, ${pr.leader ? 'boss of ' : ''}${GANGS[pr.gang].name}` : ''
     const trust = `${firm}${pr.supporter ? ' (backs you)' : pr.grudge > 0.5 ? ' (holds a grudge)' : ''}`
     this.ui.talk(`${pr.name}${trust}`, greeting, options)
@@ -1860,6 +1894,7 @@ export class Game implements World {
   }
 
   private talkToKeith(): void {
+    this.converse(this.keith.body)
     const k = this.keith
     const inv = this.player.inventory
     const need = this.memory.xrayBribe

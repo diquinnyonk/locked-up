@@ -5,12 +5,14 @@ import type { Game, UiPort } from '../game/Game'
 import { ITEMS, INVENTORY_SLOTS, RECIPES } from '../game/Items'
 import { ATTEMPTS_PER_ROUND, METHOD_NAMES, ROUNDS, type Method } from '../npc/Memory'
 import { MAP_H, MAP_W, PLAYER_CELL, Tile } from '../world/Grid'
-import { GANGS, GANG_IDS } from '../npc/Gangs'
+import { GANGS, GANG_IDS, gangOfWing } from '../npc/Gangs'
 
 /**
  * The interface, in DOM. Flat ink panels on paper, hard edges, no gradients:
  * the same graphic language as the cel world underneath it.
  */
+export type MenuTab = 'main' | 'jobs' | 'pockets' | 'notes'
+
 const $ = <T extends HTMLElement>(sel: string) => document.querySelector(sel) as T
 
 export class Ui implements UiPort {
@@ -56,26 +58,42 @@ export class Ui implements UiPort {
     setTimeout(() => el.remove(), 5000)
   }
 
-  talk(title: string, line: string, options: { label: string; enabled: boolean; run: () => void }[]): void {
-    this.openPanel(title)
+  /**
+   * A conversation. With a `speaker` it is shown as a subtitle sheet along
+   * the bottom of the screen while the camera cuts to over your shoulder;
+   * without one it is an ordinary panel. `voice` is the recording to play,
+   * if there is one yet.
+   */
+  talk(title: string, line: string, options: { label: string; enabled: boolean; run: () => void }[], voice?: string): void {
+    const speaking = !!this.game?.talkingTo
+    this.openPanel(title, speaking ? 'dialogue' : '')
     const body = this.panel.querySelector('.body')!
     const p = document.createElement('p')
     p.className = 'line'
     p.textContent = `"${line}"`
     body.append(p)
+    const list = document.createElement('div')
+    list.className = 'options'
     for (const o of options) {
       const b = document.createElement('button')
       b.textContent = o.label
       b.disabled = !o.enabled
       b.onclick = () => o.run()
-      body.append(b)
+      list.append(b)
     }
     const close = document.createElement('button')
     close.className = 'ghost'
-    close.textContent = 'Leave it (Esc)'
+    close.textContent = 'Leave it'
     close.onclick = () => this.closePanels()
-    body.append(close)
+    list.append(close)
+    body.append(list)
+    this.onSpeak?.(voice ?? null, line)
   }
+
+  /** Set by the game: plays a recorded line when there is one. */
+  onSpeak: ((voice: string | null, line: string) => void) | null = null
+  /** Set by the game: the conversation is over. */
+  onClose: (() => void) | null = null
 
   phone(onSend: (message: string) => string): void {
     this.openPanel('Payphone: calls are recorded')
@@ -125,32 +143,133 @@ export class Ui implements UiPort {
   }
 
   closePanels(): void {
-    this.panel.classList.remove('show')
+    this.panel.classList.remove('show', 'dialogue', 'menu')
+    document.body.classList.remove('panel-open')
     this.panelOpen = false
+    this.menuTab = null
     if (this.game) this.game.input.enabled = !this.game.over
+    this.onClose?.()
   }
 
   // ---- Panels ----
 
-  private openPanel(title: string): void {
-    this.panel.innerHTML = `<h2>${escape(title)}</h2><div class="body"></div>`
+  /** Every panel has a header with a close button, for thumbs as much as Esc. */
+  private openPanel(title: string, kind = ''): void {
+    this.panel.className = ''
+    this.panel.innerHTML = `<header><h2>${escape(title)}</h2><button class="x" type="button" aria-label="Close">×</button></header><div class="body"></div>`
+    ;(this.panel.querySelector('.x') as HTMLButtonElement).onclick = () => this.closePanels()
     this.panel.classList.add('show')
+    if (kind) this.panel.classList.add(kind)
+    document.body.classList.add('panel-open')
     this.panelOpen = true
     if (this.game) this.game.input.enabled = false
   }
 
-  toggleCraft(): void {
-    if (this.panelOpen) {
+  // ---- The menu: main mission, jobs, pockets, notes ----
+
+  private menuTab: MenuTab | null = null
+
+  /** Opens the menu on a tab, or closes it if that tab is already showing. */
+  toggleMenu(tab: MenuTab): void {
+    if (this.panelOpen && this.menuTab === tab) {
       this.closePanels()
       return
     }
-    this.renderCraft()
+    if (this.panelOpen && !this.menuTab) this.closePanels()
+    this.openMenu(tab)
   }
 
-  private renderCraft(): void {
+  toggleCraft(): void {
+    this.toggleMenu('pockets')
+  }
+
+  toggleJournal(): void {
+    this.toggleMenu('main')
+  }
+
+  openMenu(tab: MenuTab): void {
+    this.openPanel('Notebook', 'menu')
+    this.menuTab = tab
+    const tabs = document.createElement('nav')
+    tabs.className = 'tabs'
+    const names: [MenuTab, string][] = [
+      ['main', 'Main mission'],
+      ['jobs', 'Jobs'],
+      ['pockets', 'Pockets'],
+      ['notes', 'Notes'],
+    ]
+    for (const [id, label] of names) {
+      const b = document.createElement('button')
+      b.type = 'button'
+      b.textContent = label
+      b.className = id === tab ? 'on' : ''
+      b.onclick = () => this.openMenu(id)
+      tabs.append(b)
+    }
+    this.panel.querySelector('header')!.after(tabs)
+    const body = this.panel.querySelector('.body') as HTMLElement
+    if (tab === 'main') this.renderMain(body)
+    else if (tab === 'jobs') this.renderJobs(body)
+    else if (tab === 'pockets') this.renderPockets(body)
+    else this.renderNotes(body)
+  }
+
+  private renderMain(body: HTMLElement): void {
     const g = this.game!
-    this.openPanel('Pockets & crafting')
-    const body = this.panel.querySelector('.body')!
+    const p = g.player
+    const inv = p.inventory
+    const m = g.memory
+    const now = g.clock.minutes
+    const myDoor = g.grid.cells.get(p.cell)!.door
+    const vent = g.grid.grates.find((gr) => gr.id === 'your cell')!
+    const firm = gangOfWing(p.block)
+    const tick = (done: boolean, text: string, hint = '') => `<li class="${done ? 'done' : ''}"><span class="box">${done ? '✓' : ''}</span><span>${text}${hint ? `<small>${hint}</small>` : ''}</span></li>`
+    const contact = g.carPresent || g.signalTonight || g.contactNights > 0
+    body.innerHTML = `
+      <section class="mission">
+        <p class="kicker">Main mission</p>
+        <h3 class="title">Escape HMP Blackmoor</h3>
+        <p>Everyone in here knows your name, ${escape(p.name)}: the one who robbed the Greggs. Attempts left this round: <b>${m.attemptsLeft} of ${ATTEMPTS_PER_ROUND}</b> (round ${m.round} of ${ROUNDS}).</p>
+        <h4>1. Get out of your cell at night</h4>
+        <ul class="checks">
+          ${tick(!!inv.withUse('openDoor'), 'Have a key', 'Lift one from an officer (R), or forge one from a soap mould.')}
+          ${tick(myDoor.jammed, 'Toothpaste in your lock', 'Stand in your open doorway by day and press R.')}
+          ${tick(!m.sickIgnored && (!m.sickNeedsFroth || inv.has('soap')), 'Fake sickness ready', m.sickNeedsFroth ? 'They want to see froth now: carry soap to chew (Q).' : 'Press H behind your door at night.')}
+          ${tick(m.backing(firm, now), `${GANGS[firm].name} paid to kick off`, `Their boss wants ${m.bribePrice(firm)} snout. Jobs for them bring the price down.`)}
+          ${tick(!vent.sealed && (vent.open || inv.has('spoon') || !!inv.withUse('openVent')), 'The vent behind your table', vent.sealed ? 'Welded shut. They know now.' : 'A spoon will turn the rusty screws.')}
+        </ul>
+        <h4>2. Get word outside</h4>
+        <ul class="checks">
+          ${tick(contact, contact ? (g.carPresent ? 'The car is waiting on the road' : g.signalTonight ? 'Signal sent: the car comes tonight' : `The car waits ${g.contactNights} more night${g.contactNights === 1 ? '' : 's'}`) : 'Arrange a car', 'A phone call that never says when, the flag on the yard pole, or a torch at your window.')}
+        </ul>
+        <h4>3. Get over the wall, or through it</h4>
+        <ul class="checks">
+          ${tick(inv.has('grapple'), 'Grappling hook', 'Two sheets, a fork and gaffer tape. Throw it from the south edge of the yard.')}
+          ${tick(!!inv.withUse('openDoor'), 'A key for the gates', 'The loading bay gate opens onto the road.')}
+        </ul>
+        <h4>Or one of the silly ways</h4>
+        <ul class="checks">
+          ${tick(inv.has('guardUniform'), "An officer's uniform", 'Clock off with the day shift at 20:45 in the loading bay.')}
+          ${tick(inv.has('visitorDisguise'), 'Visitor disguise', 'Leave with the visitors at 15:30.')}
+          ${tick(g.keith.bribedDay === g.clock.day, `${g.keith.name} on the X-ray paid off today`, `${m.xrayBribe} blue drink and ${m.xrayBribe} sausage roll, then into a laundry basket before 11:00.`)}
+        </ul>
+      </section>`
+  }
+
+  private renderJobs(body: HTMLElement): void {
+    const g = this.game!
+    const active = g.missions.active
+    const offers = g.missions.whoHasWork()
+    body.innerHTML = `
+      <p class="kicker">Side missions</p>
+      ${active.length ? active.map((m) => `<div class="gang" style="border-left-color:${m.done ? css(HEX.yardGrass) : css(HEX.gateYellow)}"><b>${escape(m.tpl.title)}</b> for ${escape(m.giverName)}<br>${escape(m.brief)}<br><small>${m.done ? 'Done: ' : 'To do: '}${escape(g.missions.describe(m))}</small></div>`).join('') : '<p class="hint">No jobs on. You can have three at once.</p>'}
+      <h3>Who has work</h3>
+      ${offers.length ? `<ul>${offers.map((o) => `<li><b>${escape(o.name)}</b>: ${escape(o.where)}</li>`).join('')}</ul>` : '<p class="hint">Nobody, for now. Officers with favours to ask change every morning.</p>'}
+      <p class="hint">Jobs done: ${g.missions.completedCount}. Gang jobs bring their riot price down. Officers pay in snout, goodwill or a blind eye.</p>`
+  }
+
+  private renderPockets(body: HTMLElement): void {
+    const g = this.game!
     const inv = g.player.inventory
     const list = document.createElement('div')
     list.className = 'inv'
@@ -160,24 +279,24 @@ export class Ui implements UiPort {
       row.className = 'row'
       row.innerHTML = `<span class="chip" style="background:${css(def.hex)}"></span><span class="name">${def.name}${def.contraband ? ' <i>contraband</i>' : ''}<small>${def.blurb}${def.damage > 1 ? ` · damage ${def.damage}` : ''}</small></span>`
       const use = document.createElement('button')
-      use.textContent = it.id === 'soap' ? 'Chew' : def.uses.includes('distract') ? 'Throw' : 'Inspect'
+      const wearing = (it.id === 'guardUniform' && g.player.disguise === 'guard') || (it.id === 'visitorDisguise' && g.player.disguise === 'visitor')
+      use.textContent = def.uses.includes('disguise') ? (wearing ? 'Take off' : 'Wear') : it.id === 'soap' ? 'Chew' : def.uses.includes('distract') ? 'Throw' : 'Inspect'
       use.onclick = () => {
         g.useItem(i)
-        this.renderCraft()
+        this.openMenu('pockets')
       }
       const drop = document.createElement('button')
       drop.className = 'ghost'
       drop.textContent = 'Drop'
       drop.onclick = () => {
         g.drop(i)
-        this.renderCraft()
+        this.openMenu('pockets')
       }
       row.append(use, drop)
       list.append(row)
     })
     if (!inv.items.length) list.innerHTML = '<p class="hint">Empty pockets.</p>'
     body.append(list)
-
     const h = document.createElement('h3')
     h.textContent = 'Make'
     body.append(h)
@@ -194,23 +313,19 @@ export class Ui implements UiPort {
       b.disabled = !ok
       b.onclick = () => {
         g.craft(r)
-        this.renderCraft()
+        this.openMenu('pockets')
       }
       row.append(b)
       body.append(row)
     }
   }
 
-  toggleJournal(): void {
-    if (this.panelOpen) {
-      this.closePanels()
-      return
-    }
+  private renderNotes(body: HTMLElement): void {
     const g = this.game!
-    this.openPanel('Journal')
-    const body = this.panel.querySelector('.body')!
     const used = (Object.keys(g.memory.used) as Method[]).filter((m) => g.memory.used[m] > 0)
     body.innerHTML = `
+      <h3>Your record</h3>
+      <p class="hint">${escape(g.player.name)}. Theft from a Greggs: a steak bake, four sausage rolls and a festive bake. Sentence: as long as it takes. Known on every landing as the Greggs Bandit.</p>
       <h3>Getting out of your cell</h3>
       <ol class="methods">
         <li><b>Steal a key</b>: get behind an officer (R), or knock one down and take them. Press soap on it to keep a mould.</li>
@@ -220,39 +335,21 @@ export class Ui implements UiPort {
         <li><b>The vent</b> behind your table. Nobody remembers it is there.</li>
       </ol>
       <h3>Silly ways out</h3>
-      <ol class="methods">
-        <li><b>Dress as an officer</b>: a spare uniform from the officers' mess, or the one off an officer you have knocked out. Doors open for you. Clock off through the loading bay's staff gate at shift change (20:45 to 21:20). Don't let anyone stare at you up close.</li>
-        <li><b>Dress as a visitor</b>: the wig and frock from the chapel's panto box. Wear them in the visiting hall (14:30 to 15:45) and shuffle out of the visitors' gate when they leave at 15:30.</li>
-        <li><b>The laundry van</b>: every basket goes through the X-ray in the loading bay. Bribe the operator first with a blue drink (the vending machine in visits) and a sausage roll (the canteen); he has a cuppa in the canteen at breakfast and lunch, and collects baskets from the laundry from 10:00. Then climb into the big basket by the laundry door before 11:00. Unbribed, the X-ray always finds you.</li>
-      </ol>
-      <p class="hint">These are whole escapes on their own: no car needed. Odds now: officer ${Math.round(g.memory.sillyExitChance('guardDisguise') * 100)}%, visitor ${Math.round(g.memory.sillyExitChance('visitorDisguise') * 100)}%, laundry ${Math.round(g.memory.sillyExitChance('laundry') * 100)}%. They get worse each time one is rumbled.</p>
-      <h3>Getting out of the prison</h3>
-      <p>Over the yard wall with a grappling hook, or through the gatehouse with a key. Before you go, get word outside: a <b>phone call</b> that never says when (car waits three nights), the <b>flag</b> on the yard pole by day, or a <b>torch</b> from your window at night.</p>
-      <h3>Jobs</h3>
-      ${g.missions.active.length ? g.missions.active.map((m) => `<div class="gang" style="border-left-color:${m.done ? css(HEX.yardGrass) : css(HEX.gateYellow)}"><b>${escape(m.tpl.title)}</b>, for ${escape(m.giverName)}<br>${escape(m.brief)}<br><small>${escape(g.missions.describe(m))}</small></div>`).join('') : '<p class="hint">No jobs on. Gang bosses always have work. Look for "(has a job)" and "(wants a word)" when you talk to people: officers who want something done quietly change every morning.</p>'}
-      <p class="hint">Jobs done: ${g.missions.completedCount}. Gang jobs knock their riot price down. Officers pay in snout and, sometimes, in looking the other way once.</p>
+      <p class="hint">Whole escapes on their own, no car needed. Odds now: officer ${Math.round(g.memory.sillyExitChance('guardDisguise') * 100)}%, visitor ${Math.round(g.memory.sillyExitChance('visitorDisguise') * 100)}%, laundry ${Math.round(g.memory.sillyExitChance('laundry') * 100)}% once ${escape(g.keith.name)} is paid. They get worse each time one is rumbled.</p>
       <h3>The firms</h3>
       ${GANG_IDS.map((id) => {
         const def = GANGS[id]
         const st = g.memory.gangs[id]
         const leader = g.gangLeader(id)
         const backing = g.memory.backing(id, g.clock.minutes)
-        return `<div class="gang" style="border-left-color:${css(def.hex)}"><b>${def.name}</b>, ${def.wing} wing. Boss: ${leader ? escape(leader.name) : 'nobody'}.<br>${escape(def.blurb)}<br><small>Price to back a riot: ${g.memory.bribePrice(id)} snout · Hostility ${Math.round(st.hostility * 100)}%${backing ? ' · <b>backing you</b>' : ''} · Rival: ${GANGS[def.rival].name}</small></div>`
+        return `<div class="gang" style="border-left-color:${css(def.hex)}"><b>${def.name}</b>, ${def.wing} wing. Boss: ${leader ? escape(leader.name) : 'nobody'}.<br>${escape(def.blurb)}<br><small>Riot price: ${g.memory.bribePrice(id)} snout · Hostility ${Math.round(st.hostility * 100)}%${backing ? ' · <b>backing you</b>' : ''} · Rival: ${GANGS[def.rival].name}</small></div>`
       }).join('')}
-      <p class="hint">Nobody kicks off on a landing without the firm that runs it. Paying one firm offends its rival. Every riot the officers put down puts the price up.</p>
-      <h3>Attempts</h3>
-      <p class="hint">Being out of bounds only becomes an attempt once an officer sees you. Get back behind your door before they catch you and it does not count. ${g.hard ? 'Hard mode: no sight guide.' : 'The pale shapes on the floor are what each officer can see, cut off by walls; the small ring behind them is how close you can creep before they notice.'}</p>
       <h3>What they have learned</h3>
       ${g.memory.lessons.length ? `<ul>${g.memory.lessons.map((l) => `<li>${escape(l.text)}</li>`).join('')}</ul>` : '<p class="hint">Nothing yet. Every failed attempt teaches them.</p>'}
       ${used.length ? `<p class="hint">Methods burned: ${used.map((m) => `${METHOD_NAMES[m]} ×${g.memory.used[m]}`).join(', ')}</p>` : ''}
-      <p class="hint">Phone line strictness: ${g.memory.phoneStrictness}/3</p>
+      <p class="hint">Being out of bounds only becomes an attempt once an officer sees you. Get back behind your door before they catch you and it does not count. Phone line strictness: ${g.memory.phoneStrictness}/3.</p>
       <h3>Keys</h3>
-      <p class="hint">WASD move · Shift run · C sneak · E use · R alternate · F fight · Tab pockets & crafting · Q chew soap · H fake sick · G kick off · Z sleep · M map · J journal</p>`
-    const close = document.createElement('button')
-    close.className = 'ghost'
-    close.textContent = 'Close'
-    close.onclick = () => this.closePanels()
-    body.append(close)
+      <p class="hint">WASD move · Shift run · C sneak · E use · R alternate · F fight · Tab pockets · J notebook · Q chew soap · H fake sick · G kick off · Z sleep · M map</p>`
   }
 
   toggleMap(): void {
