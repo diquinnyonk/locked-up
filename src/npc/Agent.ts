@@ -187,6 +187,7 @@ export abstract class Agent {
       if (t === Tile.Door) return (grid.doorAtTile(tx, ty)?.openness ?? 0) < 0.6
       return true
     })
+    grid.pushOutOfProps(this.body, RADIUS)
 
     this.body.speed += (Math.min(speed, this.wantSpeed + 0.5) - this.body.speed) * Math.min(1, delta * 8)
     let yaw = this.lookYaw

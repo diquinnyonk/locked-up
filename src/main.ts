@@ -63,6 +63,8 @@ function begin(): void {
   ui.onSpeak = (key) => voice.play(key)
   buildTouchControls(game.input, () => ui.toggleMenu('main'))
   document.getElementById('menubtn')!.onclick = () => ui.toggleMenu('main')
+  document.getElementById('mapbtn')!.onclick = () => ui.toggleMap()
+  document.getElementById('minimap')!.onclick = () => ui.toggleMap()
   ui.card(
     `${name}, the Greggs Bandit`,
     `Welcome to HMP Blackmoor. You share cell A8 with ${game.cellmate?.name ?? 'a stranger'}.\nGet out of your cell, get out of the wing, get over the wall, and have someone waiting when you do.\nOut of bounds only counts as an attempt once an officer sees you, and if you make it back to your cell it never happened.${game.hard ? '' : ' The pale shapes on the floor are what each officer can see.'}\nPress J (or Menu) for your notebook: the main mission, your jobs, your pockets and everything the prison learns.`,

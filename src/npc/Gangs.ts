@@ -29,7 +29,7 @@ export const GANGS: Record<GangId, GangDef> = {
     wing: 'A',
     hex: 0x8e2b3a,
     rival: 'crows',
-    blurb: 'Old-school East End faces in maroon. They run the snout on A wing and expect to be asked first.',
+    blurb: 'Old-school East End faces in maroon. They run the Greggs vouchers on A wing and expect to be asked first.',
     leaderNick: 'Uncle',
   },
   crows: {

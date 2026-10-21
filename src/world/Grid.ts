@@ -97,6 +97,10 @@ export class Grid {
   readonly doors: Door[] = []
   private readonly doorAt = new Map<number, Door>()
   readonly rooms = new Map<string, Room>()
+  /** Furniture nobody walks through (canteen tables), as world rectangles. */
+  readonly props: { x0: number; z0: number; x1: number; z1: number }[] = []
+  /** Tiles whose middle a prop covers: paths go round them. */
+  private readonly propTiles = new Set<number>()
   readonly cells = new Map<string, CellInfo>()
   readonly ducts: Rect[] = []
   readonly grates: Grate[] = []
@@ -304,6 +308,54 @@ export class Grid {
     return this.doorAt.get(ty * MAP_W + tx)
   }
 
+  /** Registers a solid piece of furniture centred on x/z. */
+  addProp(x: number, z: number, w: number, d: number): void {
+    const p = { x0: x - w / 2, z0: z - d / 2, x1: x + w / 2, z1: z + d / 2 }
+    this.props.push(p)
+    for (let ty = Math.floor(p.z0 / TILE); ty <= Math.floor(p.z1 / TILE); ty++) {
+      for (let tx = Math.floor(p.x0 / TILE); tx <= Math.floor(p.x1 / TILE); tx++) {
+        // Blocked if the prop reaches the middle of the tile, where paths run.
+        const cx = (tx + 0.5) * TILE
+        const cz = (ty + 0.5) * TILE
+        const m = 0.6
+        if (p.x1 > cx - m && p.x0 < cx + m && p.z1 > cz - m && p.z0 < cz + m) this.propTiles.add(ty * MAP_W + tx)
+      }
+    }
+  }
+
+  /** Is this tile under a table, for path planning? */
+  underProp(tx: number, ty: number): boolean {
+    return this.propTiles.has(ty * MAP_W + tx)
+  }
+
+  /** Pushes a circle out of any prop it has walked into. */
+  pushOutOfProps(pos: { x: number; z: number }, r: number): void {
+    for (const p of this.props) {
+      const nx = Math.max(p.x0, Math.min(pos.x, p.x1))
+      const nz = Math.max(p.z0, Math.min(pos.z, p.z1))
+      const dx = pos.x - nx
+      const dz = pos.z - nz
+      const d2 = dx * dx + dz * dz
+      if (d2 >= r * r) continue
+      if (d2 > 1e-6) {
+        const d = Math.sqrt(d2)
+        pos.x = nx + (dx / d) * r
+        pos.z = nz + (dz / d) * r
+      } else {
+        // Centre inside the table: out by the nearest edge.
+        const left = pos.x - p.x0
+        const right = p.x1 - pos.x
+        const top = pos.z - p.z0
+        const bottom = p.z1 - pos.z
+        const m = Math.min(left, right, top, bottom)
+        if (m === left) pos.x = p.x0 - r
+        else if (m === right) pos.x = p.x1 + r
+        else if (m === top) pos.z = p.z0 - r
+        else pos.z = p.z1 + r
+      }
+    }
+  }
+
   /** Can a body stand in this tile right now? Doors count when open enough. */
   passable(tx: number, ty: number): boolean {
     const t = this.tile(tx, ty)
@@ -373,10 +425,14 @@ export class Grid {
   randomTileIn(zone: string, rng: () => number): { tx: number; ty: number } {
     const room = this.rooms.get(zone)
     if (!room) return { tx: 40, ty: 24 }
-    const r = room.rects[Math.floor(rng() * room.rects.length)]
-    return {
-      tx: r.x0 + Math.floor(rng() * (r.x1 - r.x0 + 1)),
-      ty: r.y0 + Math.floor(rng() * (r.y1 - r.y0 + 1)),
+    // Never a spot under a canteen table.
+    for (let tries = 0; ; tries++) {
+      const r = room.rects[Math.floor(rng() * room.rects.length)]
+      const t = {
+        tx: r.x0 + Math.floor(rng() * (r.x1 - r.x0 + 1)),
+        ty: r.y0 + Math.floor(rng() * (r.y1 - r.y0 + 1)),
+      }
+      if (!this.underProp(t.tx, t.ty) || tries > 8) return t
     }
   }
 }

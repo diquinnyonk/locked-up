@@ -40,7 +40,7 @@ const LETTERS: LetterTemplate[] = [
     from: 'Nan',
     sign: 'All my love, Nan. PS. Stay away from girls with tattoos.',
     body: "I've put a postal order in, don't tell your mother. Your grandad did six months in 1971 for nicking a traffic cone and he came out a better man. Well, a man. I've knitted you a scarf, but they sent it back saying it was \"a potential rope\". It is a scarf, {name}.",
-    gift: { item: 'snout', count: 2, line: "Tucked in the fold: Nan's postal order, cashed by the wing as 2 snout." },
+    gift: { item: 'voucher', count: 2, line: "Tucked in the fold: Nan's postal order, which the canteen will only take as 2 Greggs vouchers." },
   },
   {
     id: 'dazza-1',
@@ -96,7 +96,7 @@ const LETTERS: LetterTemplate[] = [
     from: 'Nan',
     sign: 'Nan. PS. The vicar sends his regards and wants his panto wig back.',
     body: "I went to see the vicar about you. He said you're in his prayers. Then he said, funny thing, the prison chapel borrowed the church's whole panto costume box for Christmas and never gave it back. Frocks, wigs, the lot. He looked at me very hard when he said it. I don't know why.",
-    gift: { item: 'snout', count: 1, line: 'Taped inside the envelope: one cigarette. "For emergencies." (1 snout)' },
+    gift: { item: 'voucher', count: 1, line: 'Taped inside the envelope: one Greggs voucher. "For emergencies."' },
   },
   {
     id: 'blackmoor-bugle',

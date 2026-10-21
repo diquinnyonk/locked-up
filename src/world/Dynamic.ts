@@ -15,7 +15,7 @@ import { toon } from '../art/toonMaterial'
 import { ball, box, cyl } from '../art/shapes'
 import { SOLID_LAYER } from '../render/CelPipeline'
 import type { ItemId } from '../game/Items'
-import { ITEMS } from '../game/Items'
+import { itemGeometry } from '../art/itemModels'
 import { type Door, type Grate, type Grid, TILE } from './Grid'
 import { PERIMETER_H, WALL_H } from './Build'
 
@@ -77,6 +77,28 @@ export class Dynamic {
     this.marker = new Mesh(chevron, new MeshBasicMaterial({ color: color(HEX.player), depthTest: false, transparent: true }))
     this.marker.renderOrder = 10
     this.group.add(this.marker)
+    this.chevron = chevron
+  }
+
+  private chevron: ConeGeometry
+  private readonly beacons: Mesh[] = []
+
+  /** Smaller chevrons over Keith and over whatever your jobs need. */
+  setBeacons(list: { x: number; z: number; hex: number }[]): void {
+    while (this.beacons.length < list.length) {
+      const m = new Mesh(this.chevron, new MeshBasicMaterial({ depthTest: false, transparent: true, opacity: 0.9 }))
+      m.renderOrder = 10
+      m.scale.setScalar(0.75)
+      this.beacons.push(m)
+      this.group.add(m)
+    }
+    this.beacons.forEach((m, i) => {
+      const b = list[i]
+      m.visible = !!b
+      if (!b) return
+      ;(m.material as MeshBasicMaterial).color.copy(color(b.hex))
+      m.position.set(b.x, 2.7 + Math.sin(this.time * 3 + i) * 0.08, b.z)
+    })
   }
 
   private buildDoor(door: Door): void {
@@ -217,17 +239,12 @@ export class Dynamic {
   }
 
   spawnItem(id: ItemId, x: number, z: number, zone: string): LooseItem {
-    const def = ITEMS[id]
-    const long = ['poolCue', 'mopHandle', 'spear', 'rope', 'grapple'].includes(id)
-    const flat = ['bedsheet', 'magazine', 'tray', 'flag'].includes(id)
-    const geometry = long
-      ? box(1.4, 0.1, 0.1, { x: 0, y: 0, z: 0 }, def.hex)
-      : flat
-        ? box(0.6, 0.08, 0.45, { x: 0, y: 0, z: 0 }, def.hex)
-        : box(0.3, 0.2, 0.3, { x: 0, y: 0, z: 0 }, def.hex)
-    const mesh = new Mesh(geometry, toon(0xffffff, { tinted: true, emissive: 0.25 }))
+    const mesh = new Mesh(itemGeometry(id), toon(0xffffff, { tinted: true, emissive: 0.2 }))
     mesh.layers.enable(SOLID_LAYER)
-    mesh.position.set(x, 0.15, z)
+    // Dropped where it fell, at whatever angle: still, not spinning.
+    mesh.position.set(x, 0.01, z)
+    mesh.rotation.y = ((Math.sin(x * 12.9898 + z * 78.233) * 43758.5453) % 1) * Math.PI * 2
+    mesh.scale.setScalar(1.6)
     this.itemGroup.add(mesh)
     const item = { id, x, z, mesh, zone }
     this.items.push(item)
@@ -294,10 +311,6 @@ export class Dynamic {
       m.sealed.visible = g.sealed
       m.open.visible = !g.sealed && g.open
       m.shut.visible = !g.sealed && !g.open
-    }
-    for (const it of this.items) {
-      it.mesh.position.y = 0.18 + Math.sin(this.time * 3 + it.x) * 0.06
-      it.mesh.rotation.y += delta * 1.2
     }
     this.flag.visible = opts.flag
     if (opts.flag) {

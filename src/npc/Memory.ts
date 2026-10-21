@@ -72,7 +72,7 @@ export class PrisonMemory {
   }
 
   /**
-   * Snout a firm wants to back a riot. Goes up with every riot the
+   * Greggs vouchers a firm wants to back a riot. Goes up with every riot the
    * officers have already put down, and every time you have come back.
    */
   bribePrice(gang: GangId): number {
@@ -205,7 +205,7 @@ function lessonFor(method: Method, times: number): string {
       return times === 1 ? 'Healthcare wants real symptoms now, and sends two officers.' : 'Night sick calls are ignored unless you are frothing.'
     case 'riot':
       return times === 1
-        ? 'Gate officers no longer leave their posts in a disturbance, and the firms want more snout to risk it again.'
+        ? 'Gate officers no longer leave their posts in a disturbance, and the firms want more Greggs vouchers to risk it again.'
         : 'They need a bigger crowd to lose control now, and the firms charge double.'
     case 'vent':
       return 'Officers stop under vent grilles to listen.'

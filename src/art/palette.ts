@@ -126,7 +126,7 @@ export const HEX = {
   metal: 0xb8c3c6,
   plastic: 0xe8575a,
   cloth: 0xe9e0c6,
-  snout: 0xd9a45b,
+  voucher: 0x2a4a9a,
   battery: 0x3a3b44,
 
   /** Light and atmosphere. */

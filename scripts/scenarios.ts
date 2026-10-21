@@ -7,6 +7,7 @@ import { Scene } from 'three'
 import { Game, type UiPort } from '../src/game/Game'
 import { screenCall } from '../src/game/Phone'
 import { TILE, tileCentre } from '../src/world/Grid'
+import { findPath } from '../src/world/Nav'
 
 ;(globalThis as unknown as { window: unknown }).window = globalThis
 ;(globalThis as unknown as { addEventListener: unknown }).addEventListener = () => {}
@@ -155,10 +156,10 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   const boss = game.gangLeader('firm')!
   check('gangs: four firms each with a boss', (['firm', 'crows', 'lions', 'northern'] as const).every((g) => !!game.gangLeader(g)))
   check('gangs: five of the home firm on each wing', game.prisoners.filter((p) => p.gang === 'firm' && p.block === 'A').length === 5)
-  for (let i = 0; i < 6; i++) game.player.inventory.add('snout')
+  for (let i = 0; i < 6; i++) game.player.inventory.add('voucher')
   game.talkTo(boss)
   const pay = lastTalk?.options.find((o) => o.label.startsWith('Pay'))
-  check('gangs: boss offers to back a riot for snout', !!pay && pay.enabled, pay?.label)
+  check('gangs: boss offers to back a riot for Greggs vouchers', !!pay && pay.enabled, pay?.label)
   pay?.run()
   check('gangs: the Firm now backs you', game.memory.backing('firm', game.clock.minutes) && boss.supporter, log[log.length - 1])
   check('gangs: their rival takes offence', game.memory.gangs.crows.hostility > 0)
@@ -179,10 +180,10 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   take()
   check('jobs: job taken', game.missions.active.length === 1)
   game.player.inventory.add('soap')
-  const snoutBefore = game.player.inventory.count('snout')
+  const snoutBefore = game.player.inventory.count('voucher')
   const price = game.memory.bribePrice('firm')
   job("It's done")?.run()
-  check('jobs: soap handed in for snout', game.player.inventory.count('snout') === snoutBefore + 2 && !game.player.inventory.has('soap'), log[log.length - 1])
+  check('jobs: soap handed in for Greggs vouchers', game.player.inventory.count('voucher') === snoutBefore + 2 && !game.player.inventory.has('soap'), log[log.length - 1])
   check('jobs: the riot price drops', game.memory.bribePrice('firm') < price, `${price} -> ${game.memory.bribePrice('firm')}`)
 
   job('Got any work')?.run()
@@ -252,7 +253,7 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
 {
   const { game, log } = fresh()
   const officer = game.guards[0]
-  const quiet = { id: 'quiet-shift', title: 'The Quiet Shift', brief: 'Keep your nose clean till {time}.', objective: { kind: 'behave', hours: 3 }, reward: { snout: 2 }, thanks: 'ta' }
+  const quiet = { id: 'quiet-shift', title: 'The Quiet Shift', brief: 'Keep your nose clean till {time}.', objective: { kind: 'behave', hours: 3 }, reward: { vouchers: 2 }, thanks: 'ta' }
   ;(game.missions as any).officerOffers.set(officer, quiet)
   ;(game as any).talkToGuard(officer)
   lastTalk?.options.find((o) => o.label.includes('Got any work'))?.run()
@@ -272,9 +273,85 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   check('riot: nobody kicks off without paying the firm', !game.riot.active && log[log.length - 1].includes('Pay'), log[log.length - 1])
 }
 
-// ---- Vents ----
+// ---- Canteen tables are solid ----
+{
+  const { game } = fresh()
+  const t = game.grid.props[0]
+  const row = Math.floor((t.z0 + t.z1) / 2 / TILE)
+  const path = findPath(game.grid, { tx: Math.floor(t.x0 / TILE) - 1, ty: row }, { tx: Math.floor(t.x1 / TILE) + 1, ty: row }, () => true)
+  check('canteen: paths go round the tables', !!path && path.every((p) => !game.grid.underProp(p.tx, p.ty)), path?.map((p) => `${p.tx},${p.ty}`).join(' '))
+  const body = { x: (t.x0 + t.x1) / 2, z: (t.z0 + t.z1) / 2 + 0.1 }
+  game.grid.pushOutOfProps(body, 0.36)
+  check('canteen: nobody stands inside a table', body.z >= t.z1 + 0.35 || body.z <= t.z0 - 0.35 || body.x <= t.x0 - 0.35 || body.x >= t.x1 + 0.35)
+  // A minute of lunch: no one ends up inside a table.
+  game.clock.skipTo(12 * 60)
+  run(game, 60)
+  const inside = [...game.prisoners, ...game.guards].filter((a) => game.grid.props.some((q) => a.body.x > q.x0 + 0.05 && a.body.x < q.x1 - 0.05 && a.body.z > q.z0 + 0.05 && a.body.z < q.z1 - 0.05))
+  check('canteen: a whole lunch with nobody walking through a table', inside.length === 0, inside.map((a) => a.body.x.toFixed(1) + ',' + a.body.z.toFixed(1)).join(' '))
+}
+
+// ---- Sleeping on your bunk ----
+{
+  const { game } = fresh()
+  game.clock.skipTo(23 * 60)
+  run(game, 1)
+  const cell = game.grid.cells.get(game.player.cell)!
+  game.player.body.yaw = 2.1
+  ;(game as any).trySleep()
+  check('sleep: lie straight along the bunk', game.player.body.pose === 'sleep' && game.player.body.yaw === 0 && game.player.body.x === cell.bunks[0].x)
+  game.input.forced = { x: 1, z: 0 }
+  run(game, 0.2)
+  game.input.forced = null
+  check('sleep: waking climbs down to the floor', !game.sleeping && game.player.body.y === 0 && game.player.body.pose !== 'sleep')
+}
+
+// ---- Map targets on normal ----
+{
+  const { game } = fresh()
+  const officer = game.guards[0]
+  const fetch = { id: 'fetch-test', title: 'Socks', brief: 'Socks.', objective: { kind: 'fetch', item: 'sock' }, reward: { vouchers: 1 }, thanks: 'ta' }
+  ;(game.missions as any).officerOffers.set(officer, fetch)
+  ;(game as any).talkToGuard(officer)
+  lastTalk?.options.find((o) => o.label.includes('Got any work'))?.run()
+  lastTalk?.options.find((o) => o.label.startsWith('Take the job'))?.run()
+  const socks = game.dynamic.items.filter((it) => it.id === 'sock').length
+  const targets = game.missions.mapTargets()
+  check('map: a fetch job lights up every sock lying about', socks > 0 && targets.length === socks, `${targets.length} of ${socks}`)
+  game.player.inventory.add('sock')
+  const back = game.missions.mapTargets()
+  check('map: once you have it, the map points back to the giver', back.length === 1 && Math.hypot(back[0].x - officer.x, back[0].z - officer.z) < 0.01)
+}
+
+// ---- Vents on normal: crawling is quiet, and you stay in the duct ----
+{
+  const { game } = fresh()
+  game.player.inventory.add('spoon')
+  game.clock.skipTo(23 * 60)
+  run(game, 1)
+  put(game, 19, 19)
+  prompt(game, 'Unscrew')
+  prompt(game, 'Climb into')
+  game.input.forced = { x: 0, z: -1 }
+  run(game, 2)
+  // Push across the duct: the body must not swing out over the room.
+  const yawBefore = game.player.body.yaw
+  game.input.forced = { x: 1, z: 0 }
+  run(game, 6)
+  game.input.forced = { x: 0, z: 1 }
+  const zBefore = game.player.body.z
+  run(game, 1)
+  check('vent: pushing into a duct wall neither moves nor turns you', Math.abs(game.player.body.z - zBefore) < 0.01 || game.grid.inDuct(game.player.body.x, game.player.body.z), `${yawBefore.toFixed(2)} ${game.player.body.yaw.toFixed(2)}`)
+  const heard = game.guards.filter((gu) => gu.investigate).length
+  game.input.forced = { x: 1, z: 0 }
+  const caught = run(game, 30, () => game.memory.attemptsUsed > 0)
+  game.input.forced = null
+  check('vent: crawling on normal is quiet enough to get across', !caught && game.player.inVent, `heard by ${heard}`)
+}
+
+// ---- Vents (hard: the tin carries) ----
 {
   const { game, log } = fresh()
+  game.hard = true
   game.player.inventory.add('spoon')
   game.clock.skipTo(23 * 60)
   run(game, 1)
@@ -474,8 +551,8 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   game.player.body.x = 43
   game.player.body.z = 100.4
   game.player.zone = 'visits'
-  const before = game.player.inventory.count('snout')
-  check('vending: blue drink for a snout', prompt(game, 'Vending machine') && game.player.inventory.has('blueDrink') && game.player.inventory.count('snout') === before - 1)
+  const before = game.player.inventory.count('voucher')
+  check('vending: blue drink for a Greggs voucher', prompt(game, 'Vending machine') && game.player.inventory.has('blueDrink') && game.player.inventory.count('voucher') === before - 1)
 }
 
 // ---- A knocked-out officer's uniform ----

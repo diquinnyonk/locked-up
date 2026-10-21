@@ -170,6 +170,7 @@ export function buildPrison(grid: Grid): { group: Group; fixtures: Fixtures } {
     for (let col = 0; col < 2; col++) {
       const p = at(36.5 + col * 6, 19.5 + row * 3.2)
       table(add, p, 4.4, 1.6, HEX.tableTop)
+      grid.addProp(p.x, p.z, 4.4, 1.6)
       for (const side of [-1, 1]) {
         add(box(4.4, 0.45, 0.45, { x: p.x, y: 0, z: p.z + side * 1.25 }, HEX.steel))
         fixtures.benches.push({ x: p.x, z: p.z + side * 1.25, zone: 'hub' })

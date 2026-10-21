@@ -21,7 +21,7 @@ export type ItemId =
   | 'battery'
   | 'wire'
   | 'tape'
-  | 'snout'
+  | 'voucher'
   | 'magazine'
   | 'lighter'
   | 'dart'
@@ -85,7 +85,7 @@ export const ITEMS: Record<ItemId, ItemDef> = {
   battery: { id: 'battery', name: 'Batteries', hex: HEX.battery, damage: 1, uses: [], contraband: false, blurb: 'From the telly remote.' },
   wire: { id: 'wire', name: 'Copper wire', hex: HEX.clothesYellow, damage: 0, uses: [], contraband: true, blurb: 'Bend it into anything.' },
   tape: { id: 'tape', name: 'Gaffer tape', hex: HEX.steelDark, damage: 0, uses: [], contraband: false, blurb: 'Holds everything together.' },
-  snout: { id: 'snout', name: 'Snout (tobacco)', hex: HEX.snout, damage: 0, uses: ['bribe'], contraband: false, blurb: 'Prison money. Buys friends, buys silence.' },
+  voucher: { id: 'voucher', name: 'Greggs voucher', hex: HEX.voucher, damage: 0, uses: ['bribe'], contraband: false, blurb: 'Good for one sausage roll at any branch. In Blackmoor it is the only money that matters. Buys friends, buys silence.' },
   magazine: { id: 'magazine', name: 'Rolled magazine', hex: HEX.clothesYellow, damage: 1, uses: ['distract'], contraband: false, blurb: 'Roll it tight and tape it: it is a club.' },
   lighter: { id: 'lighter', name: 'Lighter', hex: HEX.clothesRed, damage: 0, uses: ['heat'], contraband: true, blurb: 'Melts plastic. Lights mattresses.' },
   dart: { id: 'dart', name: 'Dart', hex: HEX.metal, damage: 2, uses: [], contraband: true, blurb: 'From the games room board.' },
@@ -144,6 +144,11 @@ export const RECIPES: Recipe[] = [
 ]
 
 export const INVENTORY_SLOTS = 8
+
+/** "1 Greggs voucher", "3 Greggs vouchers". */
+export function vouchers(n: number): string {
+  return `${n} Greggs voucher${n === 1 ? '' : 's'}`
+}
 
 export class Inventory {
   readonly items: { id: ItemId; durability: number }[] = []
@@ -235,12 +240,12 @@ export class Inventory {
 /** Where loose items turn up, by room. Restocked each morning. */
 export const SPAWNS: { zone: string; items: ItemId[] }[] = [
   { zone: 'showers', items: ['soap', 'razor', 'toothbrush', 'toothpaste', 'sock'] },
-  { zone: 'laundry', items: ['bedsheet', 'bedsheet', 'sock', 'bleach', 'mopHandle', 'snout'] },
+  { zone: 'laundry', items: ['bedsheet', 'bedsheet', 'sock', 'bleach', 'mopHandle', 'voucher'] },
   { zone: 'hub', items: ['spoon', 'fork', 'tray', 'spoon', 'fork', 'biscuits', 'sausageRoll'] },
-  { zone: 'games', items: ['poolBall', 'poolCue', 'dart', 'battery', 'magazine', 'snout'] },
+  { zone: 'games', items: ['poolBall', 'poolCue', 'dart', 'battery', 'magazine', 'voucher'] },
   { zone: 'maint', items: ['screwdriver', 'wire', 'tape', 'lighter', 'tape'] },
   { zone: 'infirmary', items: ['tape', 'bleach', 'teabags'] },
-  { zone: 'yard', items: ['snout'] },
+  { zone: 'yard', items: ['voucher'] },
   { zone: 'blockA', items: ['magazine', 'mopHandle'] },
   { zone: 'chapel', items: ['wig', 'dress', 'bedsheet'] },
   { zone: 'mess', items: ['guardUniform', 'biscuits', 'teabags'] },

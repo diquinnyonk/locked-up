@@ -23,7 +23,7 @@ import type { World } from './World'
  *   ├─ bang-up ................................. back to the cell
  *   └─ the regime .............................. meals, work, yard, association
  *
- * Each one remembers you: `trust` goes up with snout and favours, `grudge`
+ * Each one remembers you: `trust` goes up with Greggs vouchers and favours, `grudge`
  * with every punch and every time your trouble lands on them. Snitches who
  * see a report pay off report more readily; the gang's grudge feeds the
  * prison-wide hostility that decides how this ends if you never get out.
@@ -36,7 +36,7 @@ const NICK = ['Big', 'Little', 'Mad', 'Posh', 'Two-Sugars', 'Biscuits', 'Kettle'
 const WALK = 2.2
 const RUN = 4.6
 
-/** What a fixer will sell you, for snout. */
+/** What a fixer will sell you, for Greggs vouchers. */
 const STOCK: ItemId[][] = [
   ['razor', 'lighter'],
   ['wire', 'tape'],

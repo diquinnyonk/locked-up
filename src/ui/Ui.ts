@@ -2,7 +2,8 @@ import type { Camera } from 'three'
 import { Vector3 } from 'three'
 import { HEX, css } from '../art/palette'
 import type { Game, UiPort } from '../game/Game'
-import { ITEMS, INVENTORY_SLOTS, RECIPES } from '../game/Items'
+import { ITEMS, INVENTORY_SLOTS, type ItemId, RECIPES, vouchers } from '../game/Items'
+import { itemIcon } from './itemIcons'
 import { ATTEMPTS_PER_ROUND, METHOD_NAMES, ROUNDS, type Method } from '../npc/Memory'
 import { MAP_H, MAP_W, PLAYER_CELL, Tile } from '../world/Grid'
 import { GANGS, GANG_IDS, gangOfWing } from '../npc/Gangs'
@@ -243,7 +244,7 @@ export class Ui implements UiPort {
           ${tick(!!inv.withUse('openDoor'), 'Have a key', 'Lift one from an officer (R), or forge one from a soap mould.')}
           ${tick(myDoor.jammed, 'Toothpaste in your lock', 'Stand in your open doorway by day and press R.')}
           ${tick(!m.sickIgnored && (!m.sickNeedsFroth || inv.has('soap')), 'Fake sickness ready', m.sickNeedsFroth ? 'They want to see froth now: carry soap to chew (Q).' : 'Press H behind your door at night.')}
-          ${tick(m.backing(firm, now), `${GANGS[firm].name} paid to kick off`, `Their boss wants ${m.bribePrice(firm)} snout. Jobs for them bring the price down.`)}
+          ${tick(m.backing(firm, now), `${GANGS[firm].name} paid to kick off`, `Their boss wants ${vouchers(m.bribePrice(firm))}. Jobs for them bring the price down.`)}
           ${tick(!vent.sealed && (vent.open || inv.has('spoon') || !!inv.withUse('openVent')), 'The vent behind your table', vent.sealed ? 'Welded shut. They know now.' : 'A spoon will turn the rusty screws.')}
         </ul>
         <h4>Word outside</h4>
@@ -259,7 +260,7 @@ export class Ui implements UiPort {
         <ul class="checks">
           ${tick(inv.has('guardUniform'), "An officer's uniform", 'Clock off with the day shift at 20:45 in the loading bay.')}
           ${tick(inv.has('visitorDisguise'), 'Visitor disguise', 'Leave with the visitors at 15:30.')}
-          ${tick(g.keith.bribedDay === g.clock.day, `${g.keith.name} on the X-ray paid off today`, `${m.xrayBribe} blue drink and ${m.xrayBribe} sausage roll, then into a laundry basket before 11:00.`)}
+          ${tick(g.keith.bribedDay === g.clock.day, `${g.keith.name} on the X-ray paid off today`, `${m.xrayBribe} blue drink and ${m.xrayBribe} sausage roll, then into a laundry basket before 11:00. He sits at the X-ray in the loading bay: the blue square on your map.`)}
         </ul>
       </section>`
   }
@@ -272,7 +273,7 @@ export class Ui implements UiPort {
       ${active.length ? active.map((m) => `<div class="entry${m.done ? ' done' : ''}"><span class="chip" style="background:${m.done ? css(HEX.yardGrass) : css(HEX.gateYellow)}"></span><div><b>${escape(m.tpl.title)}</b> for ${escape(m.giverName)}<p>${escape(m.brief)}</p><small>${m.done ? 'Done. ' : ''}${escape(g.missions.describe(m))}</small></div></div>`).join('') : '<p class="hint">No jobs on. You can have three at once.</p>'}
       <h3>Who has work</h3>
       ${offers.length ? `<ul>${offers.map((o) => `<li><b>${escape(o.name)}</b>: ${escape(o.where)}</li>`).join('')}</ul>` : '<p class="hint">Nobody, for now. Officers with favours to ask change every morning.</p>'}
-      <p class="hint">Jobs done: ${g.missions.completedCount}. Gang jobs bring their riot price down. Officers pay in snout, goodwill or a blind eye.</p>`
+      <p class="hint">Jobs done: ${g.missions.completedCount}. Gang jobs bring their riot price down. Officers pay in Greggs vouchers, goodwill or a blind eye.</p>`
   }
 
   private renderPockets(body: HTMLElement): void {
@@ -284,7 +285,7 @@ export class Ui implements UiPort {
       const def = ITEMS[it.id]
       const row = document.createElement('div')
       row.className = 'row'
-      row.innerHTML = `<span class="chip" style="background:${css(def.hex)}"></span><span class="name">${def.name}${def.contraband ? ' <i>contraband</i>' : ''}<small>${def.blurb}${def.damage > 1 ? ` · damage ${def.damage}` : ''}</small></span>`
+      row.innerHTML = `${icon(it.id)}<span class="name">${def.name}${def.contraband ? ' <i>contraband</i>' : ''}<small>${def.blurb}${def.damage > 1 ? ` · damage ${def.damage}` : ''}</small></span>`
       const use = document.createElement('button')
       const wearing = (it.id === 'guardUniform' && g.player.disguise === 'guard') || (it.id === 'visitorDisguise' && g.player.disguise === 'visitor')
       use.textContent = def.uses.includes('disguise') ? (wearing ? 'Take off' : 'Wear') : it.id === 'soap' ? 'Chew' : def.uses.includes('distract') ? 'Throw' : 'Inspect'
@@ -314,7 +315,7 @@ export class Ui implements UiPort {
       const needs = r.needs.map((n) => ITEMS[n].name).join(' + ')
       const tools = r.tools?.length ? ` <small>using ${r.tools.map((t) => ITEMS[t].name).join(', ')}</small>` : ''
       const where = r.where ? ` <small>${r.where}</small>` : ''
-      row.innerHTML = `<span class="chip" style="background:${css(ITEMS[r.makes].hex)}"></span><span class="name">${ITEMS[r.makes].name}<small>${needs}</small>${tools}${where}</span>`
+      row.innerHTML = `${icon(r.makes)}<span class="name">${ITEMS[r.makes].name}<small>${needs}</small>${tools}${where}</span>`
       const b = document.createElement('button')
       b.textContent = 'Make'
       b.disabled = !ok
@@ -422,7 +423,7 @@ export class Ui implements UiPort {
         const st = g.memory.gangs[id]
         const leader = g.gangLeader(id)
         const backing = g.memory.backing(id, g.clock.minutes)
-        return `<div class="entry"><span class="chip" style="background:${css(def.hex)}"></span><div><b>${def.name}</b>, ${def.wing} wing. Boss: ${leader ? escape(leader.name) : 'nobody'}.<p>${escape(def.blurb)}</p><small>Riot price ${g.memory.bribePrice(id)} snout. Hostility ${Math.round(st.hostility * 100)}%.${backing ? ' Backing you.' : ''} Rival: ${GANGS[def.rival].name}.</small></div></div>`
+        return `<div class="entry"><span class="chip" style="background:${css(def.hex)}"></span><div><b>${def.name}</b>, ${def.wing} wing. Boss: ${leader ? escape(leader.name) : 'nobody'}.<p>${escape(def.blurb)}</p><small>Riot price ${vouchers(g.memory.bribePrice(id))}. Hostility ${Math.round(st.hostility * 100)}%.${backing ? ' Backing you.' : ''} Rival: ${GANGS[def.rival].name}.</small></div></div>`
       }).join('')}
       <h3>What they have learned</h3>
       ${g.memory.lessons.length ? `<ul>${g.memory.lessons.map((l) => `<li>${escape(l.text)}</li>`).join('')}</ul>` : '<p class="hint">Nothing yet. Every failed attempt teaches them.</p>'}
@@ -435,6 +436,10 @@ export class Ui implements UiPort {
   toggleMap(): void {
     this.bigMap = !this.bigMap
     this.minimap.classList.toggle('big', this.bigMap)
+    document.body.classList.toggle('bigmap', this.bigMap)
+    $('#mapbtn').innerHTML = this.bigMap ? 'Close map <kbd>M</kbd>' : 'Bigger map <kbd>M</kbd>'
+    ;($('#maplegend') as HTMLElement).hidden = !this.bigMap
+    ;($('#maplegend .job') as HTMLElement).parentElement!.hidden = !!this.game?.hard
   }
 
   // ---- Per frame ----
@@ -451,7 +456,8 @@ export class Ui implements UiPort {
     const clock = g.clock
     const next = clock.next
 
-    $('#who').textContent = p.name
+    const home = g.grid.roomName(p.cell)
+    $('#who').innerHTML = `${escape(p.name)} <span class="home">${escape(home)}</span>`
     $('#time').textContent = `Day ${clock.day} · ${clock.text}`
     $('#period').textContent = clock.label
     $('#next').textContent = `${next.label} in ${Math.floor(next.in / 60)}h ${String(Math.floor(next.in % 60)).padStart(2, '0')}m`
@@ -488,7 +494,7 @@ export class Ui implements UiPort {
     $('#contact').textContent = contact
     $('#contact').className = g.carPresent || g.signalTonight || g.contactNights > 0 ? 'on' : ''
     $('#attempt').textContent = p.attempt ? `Attempt: ${METHOD_NAMES[p.attempt]}` : ''
-    $('#zone').textContent = g.grid.roomName(p.zone) || ''
+    $('#zone').textContent = p.zone === p.cell ? `Your cell, ${home.replace('Cell ', '')}` : g.grid.roomName(p.zone) || ''
 
     // Jobs on the go.
     const jobs = g.missions.active
@@ -507,7 +513,7 @@ export class Ui implements UiPort {
       const it = p.inventory.items[i]
       if (it) {
         const def = ITEMS[it.id]
-        html += `<div class="slot${def.contraband ? ' hot' : ''}" title="${def.blurb}"><span class="chip" style="background:${css(def.hex)}"></span>${def.name}</div>`
+        html += `<div class="slot${def.contraband ? ' hot' : ''}" title="${escape(def.blurb)}">${icon(it.id)}<span class="label">${def.name}</span>${def.contraband ? '<span class="tag">Contraband</span>' : ''}</div>`
       } else html += '<div class="slot empty"></div>'
     }
     if (inv.dataset.html !== html) {
@@ -603,7 +609,7 @@ export class Ui implements UiPort {
   private drawMinimap(g: Game): void {
     const ctx = this.mapCtx
     const base = this.mapBase!
-    const size = this.bigMap ? Math.min(window.innerWidth - 32, window.innerHeight - 140, 640) : 180
+    const size = this.bigMap ? Math.min(window.innerWidth - 32, (window.innerHeight - 150) * (MAP_W / MAP_H), 960) : 180
     const ratio = window.devicePixelRatio || 1
     if (this.minimap.width !== Math.round(size * ratio)) {
       this.minimap.width = Math.round(size * ratio)
@@ -635,6 +641,44 @@ export class Ui implements UiPort {
       for (const gr of g.grid.grates) dot((gr.tx + 0.5) * 2, (gr.ty + 0.5) * 2, gr.sealed ? css(HEX.doorRed) : css(HEX.gateYellow), 2.2)
     }
     if (!g.hard) for (const gu of g.guards) if (gu.ko <= 0) dot(gu.x, gu.z, gu.chasing ? css(HEX.visionAlert) : css(HEX.paper), 1.8)
+
+    // Keith on the X-ray: a blue square, always, since the laundry van
+    // goes nowhere without him.
+    const k = g.keith.body
+    const ks = (this.bigMap ? 5 : 3.5) * ratio
+    ctx.fillStyle = css(HEX.stainedBlue)
+    ctx.fillRect(k.x * sx - ks, k.z * sy - ks, ks * 2, ks * 2)
+    ctx.strokeStyle = css(HEX.paper)
+    ctx.lineWidth = 1.5 * ratio
+    ctx.strokeRect(k.x * sx - ks, k.z * sy - ks, ks * 2, ks * 2)
+
+    // On normal, whatever your jobs need lights up: a pulsing gold ring.
+    const labels: { x: number; z: number; text: string }[] = [{ x: k.x, z: k.z, text: 'Keith' }]
+    if (!g.hard) {
+      const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 220)
+      for (const t of g.missions.mapTargets()) {
+        ctx.strokeStyle = css(HEX.gateYellow)
+        ctx.lineWidth = 2.5 * ratio
+        ctx.beginPath()
+        ctx.arc(t.x * sx, t.z * sy, (4 + pulse * 4) * ratio * (this.bigMap ? 1.4 : 1), 0, Math.PI * 2)
+        ctx.stroke()
+        dot(t.x, t.z, css(HEX.gateYellow), this.bigMap ? 3 : 2.2)
+        labels.push({ x: t.x, z: t.z, text: t.label })
+      }
+    }
+    if (this.bigMap) {
+      ctx.font = `600 ${12 * ratio}px Literata, Georgia, serif`
+      ctx.textBaseline = 'middle'
+      for (const l of labels) {
+        const text = l.text.length > 28 ? `${l.text.slice(0, 27)}…` : l.text
+        const w = ctx.measureText(text).width
+        const lx = Math.min(W - w - 6 * ratio, l.x * sx + 10 * ratio)
+        ctx.fillStyle = css(HEX.ink)
+        ctx.fillRect(lx - 3 * ratio, l.z * sy - 9 * ratio, w + 6 * ratio, 18 * ratio)
+        ctx.fillStyle = css(HEX.paper)
+        ctx.fillText(text, lx, l.z * sy)
+      }
+    }
     if (g.carPresent) dot(g.dynamic.car.position.x, g.dynamic.car.position.z, css(HEX.car), 3)
     dot(g.player.body.x, g.player.body.z, css(HEX.player), 3)
     ctx.strokeStyle = css(HEX.ink)
@@ -643,6 +687,12 @@ export class Ui implements UiPort {
     ctx.arc(g.player.body.x * sx, g.player.body.z * sy, 3 * ratio, 0, Math.PI * 2)
     ctx.stroke()
   }
+}
+
+/** A pocket icon, or a colour chip if WebGL would not draw one. */
+function icon(id: ItemId): string {
+  const url = itemIcon(id)
+  return url ? `<img class="icon" src="${url}" alt="">` : `<span class="chip" style="background:${css(ITEMS[id].hex)}"></span>`
 }
 
 function escape(s: string): string {

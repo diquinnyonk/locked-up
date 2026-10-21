@@ -35,7 +35,7 @@ officers call you the Greggs Bandit.
 
 The post comes round every morning at unlock: a letter from home most days,
 two on a good one, each opened and stamped by the censor. Mum is disappointed,
-Nan sends postal orders (snout) and a scarf that got confiscated as "a
+Nan sends postal orders (Greggs vouchers) and a scarf that got confiscated as "a
 potential rope", your brother keeps driving the back roads "for his nerves",
 your ex has kept the George Foreman grill, and a well-known high street bakery
 writes about your loyalty points. Some letters carry something the censor
@@ -81,6 +81,28 @@ exercise book, letters are sheets stamped by the censor, bunk notes are torn
 scraps, and conversations run as film subtitles. Titles are set in Rokkitt,
 text in Literata.
 
+Your pockets sit along the bottom of the screen as eight slots, each showing
+the actual thing you are carrying, drawn from the same little model you
+picked up off the floor. Contraband carries a red stamp. Loose items lie
+still where they were dropped, at whatever angle they fell.
+
+## The map
+
+The minimap sits top right with your cell number on the card beside it.
+Click it, press `M` or use the Bigger map button to open it full size, with
+labels, the ducts and a key. Keith on the X-ray is always the blue square.
+On normal, whatever your jobs need lights up as a pulsing gold ring, on the
+map and as a gold chevron in the world: the thing to fetch, the person to see,
+the room to sniff round, or the person to go back to once it is done. Hard
+mode shows none of it.
+
+## Money
+
+The currency is the **Greggs voucher**: good for one sausage roll at any
+branch, and in Blackmoor the only money that matters. You earn them folding
+sheets in the laundry, from jobs, and from Nan. They buy riots, favours,
+fixers' stock and blue drink.
+
 ## The prison
 
 - **Four wings (A–D)**: ten cells each, two prisoners to a cell, so 20 per wing
@@ -105,12 +127,13 @@ minutes, and you can sleep (Z) through the night.
 | **Steal a key** | Get behind an officer and lift their keys (R), or knock one down and take them. They notice at the next shift change, so press a mould into soap first and make a copy. |
 | **Toothpaste** | By day, stand in your open doorway and pack the strike plate (R). At lights out the door shuts but never locks. Ease it open (E). |
 | **Fake sickness** | Behind your door at night, press H. An officer walks you to healthcare and waits by the door. Slip away, take the vent, or knock them out. |
-| **Riot** | Pay the boss of the firm that runs your wing (see below), then press G. At night the landing goes up and the officers open the cells to pull out ringleaders. By day your lot start swinging and officers leave gates swinging behind them. Mates won over with snout add to the numbers. |
+| **Riot** | Pay the boss of the firm that runs your wing (see below), then press G. At night the landing goes up and the officers open the cells to pull out ringleaders. By day your lot start swinging and officers leave gates swinging behind them. Mates won over with Greggs vouchers add to the numbers. |
 | **The vent** | Your cell has a grille the guards forgot. The screws are rusted enough for a spoon. |
 
-The **vents** connect every room except the cells, plus your own. They are tin,
-so running is loud and officers below come to listen. Get caught in there and
-they weld your cell vent shut.
+The **vents** connect every room except the cells, plus your own. They are tin.
+On normal a steady crawl is quiet and only a scramble (running) carries far;
+on hard every knee on the tin is heard, and running brings officers to the
+nearest grille. Get caught in there and they weld your cell vent shut.
 
 ## Getting out of the prison
 
@@ -137,7 +160,7 @@ at the exit, and each one that gets rumbled makes it harder next time.
 | --- | --- | --- |
 | **Dressed as an officer** | A spare uniform from the officers' mess, or the one off an officer you have knocked out (he is left in his vest and pink boxers until morning) | Wear it (Tab) and doors open for you. Clock off through the staff gate in the loading bay at shift change, 20:45 to 21:20. Mrs Battenberg gives you a lift and talks about her cats. |
 | **Dressed as a visitor** | The panto wig and floral frock from the chapel's costume box, made into a visitor disguise | Wear it in the visiting hall (14:30 to 15:45) and shuffle out of the visitors' gate with everyone else at 15:30. Big Dave's nan offers you a Werther's Original. |
-| **The laundry van** | A blue drink (the vending machine in the visiting hall, 1 snout) and a sausage roll (the canteen), to bribe Keith on the X-ray | Every basket goes through Keith's X-ray in the loading bay on its way to the van, and unbribed he always spots you ("That basket's got a skeleton in it. A WALKING skeleton."). Find him having a cuppa in the canteen at breakfast or lunch, or collecting baskets in the laundry from 10:00, and pay him off. Then climb into the big basket by the laundry door before 11:00, and the van takes you to a laundrette in Wolverhampton. |
+| **The laundry van** | A blue drink (the vending machine in the visiting hall, 1 Greggs voucher) and a sausage roll (the canteen), to bribe Keith on the X-ray | Every basket goes through Keith's X-ray in the loading bay on its way to the van, and unbribed he always spots you ("That basket's got a skeleton in it. A WALKING skeleton."). Find him having a cuppa in the canteen at breakfast or lunch, or collecting baskets in the laundry from 10:00, and pay him off. Then climb into the big basket by the laundry door before 11:00, and the van takes you to a laundrette in Wolverhampton. |
 
 A disguise holds at a distance, but an officer who gets a good look at you up
 close for long enough sees through it ("Madam, you appear to have a beard"),
@@ -175,18 +198,18 @@ canteen tables. The colour pass is multisampled for smoother edges.
 ## The firms
 
 Nobody kicks off a landing without the gang that runs it, and they only do it
-for snout. Each wing has a home firm of five, one of them the boss, plus a
+for Greggs vouchers. Each wing has a home firm of five, one of them the boss, plus a
 soldier from its rival. Members wear the firm's colour.
 
 | Firm | Runs | Colour | Rival | |
 | --- | --- | --- | --- | --- |
-| **The Firm** | A wing | maroon | The Crows | Old-school East End faces. They run the snout on A and expect to be asked first. |
+| **The Firm** | A wing | maroon | The Crows | Old-school East End faces. They run the Greggs vouchers on A and expect to be asked first. |
 | **The Crows** | B wing | navy | The Firm | Young and loud. They hate the Firm more than the screws. |
 | **Red Lions** | C wing | red | The Northern Mob | Football lads off the terraces. Always up for a ruck, never for a plan. |
 | **The Northern Mob** | D wing | mustard | Red Lions | Quiet heavies who do business and never forget a debt. |
 
 Talk to a boss to pay them. Their backing lasts two days. The price starts at
-4 snout and goes up every time you pay them again, and every time a riot of
+4 Greggs vouchers and goes up every time you pay them again, and every time a riot of
 yours has been put down. Paying a firm offends its rival. Hitting their lads,
 or getting them cuffed in a riot they were not paid for, makes them hostile. Past
 a point their boss will not deal with you at all, and their soldiers come for
@@ -207,7 +230,7 @@ hit their rival make the rival angrier.
 | Boss | Jobs |
 | --- | --- |
 | The Firm | *Soap Opera* (a bar of soap, definitely not for a key mould), *Return to Sender* (dump a parcel that smells of Lynx Africa and treason on the Crows' landing), *A Quiet Word* (flatten the Crow who said Uncle's mum's trifle was shop-bought) |
-| The Crows | *The Great Pool Ball Robbery* (not the black one, that's bad luck innit), *Crowtax* (three snout, a tax they are very proud of naming), *Bovver on A Wing* (they are not pigeons) |
+| The Crows | *The Great Pool Ball Robbery* (not the black one, that's bad luck innit), *Crowtax* (three Greggs vouchers, a tax they are very proud of naming), *Bovver on A Wing* (they are not pigeons) |
 | Red Lions | *Away Day* (sing at the flagpole during yard), *Half-Time Oranges* (a canteen tray, which is a goalpost if you squint), *Derby Day* (they did not bottle it, they tactically retreated) |
 | The Northern Mob | *The Sock Audit* (two socks short, the books must balance), *Debt Collection* (three Twixes and an apology), *Tea, Proper* (liberate the real teabags from healthcare) |
 
@@ -226,7 +249,7 @@ anyone asks, it's from your nan").
 - *The Quiet Shift*: no warnings for three hours, for the sake of their bunions.
 - *Fantasy Football*: find out who a gang boss picked as captain (it's his nan).
 
-Officers pay in snout, in going easier on you, or in a **blind eye**: the next
+Officers pay in Greggs vouchers, in going easier on you, or in a **blind eye**: the next
 time that officer catches you out of bounds, he studies the ceiling instead.
 Fail a job, or let it run out, and the gang or the officer takes it personally.
 
@@ -247,7 +270,7 @@ attention. Contraband goes on a pat-down. A loose brick in your cell stashes fou
 items, and they do not always find it.
 
 Fixers on the wings sell razors, lighters, wire, tape, batteries and screwdrivers
-for snout. You earn snout working laundry shifts.
+for Greggs vouchers. You earn Greggs vouchers working laundry shifts.
 
 ## Behaviour trees, and what the prison learns
 
@@ -305,7 +328,7 @@ segregation indefinitely or, if a firm hates you enough, they get to you first.
 | `G` | Kick off a riot |
 | `Z` | Sleep through the night |
 | `J` | Journal: every way out, and what they have learned |
-| `M` | Big map, with the ducts |
+| `M` | Big map, with the ducts, labels and your job targets |
 | `Esc` | Pause |
 
 ## Layout of the code

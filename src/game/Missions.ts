@@ -1,9 +1,9 @@
 import type { Guard } from '../npc/Guard'
 import { GANGS, GANG_IDS, type GangId } from '../npc/Gangs'
 import type { Prisoner } from '../npc/Prisoner'
-import { tileCentre } from '../world/Grid'
+import { TILE, tileCentre } from '../world/Grid'
 import type { Game } from './Game'
-import { ITEMS, type ItemId } from './Items'
+import { ITEMS, type ItemId, vouchers } from './Items'
 
 /**
  * Jobs. The firms' bosses always have one going, their foot soldiers have
@@ -11,7 +11,7 @@ import { ITEMS, type ItemId } from './Items'
  * simply out of biscuits have a quiet word with you too.
  *
  * Every job is handed back to whoever set it. Gang jobs knock the price of
- * a riot down and soften the firm; officers pay in snout, in looking the
+ * a riot down and soften the firm; officers pay in Greggs vouchers, in looking the
  * other way once, and occasionally in something you really should not have.
  */
 export type Objective =
@@ -25,7 +25,7 @@ export type Objective =
   | { kind: 'behave'; hours: number }
 
 export interface Reward {
-  snout?: number
+  vouchers?: number
   item?: ItemId
   /** Officer looks the other way, once. */
   blindEye?: boolean
@@ -54,7 +54,7 @@ export const BOSS_JOBS: Record<GangId, Template[]> = {
       title: 'Soap Opera',
       brief: "Bring Uncle a bar of soap, there's a good lad. Don't ask what it's for. It's for a mould. Of a key. Which I never mentioned.",
       objective: { kind: 'fetch', item: 'soap' },
-      reward: { snout: 2 },
+      reward: { vouchers: 2 },
       thanks: 'Lovely. Smells of roses and conspiracy. You did well.',
     },
     {
@@ -63,7 +63,7 @@ export const BOSS_JOBS: Record<GangId, Template[]> = {
       brief: "Pop this on the Crows' landing over on B wing. Put it down and walk away whistling. Don't open it. I mean it. I can see you thinking about it.",
       objective: { kind: 'plant', item: 'parcel', zone: 'blockB', where: "the Crows' landing (B wing)" },
       give: 'parcel',
-      reward: { snout: 3 },
+      reward: { vouchers: 3 },
       thanks: "Ha! Kingy's face. Like a slapped haddock. Here's a drink for your trouble.",
     },
     {
@@ -71,7 +71,7 @@ export const BOSS_JOBS: Record<GangId, Template[]> = {
       title: 'A Quiet Word',
       brief: "{target} of the Crows told the whole canteen my mum's trifle was shop-bought. Have a quiet word. Loudly. With your fists.",
       objective: { kind: 'ko', target: 'rival' },
-      reward: { snout: 3, item: 'lighter' },
+      reward: { vouchers: 3, item: 'lighter' },
       thanks: "He'll think twice before slandering a homemade trifle. Have this, I've got loads.",
     },
   ],
@@ -81,14 +81,14 @@ export const BOSS_JOBS: Record<GangId, Template[]> = {
       title: 'The Great Pool Ball Robbery',
       brief: "Need a pool ball, bruv. Don't matter what colour. Alright it matters a bit. Not the black one, that's bad luck innit.",
       objective: { kind: 'fetch', item: 'poolBall' },
-      reward: { snout: 2 },
+      reward: { vouchers: 2 },
       thanks: 'Peak. Absolute scenes. You are now an honorary Crow. Not really. But nearly.',
     },
     {
       id: 'crowtax',
       title: 'Crowtax',
-      brief: "The Firm are rolling in snout. Bring us three and we'll call it a tax. A Crows tax. A Crowtax. I came up with that. Don't steal it.",
-      objective: { kind: 'fetch', item: 'snout', count: 3 },
+      brief: "The Firm are rolling in Greggs vouchers. Bring us three and we'll call it a tax. A Crows tax. A Crowtax. I came up with that. Don't steal it.",
+      objective: { kind: 'fetch', item: 'voucher', count: 3 },
       reward: { item: 'screwdriver' },
       thanks: "Tax collected. HMRC could never. Here, have a screwdriver, it's surplus to requirements.",
     },
@@ -97,7 +97,7 @@ export const BOSS_JOBS: Record<GangId, Template[]> = {
       title: 'Bovver on A Wing',
       brief: "{target} from the Firm keeps calling us 'the Pigeons'. We are not pigeons. Go and explain the difference. With feeling.",
       objective: { kind: 'ko', target: 'rival' },
-      reward: { snout: 3 },
+      reward: { vouchers: 3 },
       thanks: "Did he say 'crow'? Tell me he said 'crow'. Legend.",
     },
   ],
@@ -107,7 +107,7 @@ export const BOSS_JOBS: Record<GangId, Template[]> = {
       title: 'Away Day',
       brief: 'Get to the flagpole during yard and give us a proper chant. Loud. Tuneful is optional. Heartfelt is not.',
       objective: { kind: 'visit', spot: 'flagpole', period: 'yard', action: "Belt out 'Football's Coming Home'" },
-      reward: { snout: 2 },
+      reward: { vouchers: 2 },
       thanks: 'I heard that from the showers. I welled up. Here, you earned it.',
     },
     {
@@ -115,7 +115,7 @@ export const BOSS_JOBS: Record<GangId, Template[]> = {
       title: 'Half-Time Oranges',
       brief: "Five-a-side needs a goalpost. A canteen tray is basically a goalpost if you squint. Or if you're Gaz, who can't see anyway.",
       objective: { kind: 'fetch', item: 'tray' },
-      reward: { snout: 2 },
+      reward: { vouchers: 2 },
       thanks: "Back of the net. Literally, now we've got a net. It's a tray. Shut up.",
     },
     {
@@ -123,7 +123,7 @@ export const BOSS_JOBS: Record<GangId, Template[]> = {
       title: 'Derby Day',
       brief: "{target} of the Northern Mob says the Lions bottled it in the last ruck. We did not bottle it. We tactically retreated. Go and correct him.",
       objective: { kind: 'ko', target: 'rival' },
-      reward: { snout: 3, item: 'sock' },
+      reward: { vouchers: 3, item: 'sock' },
       thanks: "Tactical retreat avenged. Have a sock. It's my lucky one. It's been through a lot.",
     },
   ],
@@ -133,15 +133,15 @@ export const BOSS_JOBS: Record<GangId, Template[]> = {
       title: 'The Sock Audit',
       brief: "The books don't balance. We're two socks short. Find them. I'll know if they're not clean. I won't check. But I'll know.",
       objective: { kind: 'fetch', item: 'sock', count: 2 },
-      reward: { snout: 2 },
-      thanks: 'Ledger balanced. You may have a biscuit. Metaphorically. Here is snout.',
+      reward: { vouchers: 2 },
+      thanks: 'Ledger balanced. You may have a biscuit. Metaphorically. Here is a Greggs voucher.',
     },
     {
       id: 'debt-collection',
       title: 'Debt Collection',
       brief: '{target} owes us three Twixes and an apology. We will take the apology out of his face. You will take it, I mean. I do accounts.',
       objective: { kind: 'ko', target: 'debtor' },
-      reward: { snout: 3 },
+      reward: { vouchers: 3 },
       thanks: 'Debt settled. Interest accrued. You are a credit to the profession.',
     },
     {
@@ -149,7 +149,7 @@ export const BOSS_JOBS: Record<GangId, Template[]> = {
       title: 'Tea, Proper',
       brief: 'Canteen tea is a crime against Yorkshire. Healthcare keeps proper teabags in the cupboard. Liberate them. Do it for the North.',
       objective: { kind: 'fetch', item: 'teabags' },
-      reward: { snout: 3, item: 'battery' },
+      reward: { vouchers: 3, item: 'battery' },
       thanks: "Now that is a brew. I could cry. I won't. But I could.",
     },
   ],
@@ -161,7 +161,7 @@ export const ERRANDS: Template[] = [
     title: 'A Brush with Danger',
     brief: "Get us a toothbrush. Mine's gone manky. Don't ask what I used it for. Grout. I used it for grout.",
     objective: { kind: 'fetch', item: 'toothbrush' },
-    reward: { snout: 1 },
+    reward: { vouchers: 1 },
     thanks: "Minty fresh. You're alright, you.",
   },
   {
@@ -170,7 +170,7 @@ export const ERRANDS: Template[] = [
     brief: "Give this to {target} on {wing} wing. If anyone asks, it's from your nan. If he asks, it's from me. If he laughs, it's from you.",
     objective: { kind: 'deliver', item: 'letter' },
     give: 'letter',
-    reward: { snout: 2 },
+    reward: { vouchers: 2 },
     thanks: '',
   },
   {
@@ -178,7 +178,7 @@ export const ERRANDS: Template[] = [
     title: 'Biscuit Run',
     brief: "Custard creams. A whole packet. I've had a day. I've had a week. I've had a fifteen-year stretch, frankly.",
     objective: { kind: 'fetch', item: 'biscuits' },
-    reward: { snout: 2 },
+    reward: { vouchers: 2 },
     thanks: "Oh, that's the stuff. You're a gent. A crook, but a gent.",
   },
 ]
@@ -190,7 +190,7 @@ export const OFFICER_JOBS: Template[] = [
     brief: "The governor confiscated my Racing Post and then lost it in the games room. Three horses circled. One's called Lord Biscuitwick. Find it, and I might not see you once.",
     objective: { kind: 'fetch', item: 'racingPost' },
     spawn: { item: 'racingPost', zone: 'games' },
-    reward: { blindEye: true, snout: 1 },
+    reward: { blindEye: true, vouchers: 1 },
     thanks: "Lord Biscuitwick, each way. Lovely. Right. Next time I see you somewhere funny, I didn't.",
   },
   {
@@ -215,7 +215,7 @@ export const OFFICER_JOBS: Template[] = [
     title: "Who's Brewing Hooch?",
     brief: "Somebody's brewing hooch on {wing} wing. Smells like a fruit bowl died in a sock. Have a sniff around {cell} and tell me what you find. Discreetly. Like a bloodhound in slippers.",
     objective: { kind: 'inspect' },
-    reward: { snout: 2, calm: true },
+    reward: { vouchers: 2, calm: true },
     thanks: "A bin bag of fermented oranges. Classic. Good work. Don't tell anyone it was you. They'll know anyway.",
   },
   {
@@ -223,7 +223,7 @@ export const OFFICER_JOBS: Template[] = [
     title: 'The Quiet Shift',
     brief: "I'm on a double and my feet are killing me. Keep your nose clean till {time}. No warnings, no nonsense, no 'accidents' with the mop.",
     objective: { kind: 'behave', hours: 3 },
-    reward: { snout: 2, calm: true },
+    reward: { vouchers: 2, calm: true },
     thanks: 'Not a peep. A miracle. Here, for your services to my bunions.',
   },
   {
@@ -231,7 +231,7 @@ export const OFFICER_JOBS: Template[] = [
     title: 'Fantasy Football',
     brief: "{target} has topped the officers' fantasy league three weeks running and he's not even IN it. Find out who he's picked as captain. For security reasons.",
     objective: { kind: 'ask', question: "Ask who's captain of his fantasy football team", answer: "Captain? Me nan. She's never been injured once. Why, who's asking?" },
-    reward: { blindEye: true, snout: 1 },
+    reward: { blindEye: true, vouchers: 1 },
     thanks: 'His NAN? Genius. Diabolical. Right, I owe you one. One.',
   },
 ]
@@ -451,6 +451,58 @@ export class Missions {
   }
 
   /** One line of what is left to do, for the HUD and reminders. */
+  /**
+   * Where each job points, for the map on normal: the person to see, the
+   * things to pick up, the room to go to. Finished jobs point home to whoever
+   * gave them.
+   */
+  mapTargets(): { x: number; z: number; label: string }[] {
+    const g = this.game
+    const out: { x: number; z: number; label: string }[] = []
+    const room = (zone: string, label: string) => {
+      const r = g.grid.rooms.get(zone)?.rects[0]
+      if (r) out.push({ x: ((r.x0 + r.x1 + 1) / 2) * TILE, z: ((r.y0 + r.y1 + 1) / 2) * TILE, label })
+    }
+    const who = (a: { body: { x: number; z: number } } | null, label: string) => {
+      if (a) out.push({ x: a.body.x, z: a.body.z, label })
+    }
+    for (const m of this.active) {
+      const o = m.tpl.objective
+      if (m.done) {
+        who(m.giver, m.giverName)
+        continue
+      }
+      switch (o.kind) {
+        case 'fetch':
+          if (g.player.inventory.count(o.item) >= (o.count ?? 1)) who(m.giver, m.giverName)
+          else for (const it of g.dynamic.items) if (it.id === o.item) out.push({ x: it.x, z: it.z, label: ITEMS[o.item].name })
+          break
+        case 'plant':
+          room(o.zone, o.where)
+          break
+        case 'ko':
+        case 'ask':
+          who(m.target, m.target?.name ?? '')
+          break
+        case 'deliver':
+          who(m.target, m.target?.name ?? '')
+          break
+        case 'visit': {
+          const f = g.fixtures
+          const spot = o.spot === 'flagpole' ? f.flagpole : o.spot === 'poolTable' ? f.poolTable : o.spot === 'phones' ? f.phones[0] : f.washers[0]
+          out.push({ x: spot.x, z: spot.z, label: o.action })
+          break
+        }
+        case 'inspect':
+          if (m.targetCell) room(m.targetCell, g.grid.roomName(m.targetCell))
+          break
+        case 'behave':
+          break
+      }
+    }
+    return out
+  }
+
   describe(m: Mission): string {
     const o = m.tpl.objective
     if (m.done) return `Go back to ${m.giverName}.`
@@ -558,7 +610,7 @@ export class Missions {
     this.finished.add(m.tpl.id)
     this.completedCount++
     const r = m.tpl.reward
-    for (let i = 0; i < (r.snout ?? 0); i++) if (!g.player.inventory.add('snout')) g.dynamic.spawnItem('snout', g.player.body.x, g.player.body.z + 0.5, g.player.zone)
+    for (let i = 0; i < (r.vouchers ?? 0); i++) if (!g.player.inventory.add('voucher')) g.dynamic.spawnItem('voucher', g.player.body.x, g.player.body.z + 0.5, g.player.zone)
     if (r.item && !g.player.inventory.add(r.item)) g.dynamic.spawnItem(r.item, g.player.body.x, g.player.body.z + 0.5, g.player.zone)
     const giver = m.giver
     if ('gang' in giver) {
@@ -583,7 +635,7 @@ export class Missions {
 
 function rewardText(r: Reward): string {
   const bits: string[] = []
-  if (r.snout) bits.push(`${r.snout} snout`)
+  if (r.vouchers) bits.push(vouchers(r.vouchers))
   if (r.item) bits.push(ITEMS[r.item].name.toLowerCase())
   if (r.blindEye) bits.push('a blind eye, once')
   if (r.calm) bits.push('they go easier on you')

@@ -13,7 +13,7 @@ import { BLOCKS, type BlockId, type Door, type Grate, Grid, PLAYER_CELL, TILE, T
 import { moveCircle } from '../world/Nav'
 import { Clock, RESTRICTED, allowedZones } from './Clock'
 import { Doors } from './Doors'
-import { ITEMS, Inventory, type ItemId, RECIPES, type Recipe, SPAWNS } from './Items'
+import { ITEMS, Inventory, type ItemId, RECIPES, type Recipe, SPAWNS, vouchers } from './Items'
 import { screenCall } from './Phone'
 import { Missions } from './Missions'
 import { type BunkNote, type Letter, Post } from './Post'
@@ -133,7 +133,7 @@ export class Game implements World {
     playerBody.z = cell.bunks[1].z + (cell.door.ty < cell.rect.y0 ? -1.2 : 1.2)
     this.bodies.push(playerBody)
     const inventory = new Inventory()
-    for (const id of ['toothbrush', 'toothpaste', 'bedsheet', 'snout', 'snout'] as ItemId[]) inventory.add(id)
+    for (const id of ['toothbrush', 'toothpaste', 'bedsheet', 'voucher', 'voucher'] as ItemId[]) inventory.add(id)
     this.player = {
       name,
       body: playerBody,
@@ -588,6 +588,9 @@ export class Game implements World {
     })
     const pb = this.player.body
     this.dynamic.marker.position.set(pb.x, pb.y + (this.player.inVent ? 3.6 : 2.9) + Math.sin(performance.now() / 300) * 0.08, pb.z)
+    const beacons: { x: number; z: number; hex: number }[] = this.keith.body.visible ? [{ x: this.keith.body.x, z: this.keith.body.z, hex: HEX.stainedBlue }] : []
+    if (!this.hard) for (const t of this.missions.mapTargets()) beacons.push({ x: t.x, z: t.z, hex: HEX.gateYellow })
+    this.dynamic.setBeacons(beacons)
     this.crowd.update(this.bodies, delta)
   }
 
@@ -639,6 +642,11 @@ export class Game implements World {
 
   private stopSleeping(): void {
     this.sleeping = false
+    // Climb down off the top bunk and stand beside it.
+    const p = this.player
+    if (p.body.pose !== 'sleep') return
+    const cell = this.grid.cells.get(p.cell)!
+    this.placePlayer(cell.bunks[0].x + 0.9, cell.bunks[0].z)
   }
 
   /** Things that happen at set times: unlock, restock, shift change, bang-up. */
@@ -771,17 +779,29 @@ export class Game implements World {
     const speed = p.inVent ? CRAWL_SPEED * (input.running ? 1.4 : p.sneaking ? 0.6 : 1) : p.running ? RUN_SPEED : p.sneaking ? SNEAK_SPEED : PLAYER_SPEED
     const dx = mv.x * speed * delta
     const dz = mv.z * speed * delta
+    let face = { x: mv.x, z: mv.z }
     if (p.inVent) {
       const nx = b.x + dx
       const nz = b.z + dz
-      if (this.grid.inDuct(nx, b.z)) b.x = nx
-      if (this.grid.inDuct(b.x, nz)) b.z = nz
+      // Face only the way the duct lets you go, or the body swings round and
+      // sticks out over the room below.
+      face = { x: 0, z: 0 }
+      if (this.grid.inDuct(nx, b.z)) {
+        b.x = nx
+        face.x = mv.x
+      }
+      if (this.grid.inDuct(b.x, nz)) {
+        b.z = nz
+        face.z = mv.z
+      }
       // The ducts are tin: moving makes noise.
       if (mv.x || mv.z) {
         this.ventNoise -= delta
         if (this.ventNoise <= 0) {
           this.ventNoise = 0.8
-          const radius = input.running ? 11 : p.sneaking ? 2.5 : 5.5
+          // On normal the ducts are quiet unless you scramble; on hard every
+          // knee on the tin carries.
+          const radius = this.hard ? (input.running ? 11 : p.sneaking ? 2.5 : 5.5) : input.running ? 6 : p.sneaking ? 0.8 : 2.2
           this.emit({ x: b.x, z: b.z, radius: radius * (1 + this.memory.ventListening), kind: 'clank' })
         }
       }
@@ -797,12 +817,13 @@ export class Game implements World {
       const bx = b.x
       const bz = b.z
       moveCircle(b, dx, dz, 0.34, (tx, ty) => this.playerBlocked(tx, ty))
+      this.grid.pushOutOfProps(b, 0.34)
       this.doorAssist(bx, bz, mv, speed * delta)
     }
-    const moving = mv.x !== 0 || mv.z !== 0
+    const moving = face.x !== 0 || face.z !== 0
     b.speed += ((moving ? speed : 0) - b.speed) * Math.min(1, delta * 10)
     if (moving) {
-      const yaw = Math.atan2(mv.x, mv.z)
+      const yaw = Math.atan2(face.x, face.z)
       let d = yaw - b.yaw
       while (d > Math.PI) d -= Math.PI * 2
       while (d < -Math.PI) d += Math.PI * 2
@@ -1105,6 +1126,10 @@ export class Game implements World {
           } else if (!this.doors.isOpenByRegime(door)) {
             const key = inv.withUse('openDoor')
             if (key) {
+              // Key in hand at a locked door: that beats a chat with whoever
+              // is standing next to it.
+              const chat = out.findIndex((o) => o.key === 'E' && o.label.startsWith('Talk to'))
+              if (chat >= 0) out.splice(chat, 1)
               add('E', `Unlock with ${ITEMS[key.id].name}`, () => this.useKey(door, key))
             } else if (door.kind === 'gate' && !this.clock.locked) {
               add('E', 'Ask to be let through', () => this.askGate(door))
@@ -1121,7 +1146,7 @@ export class Game implements World {
     if (p.zone === p.cell && this.clock.locked && inv.has('torch') && !this.signalTonight) add('R', 'Flash the torch out of the window', () => this.flashTorch())
     if (p.zone === 'yard' && t.ty >= 57 && inv.has('grapple')) add('E', 'Throw the grapple over the wall', () => this.startClimb(t.tx))
     if (p.zone === 'laundry' && this.clock.period === 'work') {
-      for (const w of f.washers) if (near(w.x, w.z, 1.4)) add('E', 'Work a laundry shift (+snout)', () => this.work())
+      for (const w of f.washers) if (near(w.x, w.z, 1.4)) add('E', 'Work a laundry shift (+1 Greggs voucher)', () => this.work())
     }
     if (p.zone === p.cell && this.post.waiting) {
       const cell = this.grid.cells.get(p.cell)!
@@ -1310,13 +1335,13 @@ export class Game implements World {
     const firm = gangOfWing(p.block)
     if (!this.backingFirms(p.block).length) {
       const leader = this.gangLeader(firm)
-      this.toast(`Nobody on this landing moves without ${GANGS[firm].name} saying so. Pay ${leader?.name ?? 'their boss'} first (${this.memory.bribePrice(firm)} snout).`, 'bad')
+      this.toast(`Nobody on this landing moves without ${GANGS[firm].name} saying so. Pay ${leader?.name ?? 'their boss'} first (${vouchers(this.memory.bribePrice(firm))}).`, 'bad')
       return
     }
     if (this.clock.locked) {
       if (p.zone !== p.cell) return
       if (supporters.length < need) {
-        this.toast(`You shout through the hatch. ${supporters.length} answer. You need ${need}: pay another firm, or win over more of the landing with snout.`, 'bad')
+        this.toast(`You shout through the hatch. ${supporters.length} answer. You need ${need}: pay another firm, or win over more of the landing with Greggs vouchers.`, 'bad')
         return
       }
       const landing = this.grid.rooms.get(`block${p.block}`)!.rects[0]
@@ -1365,6 +1390,7 @@ export class Game implements World {
     p.body.z = cell.bunks[0].z + 1.1
     p.body.pose = 'sleep'
     p.body.y = 1.72
+    p.body.yaw = 0
     this.toast('You sleep. (Move to wake.)', 'neutral')
   }
 
@@ -1374,7 +1400,7 @@ export class Game implements World {
       return
     }
     this.workTimer = this.clock.minutes + 90
-    if (this.player.inventory.add('snout')) this.toast('Folded sheets for an hour and a half. Paid in snout.', 'good')
+    if (this.player.inventory.add('voucher')) this.toast('Folded sheets for an hour and a half. Paid in a Greggs voucher.', 'good')
     this.clock.minutes += 30
   }
 
@@ -1459,10 +1485,10 @@ export class Game implements World {
     const options: { label: string; enabled: boolean; run: () => void }[] = []
     const refresh = () => this.talkTo(pr)
     options.push({
-      label: 'Give 1 snout',
-      enabled: inv.has('snout'),
+      label: 'Give a Greggs voucher',
+      enabled: inv.has('voucher'),
       run: () => {
-        inv.remove('snout')
+        inv.remove('voucher')
         pr.trust = Math.min(1, pr.trust + (pr.gang ? 0.12 : 0.22))
         pr.grudge = Math.max(0, pr.grudge - 0.2)
         if (pr.gang) this.memory.annoy(pr.gang, -0.05)
@@ -1472,11 +1498,11 @@ export class Game implements World {
     })
     for (const item of pr.sells) {
       options.push({
-        label: `Buy ${ITEMS[item].name} (2 snout)`,
-        enabled: inv.count('snout') >= 2 && !inv.full,
+        label: `Buy ${ITEMS[item].name} (2 Greggs vouchers)`,
+        enabled: inv.count('voucher') >= 2 && !inv.full,
         run: () => {
-          inv.remove('snout')
-          inv.remove('snout')
+          inv.remove('voucher')
+          inv.remove('voucher')
           inv.add(item)
           pr.trust = Math.min(1, pr.trust + 0.05)
           this.toast(`Bought: ${ITEMS[item].name}.`, 'good')
@@ -1491,14 +1517,14 @@ export class Game implements World {
       const state = this.memory.gangs[gang]
       const backing = this.memory.backing(gang, this.clock.minutes)
       options.push({
-        label: backing ? `${def.name} are already with you` : `Pay ${def.name} to back a riot (${price} snout)`,
-        enabled: !backing && inv.count('snout') >= price,
+        label: backing ? `${def.name} are already with you` : `Pay ${def.name} to back a riot (${vouchers(price)})`,
+        enabled: !backing && inv.count('voucher') >= price,
         run: () => {
           if (state.hostility >= 0.7) {
-            this.ui.talk(pr.name, `After what you have done to my lads? Not for all the snout on the wing.`, [])
+            this.ui.talk(pr.name, `After what you have done to my lads? Not for all the sausage rolls in Blackmoor.`, [])
             return
           }
-          for (let i = 0; i < price; i++) inv.remove('snout')
+          for (let i = 0; i < price; i++) inv.remove('voucher')
           this.memory.pay(gang, this.clock.minutes)
           this.toast(`${def.name} will back you for two days. ${GANGS[def.rival].name} will hear about it.`, 'good')
           this.ui.talk(pr.name, `Pleasure doing business. Give the word (G) on ${def.wing} wing and my lads go up. You have two days.`, [])
@@ -1531,7 +1557,7 @@ export class Game implements World {
             ? `You know who I am. ${GANGS[pr.gang].name} run ${GANGS[pr.gang].wing} wing.`
             : pick2(this.rng, ['You lost?', 'You look like you want something. Everyone wants something.'])
           : pr.temperament === 'fixer'
-            ? pick2(this.rng, ['Looking for something? I can get things. Not Freddos. Never ask me for Freddos.', "Psst. Batteries, wire, a lighter, a screwdriver. Cash or snout. Mostly snout. Only snout."])
+            ? pick2(this.rng, ['Looking for something? I can get things. Not Freddos. Never ask me for Freddos.', "Psst. Batteries, wire, a lighter, a screwdriver. Cash or Greggs vouchers. Mostly vouchers. Only vouchers."])
             : pr.isCellmate
               ? `Alright, ${this.player.name}.`
               : pick2(this.rng, ['Oi oi, it\'s the Greggs Bandit!', 'Is it true you nicked a festive bake? In OCTOBER? Respect.', 'My cousin works in that Greggs. She has nightmares.', 'Alright?', 'Y\'alright, our kid?', 'Wotcha.', 'Ey up.', 'Alright, chief? Kettle on?', 'Do I know you? I feel like I know you. Did you do my mum\'s guttering?'])
@@ -1802,10 +1828,10 @@ export class Game implements World {
     if (near(this.keith.body, 1.9) && this.keith.body.visible) add('E', `Talk to ${this.keith.name} (X-ray, hi-vis, mug)`, () => this.talkToKeith())
     const vend = { x: (21 + 0.5) * 2, z: (49.2 + 0.5) * 2 + 0.6 }
     if (p.zone === 'visits' && near(vend, 1.6) && !this.clock.locked) {
-      add('R', 'Vending machine: blue drink (1 snout)', () => {
-        if (!p.inventory.has('snout')) return this.toast('Out of snout. The machine stares at you.', 'bad')
+      add('R', 'Vending machine: blue drink (1 Greggs voucher)', () => {
+        if (!p.inventory.has('voucher')) return this.toast('No Greggs vouchers. The machine stares at you.', 'bad')
         if (p.inventory.full) return this.toast('No room in your pockets.', 'bad')
-        p.inventory.remove('snout')
+        p.inventory.remove('voucher')
         p.inventory.add('blueDrink')
         this.toast('Clunk. One blue drink. The label just says BLUE.', 'good')
       })
