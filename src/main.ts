@@ -54,6 +54,7 @@ function begin(): void {
   game.input.clear()
   started = true
   snap = true
+  game.startSentence()
   ui.attach(game)
   ui.onClose = () => {
     game.endConversation()

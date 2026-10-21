@@ -31,6 +31,27 @@ rolls and a festive bake), which in Blackmoor, under the Pastry Protection Act
 of 1987, is worse than murder. Everyone inside knows your name. Prisoners and
 officers call you the Greggs Bandit.
 
+## Post, and the notes on your bunk
+
+The post comes round every morning at unlock: a letter from home most days,
+two on a good one, each opened and stamped by the censor. Mum is disappointed,
+Nan sends postal orders (snout) and a scarf that got confiscated as "a
+potential rope", your brother keeps driving the back roads "for his nerves",
+your ex has kept the George Foreman grill, and a well-known high street bakery
+writes about your loyalty points. Some letters carry something the censor
+missed, and a few carry a hint if you read between the lines.
+
+Once a day, while you are out, someone leaves a note on your bunk. Every note
+is a true clue to a way out: the rusty vent, Keith's weakness for a blue
+drink, the panto box, the shift change, the Firm's prices, the toothpaste. The
+paper gets fancier as they go on: lined paper, then cream, then headed paper
+with half a crest, then a compliments slip. At the end, whichever way it ends,
+a letter on headed paper explains: Governor Rupert Pettigrew wrote them all.
+He runs Blackmoor as a test of itself, leaves a clue, watches who takes it,
+and welds shut whatever they find.
+
+Letters and notes are kept in the notebook under Post.
+
 ## Talking to people
 
 Talk to anyone and the camera cuts to over your shoulder, framing their face
@@ -51,8 +72,14 @@ in `public/voices/<key>.mp3` and add the key to `VOICE_LINES` in
   grappling hook, a disguise, Keith paid off).
 - **Jobs**: your side missions and who has work going today.
 - **Pockets**: inventory and crafting.
+- **Post**: letters from home as envelopes, and the notes left on your bunk.
 - **Notes**: your record, every way out, the firms, and what the prison has
   learned.
+
+The interface is the prison's own paperwork: the notebook is a prison-issue
+exercise book, letters are sheets stamped by the censor, bunk notes are torn
+scraps, and conversations run as film subtitles. Titles are set in Rokkitt,
+text in Literata.
 
 ## The prison
 

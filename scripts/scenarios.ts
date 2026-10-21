@@ -28,6 +28,7 @@ function fresh(): { game: Game; log: string[]; g: any } {
     phone: () => {},
     card: (t, b) => log.push(`[card] ${t}: ${b}`),
     end: (w, t) => log.push(`[end] ${w} ${t}`),
+    showNote: (n) => log.push(`[note] ${n.text}`),
     closePanels: () => {},
     panelOpen: false,
   }
@@ -508,6 +509,37 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   game.endConversation()
   game.update(1 / 30)
   check('talk: and carries on after', game.clock.minutes > before)
+}
+
+// ---- Post and notes ----
+{
+  const { game, log } = fresh()
+  game.startSentence()
+  check('post: a letter on day one', game.post.letters.length === 1 && game.post.unread === 1)
+  const nan = { ...game.post.letters[0] }
+  void nan
+  // Out of the cell after nine: a note is left.
+  game.clock.skipTo(10 * 60)
+  run(game, 0.5)
+  put(game, 18, 14)
+  run(game, 0.5)
+  check('notes: one is left while you are out', !!game.post.waiting)
+  const cell = game.grid.cells.get('cellA7')!
+  game.player.body.x = cell.bunks[0].x
+  game.player.body.z = cell.bunks[0].z + 0.5
+  run(game, 0.2)
+  check('notes: announced when you get back', log.some((l) => l.includes('note on your bunk')))
+  check('notes: read it on your bunk', prompt(game, 'Read the note') && log.some((l) => l.startsWith('[note]')) && game.post.notes.length === 1)
+  // Next morning, more post.
+  game.clock.skipTo(6 * 60 + 25)
+  run(game, 4)
+  check('post: more letters each morning', game.post.letters.length >= 2, `${game.post.letters.length}`)
+  const gift = game.post.letters.find((l) => l.gift)
+  if (gift) {
+    const before = game.player.inventory.items.length
+    game.readLetter(gift)
+    check('post: gifts the censor missed', game.player.inventory.items.length > before || game.dynamic.items.length > 0)
+  }
 }
 
 // ---- Eight failures end it ----

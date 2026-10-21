@@ -203,6 +203,19 @@ export class Dynamic {
     this.smoke.visible = false
   }
 
+  private bunkNote: Mesh | null = null
+
+  /** The folded note on your bunk. */
+  setBunkNote(x: number, z: number, visible: boolean): void {
+    if (!this.bunkNote) {
+      this.bunkNote = new Mesh(mergePainted([box(0.34, 0.02, 0.26, { x: 0, y: 0, z: 0, ry: 0.3 }, HEX.paper), box(0.34, 0.02, 0.13, { x: 0.02, y: 0.02, z: 0.05, ry: 0.25 }, HEX.cloth)]), toon(0xffffff, { tinted: true, emissive: 0.3 }))
+      this.bunkNote.layers.enable(SOLID_LAYER)
+      this.group.add(this.bunkNote)
+    }
+    this.bunkNote.visible = visible
+    this.bunkNote.position.set(x, 0.76 + Math.sin(this.time * 2) * 0.01, z)
+  }
+
   spawnItem(id: ItemId, x: number, z: number, zone: string): LooseItem {
     const def = ITEMS[id]
     const long = ['poolCue', 'mopHandle', 'spear', 'rope', 'grapple'].includes(id)

@@ -16,6 +16,7 @@ import { Doors } from './Doors'
 import { ITEMS, Inventory, type ItemId, RECIPES, type Recipe, SPAWNS } from './Items'
 import { screenCall } from './Phone'
 import { Missions } from './Missions'
+import { type BunkNote, type Letter, Post } from './Post'
 
 /** What the game needs from the interface. Implemented in ui/Ui.ts. */
 export interface UiPort {
@@ -24,6 +25,7 @@ export interface UiPort {
   phone(onSend: (message: string) => string): void
   card(title: string, body: string, seconds?: number): void
   end(won: boolean, title: string, body: string): void
+  showNote(note: BunkNote): void
   closePanels(): void
   readonly panelOpen: boolean
 }
@@ -55,6 +57,7 @@ export class Game implements World {
   readonly memory = new PrisonMemory()
   readonly rng = mulberry32(Date.now() & 0xffff)
   readonly input = new Input()
+  readonly post = new Post(this.rng)
   readonly fixtures: Fixtures
   readonly dynamic: Dynamic
   readonly crowd: Crowd
@@ -647,6 +650,7 @@ export class Game implements World {
       this.lastPeriod = period
       if (previous) this.toast(`${this.clock.text}  ${this.clock.label}`, 'neutral')
       if (period === 'unlock') {
+        this.deliverPost()
         for (const g of this.guards) if (g.uniformTaken) this.dressGuard(g, true)
         this.restock(false)
         this.missions.newDay()
@@ -811,7 +815,9 @@ export class Game implements World {
     if (p.running && moving && !p.inVent) this.emit({ x: b.x, z: b.z, radius: 5, kind: 'clank' })
 
     const zone = this.grid.zoneAtWorld(b.x, b.z)
+    const wasIn = p.zone === p.cell
     if (zone) p.zone = zone
+    this.updateBunkNote(wasIn)
 
     // Key holding a door open behind you.
     if (this.keyHold) {
@@ -1116,6 +1122,10 @@ export class Game implements World {
     if (p.zone === 'yard' && t.ty >= 57 && inv.has('grapple')) add('E', 'Throw the grapple over the wall', () => this.startClimb(t.tx))
     if (p.zone === 'laundry' && this.clock.period === 'work') {
       for (const w of f.washers) if (near(w.x, w.z, 1.4)) add('E', 'Work a laundry shift (+snout)', () => this.work())
+    }
+    if (p.zone === p.cell && this.post.waiting) {
+      const cell = this.grid.cells.get(p.cell)!
+      if (near(cell.bunks[0].x, cell.bunks[0].z, 2.2)) add('E', 'Read the note on your bunk', () => this.readBunkNote())
     }
     if (p.zone === p.cell) {
       const cell = this.grid.cells.get(p.cell)!
@@ -1587,6 +1597,56 @@ export class Game implements World {
       })),
     ]
     this.ui.talk('Loose brick behind the table', 'Four slots. Officers search cells after an attempt; they do not always find it.', options)
+  }
+
+  // ---- Post and the notes on your bunk ----
+
+  /** Day one's post, handed over once you have a name. */
+  startSentence(): void {
+    this.deliverPost()
+  }
+
+  private deliverPost(): void {
+    const arrived = this.post.deliver(this.clock.day, this.player.name)
+    if (arrived.length) {
+      this.toast(`Post: ${arrived.length === 1 ? `a letter from ${arrived[0].from}` : `${arrived.length} letters`}. Read it in your notebook (J, then Post).`, 'good')
+      this.sounds.push({ sound: 'good', volume: 0.5 })
+    }
+  }
+
+  /** Opens a letter: anything the censor missed goes in your pockets. */
+  readLetter(letter: Letter): void {
+    if (letter.read) return
+    letter.read = true
+    if (letter.gift) {
+      for (let i = 0; i < letter.gift.count; i++) {
+        if (!this.player.inventory.add(letter.gift.item)) this.dynamic.spawnItem(letter.gift.item, this.player.body.x, this.player.body.z + 0.6, this.player.zone)
+      }
+      this.toast(letter.gift.line, 'good')
+    }
+  }
+
+  /**
+   * Someone slips a note onto your bunk while you are out: once a day, after
+   * unlock, never while you are in. When you come back it is waiting.
+   */
+  private updateBunkNote(wasInCell: boolean): void {
+    const p = this.player
+    const cell = this.grid.cells.get(p.cell)!
+    if (p.zone !== p.cell && !this.clock.locked && this.clock.minuteOfDay > 9 * 60) this.post.leaveNote(this.clock.day)
+    if (!wasInCell && p.zone === p.cell && this.post.waiting && !this.noteAnnounced) {
+      this.noteAnnounced = true
+      this.toast('Somebody has been in. There is a note on your bunk.', 'neutral')
+    }
+    if (!this.post.waiting) this.noteAnnounced = false
+    this.dynamic.setBunkNote(cell.bunks[0].x + 0.1, cell.bunks[0].z + 0.4, !!this.post.waiting)
+  }
+
+  private noteAnnounced = false
+
+  private readBunkNote(): void {
+    const note = this.post.pickUp()
+    if (note) this.ui.showNote(note)
   }
 
   // ---- Silly ways out ----

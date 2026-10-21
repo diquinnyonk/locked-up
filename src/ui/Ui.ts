@@ -6,12 +6,13 @@ import { ITEMS, INVENTORY_SLOTS, RECIPES } from '../game/Items'
 import { ATTEMPTS_PER_ROUND, METHOD_NAMES, ROUNDS, type Method } from '../npc/Memory'
 import { MAP_H, MAP_W, PLAYER_CELL, Tile } from '../world/Grid'
 import { GANGS, GANG_IDS, gangOfWing } from '../npc/Gangs'
+import { type BunkNote, type Letter, governorsLetter } from '../game/Post'
 
 /**
  * The interface, in DOM. Flat ink panels on paper, hard edges, no gradients:
  * the same graphic language as the cel world underneath it.
  */
-export type MenuTab = 'main' | 'jobs' | 'pockets' | 'notes'
+export type MenuTab = 'main' | 'jobs' | 'pockets' | 'post' | 'notes'
 
 const $ = <T extends HTMLElement>(sel: string) => document.querySelector(sel) as T
 
@@ -131,12 +132,17 @@ export class Ui implements UiPort {
     const el = $('#end')
     el.className = won ? 'show won' : 'show lost'
     const lessons = g.memory.lessons.map((l) => `<li><b>${METHOD_NAMES[l.method]}</b>: ${escape(l.text)}</li>`).join('')
+    const reveal = governorsLetter(g.player.name, won, g.clock.day, g.memory.totalFailures, g.post.notes.length)
     el.innerHTML = `
       <div class="sheet">
-        <p class="kicker">${won ? 'Escaped' : 'Sentence: life'}</p>
         <h1>${escape(title)}</h1>
         <p>${escape(body).replace(/\n/g, '<br>')}</p>
         ${lessons ? `<h3>What the prison learned</h3><ul>${lessons}</ul>` : ''}
+        <p class="aside">One more letter came for you. It is on headed paper.</p>
+        <article class="letter governor">
+          <span class="stamp">From the Governor</span>
+          <p>${escape(reveal).replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p>
+        </article>
         <button id="again">Serve another sentence</button>
       </div>`
     ;(el.querySelector('#again') as HTMLButtonElement).onclick = () => location.reload()
@@ -159,7 +165,7 @@ export class Ui implements UiPort {
     this.panel.innerHTML = `<header><h2>${escape(title)}</h2><button class="x" type="button" aria-label="Close">×</button></header><div class="body"></div>`
     ;(this.panel.querySelector('.x') as HTMLButtonElement).onclick = () => this.closePanels()
     this.panel.classList.add('show')
-    if (kind) this.panel.classList.add(kind)
+    for (const k of kind.split(' ').filter(Boolean)) this.panel.classList.add(k)
     document.body.classList.add('panel-open')
     this.panelOpen = true
     if (this.game) this.game.input.enabled = false
@@ -192,10 +198,12 @@ export class Ui implements UiPort {
     this.menuTab = tab
     const tabs = document.createElement('nav')
     tabs.className = 'tabs'
+    const g = this.game!
     const names: [MenuTab, string][] = [
       ['main', 'Main mission'],
       ['jobs', 'Jobs'],
       ['pockets', 'Pockets'],
+      ['post', g.post.unread ? `Post (${g.post.unread})` : 'Post'],
       ['notes', 'Notes'],
     ]
     for (const [id, label] of names) {
@@ -211,6 +219,7 @@ export class Ui implements UiPort {
     if (tab === 'main') this.renderMain(body)
     else if (tab === 'jobs') this.renderJobs(body)
     else if (tab === 'pockets') this.renderPockets(body)
+    else if (tab === 'post') this.renderPost(body)
     else this.renderNotes(body)
   }
 
@@ -223,14 +232,13 @@ export class Ui implements UiPort {
     const myDoor = g.grid.cells.get(p.cell)!.door
     const vent = g.grid.grates.find((gr) => gr.id === 'your cell')!
     const firm = gangOfWing(p.block)
-    const tick = (done: boolean, text: string, hint = '') => `<li class="${done ? 'done' : ''}"><span class="box">${done ? '✓' : ''}</span><span>${text}${hint ? `<small>${hint}</small>` : ''}</span></li>`
+    const tick = (done: boolean, text: string, hint = '') => `<li class="${done ? 'done' : ''}"><span class="box"></span><span>${text}${hint ? `<small>${hint}</small>` : ''}</span></li>`
     const contact = g.carPresent || g.signalTonight || g.contactNights > 0
     body.innerHTML = `
       <section class="mission">
-        <p class="kicker">Main mission</p>
         <h3 class="title">Escape HMP Blackmoor</h3>
         <p>Everyone in here knows your name, ${escape(p.name)}: the one who robbed the Greggs. Attempts left this round: <b>${m.attemptsLeft} of ${ATTEMPTS_PER_ROUND}</b> (round ${m.round} of ${ROUNDS}).</p>
-        <h4>1. Get out of your cell at night</h4>
+        <h4>Out of your cell at night</h4>
         <ul class="checks">
           ${tick(!!inv.withUse('openDoor'), 'Have a key', 'Lift one from an officer (R), or forge one from a soap mould.')}
           ${tick(myDoor.jammed, 'Toothpaste in your lock', 'Stand in your open doorway by day and press R.')}
@@ -238,11 +246,11 @@ export class Ui implements UiPort {
           ${tick(m.backing(firm, now), `${GANGS[firm].name} paid to kick off`, `Their boss wants ${m.bribePrice(firm)} snout. Jobs for them bring the price down.`)}
           ${tick(!vent.sealed && (vent.open || inv.has('spoon') || !!inv.withUse('openVent')), 'The vent behind your table', vent.sealed ? 'Welded shut. They know now.' : 'A spoon will turn the rusty screws.')}
         </ul>
-        <h4>2. Get word outside</h4>
+        <h4>Word outside</h4>
         <ul class="checks">
           ${tick(contact, contact ? (g.carPresent ? 'The car is waiting on the road' : g.signalTonight ? 'Signal sent: the car comes tonight' : `The car waits ${g.contactNights} more night${g.contactNights === 1 ? '' : 's'}`) : 'Arrange a car', 'A phone call that never says when, the flag on the yard pole, or a torch at your window.')}
         </ul>
-        <h4>3. Get over the wall, or through it</h4>
+        <h4>Over the wall, or through it</h4>
         <ul class="checks">
           ${tick(inv.has('grapple'), 'Grappling hook', 'Two sheets, a fork and gaffer tape. Throw it from the south edge of the yard.')}
           ${tick(!!inv.withUse('openDoor'), 'A key for the gates', 'The loading bay gate opens onto the road.')}
@@ -261,8 +269,7 @@ export class Ui implements UiPort {
     const active = g.missions.active
     const offers = g.missions.whoHasWork()
     body.innerHTML = `
-      <p class="kicker">Side missions</p>
-      ${active.length ? active.map((m) => `<div class="gang" style="border-left-color:${m.done ? css(HEX.yardGrass) : css(HEX.gateYellow)}"><b>${escape(m.tpl.title)}</b> for ${escape(m.giverName)}<br>${escape(m.brief)}<br><small>${m.done ? 'Done: ' : 'To do: '}${escape(g.missions.describe(m))}</small></div>`).join('') : '<p class="hint">No jobs on. You can have three at once.</p>'}
+      ${active.length ? active.map((m) => `<div class="entry${m.done ? ' done' : ''}"><span class="chip" style="background:${m.done ? css(HEX.yardGrass) : css(HEX.gateYellow)}"></span><div><b>${escape(m.tpl.title)}</b> for ${escape(m.giverName)}<p>${escape(m.brief)}</p><small>${m.done ? 'Done. ' : ''}${escape(g.missions.describe(m))}</small></div></div>`).join('') : '<p class="hint">No jobs on. You can have three at once.</p>'}
       <h3>Who has work</h3>
       ${offers.length ? `<ul>${offers.map((o) => `<li><b>${escape(o.name)}</b>: ${escape(o.where)}</li>`).join('')}</ul>` : '<p class="hint">Nobody, for now. Officers with favours to ask change every morning.</p>'}
       <p class="hint">Jobs done: ${g.missions.completedCount}. Gang jobs bring their riot price down. Officers pay in snout, goodwill or a blind eye.</p>`
@@ -320,6 +327,79 @@ export class Ui implements UiPort {
     }
   }
 
+  /** Letters as envelopes; the notes from your bunk below them. */
+  private renderPost(body: HTMLElement): void {
+    const g = this.game!
+    const post = g.post
+    const list = document.createElement('div')
+    list.className = 'envelopes'
+    for (const letter of post.letters) {
+      const b = document.createElement('button')
+      b.type = 'button'
+      b.className = `envelope${letter.read ? '' : ' unread'}`
+      b.innerHTML = `<span class="from">${escape(letter.from)}</span><span class="when">Day ${letter.day}${letter.read ? '' : ', unopened'}</span>`
+      b.onclick = () => this.openLetter(letter)
+      list.append(b)
+    }
+    if (!post.letters.length) list.innerHTML = '<p class="hint">Nothing yet. The post comes round at unlock.</p>'
+    body.append(list)
+    const h = document.createElement('h3')
+    h.textContent = 'Left on your bunk'
+    body.append(h)
+    if (!post.notes.length) {
+      const p = document.createElement('p')
+      p.className = 'hint'
+      p.textContent = 'Nothing yet. Somebody seems to come in while you are out.'
+      body.append(p)
+    }
+    for (const note of post.notes) {
+      const b = document.createElement('button')
+      b.type = 'button'
+      b.className = 'scrap-row'
+      b.innerHTML = `<span>${escape(note.text.slice(0, 64))}…</span><small>Day ${note.day}</small>`
+      b.onclick = () => this.showNote(note)
+      body.append(b)
+    }
+  }
+
+  private openLetter(letter: Letter): void {
+    const g = this.game!
+    g.readLetter(letter)
+    this.openPanel(letter.from, 'menu reading')
+    const body = this.panel.querySelector('.body') as HTMLElement
+    body.innerHTML = `
+      <article class="letter">
+        <span class="stamp">Opened and read, HMP Blackmoor</span>
+        <p class="salute">Dear ${escape(g.player.name)},</p>
+        <p>${escape(letter.body)}</p>
+        <p class="sign">${escape(letter.sign)}</p>
+        ${letter.gift ? `<p class="enclosed">${escape(letter.gift.line)}</p>` : ''}
+      </article>`
+    const back = document.createElement('button')
+    back.type = 'button'
+    back.className = 'quiet'
+    back.textContent = 'Back to the post'
+    back.onclick = () => this.openMenu('post')
+    body.append(back)
+  }
+
+  /** A note from your bunk: a torn scrap, and what the paper is like. */
+  showNote(note: BunkNote): void {
+    this.openPanel('A note on your bunk', 'menu reading')
+    const body = this.panel.querySelector('.body') as HTMLElement
+    body.innerHTML = `
+      <article class="scrap">
+        <p>${escape(note.text)}</p>
+      </article>
+      <p class="hint">${escape(note.paper)}${this.game!.post.notesLeft === 0 ? ' Whoever it is has stopped pretending.' : ''}</p>`
+    const back = document.createElement('button')
+    back.type = 'button'
+    back.className = 'quiet'
+    back.textContent = 'Keep it with your post'
+    back.onclick = () => this.openMenu('post')
+    body.append(back)
+  }
+
   private renderNotes(body: HTMLElement): void {
     const g = this.game!
     const used = (Object.keys(g.memory.used) as Method[]).filter((m) => g.memory.used[m] > 0)
@@ -342,7 +422,7 @@ export class Ui implements UiPort {
         const st = g.memory.gangs[id]
         const leader = g.gangLeader(id)
         const backing = g.memory.backing(id, g.clock.minutes)
-        return `<div class="gang" style="border-left-color:${css(def.hex)}"><b>${def.name}</b>, ${def.wing} wing. Boss: ${leader ? escape(leader.name) : 'nobody'}.<br>${escape(def.blurb)}<br><small>Riot price: ${g.memory.bribePrice(id)} snout · Hostility ${Math.round(st.hostility * 100)}%${backing ? ' · <b>backing you</b>' : ''} · Rival: ${GANGS[def.rival].name}</small></div>`
+        return `<div class="entry"><span class="chip" style="background:${css(def.hex)}"></span><div><b>${def.name}</b>, ${def.wing} wing. Boss: ${leader ? escape(leader.name) : 'nobody'}.<p>${escape(def.blurb)}</p><small>Riot price ${g.memory.bribePrice(id)} snout. Hostility ${Math.round(st.hostility * 100)}%.${backing ? ' Backing you.' : ''} Rival: ${GANGS[def.rival].name}.</small></div></div>`
       }).join('')}
       <h3>What they have learned</h3>
       ${g.memory.lessons.length ? `<ul>${g.memory.lessons.map((l) => `<li>${escape(l.text)}</li>`).join('')}</ul>` : '<p class="hint">Nothing yet. Every failed attempt teaches them.</p>'}
