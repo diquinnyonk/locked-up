@@ -72,7 +72,9 @@ export function findPath(
 
   const walkable = (tx: number, ty: number): boolean => {
     const t = grid.tile(tx, ty)
-    if (t === Tile.Floor || t === Tile.Outside) return !grid.underProp(tx, ty)
+    // Under a table is fine for where you start and where you are going (a
+    // seat, a bunk), never on the way.
+    if (t === Tile.Floor || t === Tile.Outside) return !grid.underProp(tx, ty) || (tx === to.tx && ty === to.ty) || (tx === from.tx && ty === from.ty)
     if (t === Tile.Door) {
       const door = grid.doorAtTile(tx, ty)
       return !!door && canUse(door)

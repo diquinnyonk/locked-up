@@ -68,6 +68,7 @@ export abstract class Agent {
   goTo(tx: number, ty: number, speed: number, arriveWithin = 0.6): Status {
     const key = ty * 1000 + tx
     const tc = { x: (tx + 0.5) * TILE, z: (ty + 0.5) * TILE }
+    if (!this.direct) this.heading = tc
     if (this.distanceTo(tc.x, tc.z) < arriveWithin) {
       this.path.length = 0
       this.wantSpeed = 0
@@ -90,6 +91,7 @@ export abstract class Agent {
 
   goToWorld(x: number, z: number, speed: number, arriveWithin = 0.6): Status {
     const t = worldToTile(x, z)
+    this.heading = { x, z }
     if (this.distanceTo(x, z) < arriveWithin) {
       this.wantSpeed = 0
       this.path.length = 0
@@ -103,7 +105,9 @@ export abstract class Agent {
       return 'running'
     }
     this.direct = null
-    return this.goTo(t.tx, t.ty, speed, arriveWithin)
+    const st = this.goTo(t.tx, t.ty, speed, arriveWithin)
+    this.heading = { x, z }
+    return st
   }
 
   stop(): void {
@@ -118,6 +122,8 @@ export abstract class Agent {
 
   protected wantSpeed = 0
   private direct: { x: number; z: number } | null = null
+  /** Where this body is going (or sitting): furniture holding it lets it in. */
+  private heading: { x: number; z: number } | null = null
 
   /** Frame update: follow the path, open doors, avoid others. */
   move(delta: number, others: Agent[]): void {
@@ -125,6 +131,11 @@ export abstract class Agent {
     if (this.speechTimer > 0) this.speechTimer -= delta
     if (this.ko > 0) {
       this.ko -= delta
+      this.body.speed = 0
+      return
+    }
+    // Asleep on a bunk: nothing turns or shoves a sleeping body.
+    if (this.body.pose === 'sleep') {
       this.body.speed = 0
       return
     }
@@ -187,7 +198,7 @@ export abstract class Agent {
       if (t === Tile.Door) return (grid.doorAtTile(tx, ty)?.openness ?? 0) < 0.6
       return true
     })
-    grid.pushOutOfProps(this.body, RADIUS)
+    grid.pushOutOfProps(this.body, RADIUS, this.heading)
 
     this.body.speed += (Math.min(speed, this.wantSpeed + 0.5) - this.body.speed) * Math.min(1, delta * 8)
     let yaw = this.lookYaw

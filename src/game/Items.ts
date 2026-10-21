@@ -36,6 +36,7 @@ export type ItemId =
   | 'racingPost'
   | 'blueDrink'
   | 'sausageRoll'
+  | 'hymnBook'
   // Disguises
   | 'guardUniform'
   | 'wig'
@@ -101,6 +102,7 @@ export const ITEMS: Record<ItemId, ItemDef> = {
 
   blueDrink: { id: 'blueDrink', name: 'Blue drink', hex: HEX.stainedBlue, damage: 1, uses: ['bribe'], contraband: false, blurb: 'Two litres of something fizzy. Flavour: blue. Keith on the X-ray would sell his nan for one.' },
   sausageRoll: { id: 'sausageRoll', name: 'Sausage roll', hex: HEX.chipsOrange, damage: 0, uses: ['bribe'], contraband: false, blurb: 'Flaky, lukewarm, magnificent. Half of the laundry X-ray bribe.' },
+  hymnBook: { id: 'hymnBook', name: 'Hymn book', hex: HEX.bookRed, damage: 1, uses: [], contraband: false, blurb: 'Hymns Ancient and Modern, property of HMP Blackmoor chapel. Somebody has drawn a moustache on every bishop.' },
   guardUniform: { id: 'guardUniform', name: "Officer's uniform", hex: HEX.guardShirt, damage: 0, uses: ['disguise'], contraband: true, blurb: 'Shirt, tie, trousers, peaked cap. Slightly too big. Smells of Brut and disappointment. Wear it (Tab).' },
   wig: { id: 'wig', name: 'Panto wig', hex: HEX.hairBlonde, damage: 0, uses: [], contraband: false, blurb: 'Big, blonde and last worn by the chaplain as Widow Twankey in 2009.' },
   dress: { id: 'dress', name: 'Floral frock', hex: HEX.dress, damage: 0, uses: [], contraband: false, blurb: 'From the panto box. Size: generous. Pattern: alarming.' },

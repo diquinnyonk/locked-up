@@ -72,6 +72,8 @@ function parts(id: ItemId): BufferGeometry[] {
       return [cylX(0.12, 0.6, o(0, 0.12), HEX.stainedBlue, 12), cylX(0.06, 0.12, o(0.34, 0.12), HEX.stainedBlue, 10), cylX(0.065, 0.06, o(0.42, 0.12), HEX.porcelain, 10), cylX(0.124, 0.2, o(-0.04, 0.12), HEX.gateYellow, 12)]
     case 'sausageRoll':
       return [box(0.46, 0.04, 0.3, o(), HEX.porcelain), cylX(0.09, 0.36, o(0, 0.12), HEX.chipsOrange, 10), cylX(0.05, 0.37, o(0, 0.13), HEX.skinShade, 8)]
+    case 'hymnBook':
+      return [box(0.36, 0.1, 0.26, o(), HEX.bookRed), box(0.34, 0.08, 0.24, o(0.015, 0.01), HEX.paper), box(0.08, 0.102, 0.03, o(0, 0, 0), HEX.stainedGold), box(0.03, 0.102, 0.12, o(0, 0, 0), HEX.stainedGold)]
     case 'guardUniform':
       return [box(0.6, 0.1, 0.5, o(), HEX.guardShirt), box(0.6, 0.06, 0.24, o(0.02, 0.1, -0.08), HEX.guardTrousers), box(0.06, 0.12, 0.24, o(0, 0.02, 0.1), HEX.ink), cyl(0.18, 0.18, 0.08, o(0.18, 0.16, 0.12), HEX.guardCap, 14)]
     case 'wig':

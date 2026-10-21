@@ -269,8 +269,16 @@ export class Ui implements UiPort {
     const g = this.game!
     const active = g.missions.active
     const offers = g.missions.whoHasWork()
+    const rev = g.chaplain
+    if (rev.stage === 'none') offers.push({ name: rev.name, where: 'the chapel, behind the altar' })
+    const revJob = chaplainJob(g)
+    const revEntry = revJob
+      ? `<div class="entry${revJob.done ? ' done' : ''}"><span class="chip" style="background:${revJob.done ? css(HEX.yardGrass) : css(HEX.gateYellow)}"></span><div><b>The Missing Hymn Books</b> for ${escape(rev.name)}<p>Three hymn books stolen from the chapel: one levelling the pool table in the games room, one a soap dish in the showers, one propping up the bench press in the gym.</p><small>${escape(revJob.line)}</small></div></div>`
+      : ''
     body.innerHTML = `
-      ${active.length ? active.map((m) => `<div class="entry${m.done ? ' done' : ''}"><span class="chip" style="background:${m.done ? css(HEX.yardGrass) : css(HEX.gateYellow)}"></span><div><b>${escape(m.tpl.title)}</b> for ${escape(m.giverName)}<p>${escape(m.brief)}</p><small>${m.done ? 'Done. ' : ''}${escape(g.missions.describe(m))}</small></div></div>`).join('') : '<p class="hint">No jobs on. You can have three at once.</p>'}
+      ${revEntry}
+      ${active.length ? active.map((m) => `<div class="entry${m.done ? ' done' : ''}"><span class="chip" style="background:${m.done ? css(HEX.yardGrass) : css(HEX.gateYellow)}"></span><div><b>${escape(m.tpl.title)}</b> for ${escape(m.giverName)}<p>${escape(m.brief)}</p><small>${m.done ? 'Done. ' : ''}${escape(g.missions.describe(m))}</small></div></div>`).join('') : revEntry ? '' : '<p class="hint">No jobs on. You can have three at once.</p>'}
+      ${rev.stage === 'done' ? `<p class="hint">${rev.alibi ? 'The Reverend owes you one alibi: the next time you are caught, you were at choir practice.' : 'The Reverend has used up his one lie for you.'}</p>` : ''}
       <h3>Who has work</h3>
       ${offers.length ? `<ul>${offers.map((o) => `<li><b>${escape(o.name)}</b>: ${escape(o.where)}</li>`).join('')}</ul>` : '<p class="hint">Nobody, for now. Officers with favours to ask change every morning.</p>'}
       <p class="hint">Jobs done: ${g.missions.completedCount}. Gang jobs bring their riot price down. Officers pay in Greggs vouchers, goodwill or a blind eye.</p>`
@@ -497,9 +505,12 @@ export class Ui implements UiPort {
     $('#zone').textContent = p.zone === p.cell ? `Your cell, ${home.replace('Cell ', '')}` : g.grid.roomName(p.zone) || ''
 
     // Jobs on the go.
-    const jobs = g.missions.active
-      .map((m) => `<div class="job${m.done ? ' done' : ''}"><b>${escape(m.tpl.title)}</b>${escape(g.missions.describe(m))}<br><small>for ${escape(m.giverName)}</small></div>`)
-      .join('')
+    const revJob = chaplainJob(g)
+    const jobs =
+      (revJob ? `<div class="job${revJob.done ? ' done' : ''}"><b>The Missing Hymn Books</b>${escape(revJob.line)}<br><small>for ${escape(g.chaplain.name)}</small></div>` : '') +
+      g.missions.active
+        .map((m) => `<div class="job${m.done ? ' done' : ''}"><b>${escape(m.tpl.title)}</b>${escape(g.missions.describe(m))}<br><small>for ${escape(m.giverName)}</small></div>`)
+        .join('')
     const jobsEl = $('#jobs')
     if (jobsEl.dataset.html !== jobs) {
       jobsEl.innerHTML = jobs
@@ -656,7 +667,7 @@ export class Ui implements UiPort {
     const labels: { x: number; z: number; text: string }[] = [{ x: k.x, z: k.z, text: 'Keith' }]
     if (!g.hard) {
       const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 220)
-      for (const t of g.missions.mapTargets()) {
+      for (const t of g.jobTargets()) {
         ctx.strokeStyle = css(HEX.gateYellow)
         ctx.lineWidth = 2.5 * ratio
         ctx.beginPath()
@@ -687,6 +698,13 @@ export class Ui implements UiPort {
     ctx.arc(g.player.body.x * sx, g.player.body.z * sy, 3 * ratio, 0, Math.PI * 2)
     ctx.stroke()
   }
+}
+
+/** The Reverend's job while it is on: where you are with it. */
+function chaplainJob(g: Game): { line: string; done: boolean } | null {
+  if (g.chaplain.stage !== 'hunting') return null
+  const have = g.player.inventory.count('hymnBook')
+  return have >= 3 ? { line: 'All three found. Take them back to the Reverend in the chapel.', done: true } : { line: `Find the hymn books (${have}/3).`, done: false }
 }
 
 /** A pocket icon, or a colour chip if WebGL would not draw one. */

@@ -97,7 +97,9 @@ export class Grid {
   readonly doors: Door[] = []
   private readonly doorAt = new Map<number, Door>()
   readonly rooms = new Map<string, Room>()
-  /** Furniture nobody walks through (canteen tables), as world rectangles. */
+  /** Somewhere to sit: a bench, a chair, a pew, a bunk edge. */
+  readonly seats: { x: number; z: number; yaw: number }[] = []
+  /** Furniture nobody walks through, as world rectangles. */
   readonly props: { x0: number; z0: number; x1: number; z1: number }[] = []
   /** Tiles whose middle a prop covers: paths go round them. */
   private readonly propTiles = new Set<number>()
@@ -148,7 +150,7 @@ export class Grid {
     this.room('gym', 'Gym', [{ x0: 58, y0: 42, x1: 69, y1: 46 }], 'floorGym')
     this.room('library', 'Library', [{ x0: 58, y0: 49, x1: 63, y1: 52 }], 'floorWood')
     this.room('mess', "Officers' mess", [{ x0: 65, y0: 49, x1: 69, y1: 52 }], 'floorCarpet')
-    this.room('bay', 'Loading bay', [{ x0: 59, y0: 54, x1: 69, y1: 58 }], 'floorMaint')
+    this.room('bay', 'Loading bay', [{ x0: 58, y0: 54, x1: 69, y1: 58 }], 'floorMaint')
 
     this.door('room', 36, 12, 'x', ['corridorN', 'showers'])
     this.door('room', 43, 12, 'x', ['corridorN', 'laundry'])
@@ -308,10 +310,15 @@ export class Grid {
     return this.doorAt.get(ty * MAP_W + tx)
   }
 
-  /** Registers a solid piece of furniture centred on x/z. */
-  addProp(x: number, z: number, w: number, d: number): void {
+  /**
+   * Registers a solid piece of furniture centred on x/z. `nav` false keeps
+   * small things against walls out of path planning: bodies still bump off
+   * them, but they never close a route.
+   */
+  addProp(x: number, z: number, w: number, d: number, nav = true): void {
     const p = { x0: x - w / 2, z0: z - d / 2, x1: x + w / 2, z1: z + d / 2 }
     this.props.push(p)
+    if (!nav) return
     for (let ty = Math.floor(p.z0 / TILE); ty <= Math.floor(p.z1 / TILE); ty++) {
       for (let tx = Math.floor(p.x0 / TILE); tx <= Math.floor(p.x1 / TILE); tx++) {
         // Blocked if the prop reaches the middle of the tile, where paths run.
@@ -328,9 +335,18 @@ export class Grid {
     return this.propTiles.has(ty * MAP_W + tx)
   }
 
-  /** Pushes a circle out of any prop it has walked into. */
-  pushOutOfProps(pos: { x: number; z: number }, r: number): void {
+  addSeat(x: number, z: number, yaw: number): void {
+    this.seats.push({ x, z, yaw })
+  }
+
+  /**
+   * Pushes a circle out of any prop it has walked into. `except` is where
+   * the body is heading: a prop that holds that point (the bench it is about
+   * to sit on, the bed it is about to lie in) lets it in.
+   */
+  pushOutOfProps(pos: { x: number; z: number }, r: number, except?: { x: number; z: number } | null): void {
     for (const p of this.props) {
+      if (except && except.x > p.x0 - 0.05 && except.x < p.x1 + 0.05 && except.z > p.z0 - 0.05 && except.z < p.z1 + 0.05) continue
       const nx = Math.max(p.x0, Math.min(pos.x, p.x1))
       const nz = Math.max(p.z0, Math.min(pos.z, p.z1))
       const dx = pos.x - nx
@@ -342,16 +358,20 @@ export class Grid {
         pos.x = nx + (dx / d) * r
         pos.z = nz + (dz / d) * r
       } else {
-        // Centre inside the table: out by the nearest edge.
-        const left = pos.x - p.x0
-        const right = p.x1 - pos.x
-        const top = pos.z - p.z0
-        const bottom = p.z1 - pos.z
-        const m = Math.min(left, right, top, bottom)
-        if (m === left) pos.x = p.x0 - r
-        else if (m === right) pos.x = p.x1 + r
-        else if (m === top) pos.z = p.z0 - r
-        else pos.z = p.z1 + r
+        // Centre inside it: out by the nearest edge that has floor beyond
+        // it, never into the wall it stands against.
+        const ways = [
+          { d: pos.x - p.x0, x: p.x0 - r, z: pos.z },
+          { d: p.x1 - pos.x, x: p.x1 + r, z: pos.z },
+          { d: pos.z - p.z0, x: pos.x, z: p.z0 - r },
+          { d: p.z1 - pos.z, x: pos.x, z: p.z1 + r },
+        ].sort((a, b) => a.d - b.d)
+        const clear = (w: { x: number; z: number }) =>
+          this.passable(Math.floor(w.x / TILE), Math.floor(w.z / TILE)) &&
+          !this.props.some((q) => q !== p && w.x > q.x0 - r + 0.01 && w.x < q.x1 + r - 0.01 && w.z > q.z0 - r + 0.01 && w.z < q.z1 + r - 0.01)
+        const out = ways.find(clear) ?? ways.find((w) => this.passable(Math.floor(w.x / TILE), Math.floor(w.z / TILE))) ?? ways[0]
+        pos.x = out.x
+        pos.z = out.z
       }
     }
   }

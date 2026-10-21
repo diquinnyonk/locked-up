@@ -11,6 +11,7 @@ import { type Place, ball, bandedBox, box, cyl, ring } from '../art/shapes'
 import { SOLID_LAYER } from '../render/CelPipeline'
 import { type Grid, MAP_H, MAP_W, PLAYER_CELL, type Rect, TILE, Tile } from './Grid'
 import { type AnnexFixtures, detailPass, furnishAnnexes } from './Furnish'
+import { registerSolids } from './Solids'
 
 export const WALL_H = 2.6
 export const PERIMETER_H = 5.2
@@ -151,7 +152,7 @@ export function buildPrison(grid: Grid): { group: Group; fixtures: Fixtures } {
     if (i < 4) add(box(0.12, 1.8, 1.6, { x: p.x + 1.1, y: 0, z: p.z + 0.6 }, HEX.floorTile))
   }
   add(cyl(0.25, 0.25, 0.02, at(36, 10), HEX.steelDark, 10))
-  add(box(3.4, 0.45, 0.6, at(37, 11, 0), HEX.wood))
+  add(box(3.4, 0.45, 0.6, at(34.2, 11, 0), HEX.wood))
 
   // ---- Laundry: a bank of machines, a folding table, baskets ----
   for (let i = 0; i < 6; i++) {
@@ -162,7 +163,7 @@ export function buildPrison(grid: Grid): { group: Group; fixtures: Fixtures } {
     add(ball(0.36, { ...p, y: 0.8, z: p.z + 0.66 }, HEX.window, 1, 1, 0.12))
     fixtures.washers.push({ x: p.x, z: p.z + 1.2 })
   }
-  table(add, at(43.5, 10.5), 5.5, 1.4, HEX.tableTop)
+  table(add, at(43.5, 9.9), 4.6, 1.4, HEX.tableTop)
   for (const tx of [41, 46]) add(cyl(0.55, 0.45, 0.9, at(tx, 11), HEX.basket, 10))
 
   // ---- Hub: canteen tables, servery, phones on the wall, officers' desk ----
@@ -170,7 +171,6 @@ export function buildPrison(grid: Grid): { group: Group; fixtures: Fixtures } {
     for (let col = 0; col < 2; col++) {
       const p = at(36.5 + col * 6, 19.5 + row * 3.2)
       table(add, p, 4.4, 1.6, HEX.tableTop)
-      grid.addProp(p.x, p.z, 4.4, 1.6)
       for (const side of [-1, 1]) {
         add(box(4.4, 0.45, 0.45, { x: p.x, y: 0, z: p.z + side * 1.25 }, HEX.steel))
         fixtures.benches.push({ x: p.x, z: p.z + side * 1.25, zone: 'hub' })
@@ -268,6 +268,8 @@ export function buildPrison(grid: Grid): { group: Group; fixtures: Fixtures } {
   // ---- Gatehouse beyond the perimeter gate ----
   add(...bandedBox(6, 4, at(64, 62.5), [[2.8, HEX.brick]], HEX.steelDark))
   add(box(1.6, 0.9, 0.1, { ...at(64, 62.5, 1.4), z: at(64, 62.5).z - 2.02 }, HEX.window))
+
+  registerSolids(grid)
 
   const merged = mergePainted(statics)
   const mesh = new Mesh(merged, toon(0xffffff, { tinted: true }))

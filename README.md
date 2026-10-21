@@ -86,6 +86,28 @@ the actual thing you are carrying, drawn from the same little model you
 picked up off the floor. Contraband carries a red stamp. Loose items lie
 still where they were dropped, at whatever angle they fell.
 
+## The chaplain
+
+The **Reverend Clive Bunting** stands behind the altar in the chapel all day
+(black shirt, dog collar, wooden cross) and has lunch in the canteen with
+the lads, because he believes in it. He runs the panto and the choir, and he
+has one job for you: **The Missing Hymn Books**. Three have been nicked: one
+is levelling the pool table in the games room, one is a soap dish in the
+showers, one is propping up the bench press in the gym. Bring all three back
+for three Greggs vouchers from the collection plate, and his favour: the
+next time an officer has you by the collar, he swears blind you were at
+choir practice and it does not count as an attempt. He can lie once. Twice
+is a habit.
+
+## Sitting down, and furniture
+
+Every table, chair, bench, pew, sofa, bunk, washing machine, bit of gym kit,
+the pool table, the X-ray and the van are solid: you walk round them, and so
+does everyone else, officers included. Paths are planned round them, so
+nobody cuts through the canteen tables any more. Stand by any bench, chair,
+pew, sofa or the edge of your bunk and press `E` to sit down; move to get
+up. Nobody sleeps off the side of their bunk either.
+
 ## The map
 
 The minimap sits top right with your cell number on the card beside it.

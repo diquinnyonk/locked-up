@@ -63,6 +63,8 @@ export interface Body {
   cap: boolean
   /** Collar, tie, epaulettes: an officer's shirt, real or stolen. */
   uniform: boolean
+  /** A vicar's white dog collar and a little wooden cross. */
+  clergy: boolean
   /** A skirt in this colour, over the trousers. */
   skirt: number | null
   /** Overall height, ~0.9..1.1. */
@@ -89,6 +91,7 @@ export function makeBody(style: Partial<Body>): Body {
     longHair: false,
     cap: false,
     uniform: false,
+    clergy: false,
     skirt: null,
     height: 0.92 + Math.random() * 0.16,
     build: 0.92 + Math.random() * 0.26,
@@ -332,6 +335,20 @@ function uniformGeometry(): BufferGeometry {
   return mergeGeometries(parts)
 }
 
+/** A white dog collar round the neck, its tab at the throat, and a cross. */
+function clergyGeometry(): BufferGeometry {
+  const top = LEG + TORSO
+  const band = new CylinderGeometry(0.2 * S, 0.21 * S, 0.12 * S, 16)
+  band.translate(0, top + 0.08 * S, 0)
+  const tab = new BoxGeometry(0.12 * S, 0.1 * S, 0.04 * S)
+  tab.translate(0, top + 0.06 * S, 0.2 * S)
+  const upright = new BoxGeometry(0.06 * S, 0.24 * S, 0.03 * S)
+  upright.translate(0, top - TORSO * 0.3, 0.45 * S)
+  const arm = new BoxGeometry(0.16 * S, 0.05 * S, 0.03 * S)
+  arm.translate(0, top - TORSO * 0.27, 0.45 * S)
+  return mergeGeometries([paint(band, 0xf6f7f6), paint(tab, 0xf6f7f6), paint(upright, 0xc79a62), paint(arm, 0xc79a62)])
+}
+
 /** A skirt flaring from the waist to below the knee. */
 function skirtGeometry(): BufferGeometry {
   const len = LEG * 0.62
@@ -377,6 +394,7 @@ export class Crowd {
   private readonly longHair: Part
   private readonly cap: Part
   private readonly uniform: Part
+  private readonly clergy: Part
   private readonly skirt: Part
   private readonly thighs: Part
   private readonly shins: Part
@@ -416,13 +434,14 @@ export class Crowd {
     this.longHair = make(longHairGeometry(), 1, { shade: HEX.ink, outline: true })
     this.cap = make(capGeometry(), 1, { tinted: true, shade: HEX.ink, outline: true, spec: 0.35 })
     this.uniform = make(uniformGeometry(), 1, { tinted: true })
+    this.clergy = make(clergyGeometry(), 1, { tinted: true })
     this.skirt = make(skirtGeometry(), 1, { outline: true })
     this.thighs = make(thighGeometry(), 2, { outline: true })
     this.shins = make(shinGeometry(), 2, { tinted: true, outline: true })
     this.upperArms = make(upperArmGeometry(), 2, { outline: true })
     this.forearms = make(forearmGeometry(), 2, { outline: true })
     this.hands = make(handGeometry(), 2, { shade: HEX.skinShade })
-    this.parts = [this.torso, this.pelvis, this.belt, this.neck, this.head, this.face, this.hair, this.longHair, this.cap, this.uniform, this.skirt, this.thighs, this.shins, this.upperArms, this.forearms, this.hands]
+    this.parts = [this.torso, this.pelvis, this.belt, this.neck, this.head, this.face, this.hair, this.longHair, this.cap, this.uniform, this.clergy, this.skirt, this.thighs, this.shins, this.upperArms, this.forearms, this.hands]
   }
 
   /** Colours only change when someone is created or changes clothes. */
@@ -437,6 +456,7 @@ export class Crowd {
     this.longHair.mesh.setColorAt(index, c.setHex(body.hair ?? HEX.hairBrown))
     this.cap.mesh.setColorAt(index, c.setHex(HEX.guardCap))
     this.uniform.mesh.setColorAt(index, c.setHex(0xffffff))
+    this.clergy.mesh.setColorAt(index, c.setHex(0xffffff))
     this.skirt.mesh.setColorAt(index, c.setHex(body.skirt ?? 0))
     for (let k = 0; k < 2; k++) {
       this.thighs.mesh.setColorAt(index * 2 + k, c.setHex(body.trousers))
@@ -617,6 +637,7 @@ export class Crowd {
     put(this.belt, 0, at(joint, chest, 0, 0.02 * S, 0, 0, 0, 0))
     put(this.torso, 0, at(joint, chest, 0, TORSO / 2, 0, 0, 0, 0))
     put(this.uniform, 0, b.uniform ? at(joint, chest, 0, -LEG, 0, 0, 0, 0) : hidden)
+    put(this.clergy, 0, b.clergy ? at(joint, chest, 0, -LEG, 0, 0, 0, 0) : hidden)
     put(this.skirt, 0, b.skirt != null ? at(joint, hips, 0, 0.04 * S, 0, 0, 0, 0) : hidden)
     const neck = at(mNeck, chest, 0, TORSO, 0, headTilt * 0.4, headTurn * 0.4, 0)
     put(this.neck, 0, neck)

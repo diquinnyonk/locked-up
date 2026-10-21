@@ -118,6 +118,28 @@ export class Game implements World {
     speechTimer: 0,
   }
 
+  /**
+   * The chaplain. Runs the chapel, the panto and the five-a-side, in that
+   * order of seriousness. Has one job for you, and a very useful thank you.
+   */
+  readonly chaplain = {
+    body: makeBody({ top: HEX.ink, trousers: HEX.ink, hair: HEX.hairGrey, skin: HEX.skinPale, clergy: true, build: 1.08, height: 1.02 }),
+    name: 'Reverend Clive Bunting',
+    short: 'the Reverend',
+    /** none: not asked yet. hunting: find the hymn books. done: thanked. */
+    stage: 'none' as 'none' | 'hunting' | 'done',
+    /** One alibi: the next time you are caught, he swears you were at choir. */
+    alibi: false,
+    speech: '',
+    speechTimer: 0,
+  }
+  /** Where the Reverend's three stolen hymn books turned up. */
+  static readonly HYMN_SPOTS: { zone: string; where: string }[] = [
+    { zone: 'games', where: 'levelling the pool table in the games room' },
+    { zone: 'showers', where: 'being used as a soap dish in the showers' },
+    { zone: 'gym', where: 'propping up the bench press in the gym' },
+  ]
+
   constructor(scene: Scene, readonly ui: UiPort, name: string) {
     const built = buildPrison(this.grid)
     this.fixtures = built.fixtures
@@ -208,6 +230,7 @@ export class Game implements World {
     this.keith.body.x = this.fixtures.xray.x
     this.keith.body.z = this.fixtures.xray.z
     this.bodies.push(this.keith.body)
+    this.bodies.push(this.chaplain.body)
 
     this.fixtures.visitTables.forEach((t, i) => {
       const look = looks[i % looks.length]
@@ -352,6 +375,23 @@ export class Game implements World {
       this.warn(by, `Right, ${p.name}, you're coming with me.`)
       return
     }
+    if (this.chaplain.alibi) {
+      // The Reverend's thank you: once, and only once, you were at choir.
+      this.chaplain.alibi = false
+      p.attempt = null
+      p.inVent = false
+      const lost = p.inventory.confiscate()
+      const cell = this.grid.cells.get(p.cell)!
+      this.placePlayer(cell.bunks[1].x, cell.bunks[1].z)
+      by.wary = Math.min(1, by.wary + 0.2)
+      this.ui.card(
+        'Choir practice',
+        `${by.name} has you by the collar when ${this.chaplain.name} appears from nowhere, slightly out of breath. "Officer! There you are, ${p.name}. You missed the descant." He swears blind you were at choir practice. Nobody can prove otherwise, and nobody wants to sing.\nIt does not count as an attempt.${lost.length ? ' He does keep your contraband, "to pray over it".' : ''}\nThat was his one favour.`,
+        8,
+      )
+      this.log.push(`Day ${this.clock.day}: caught by ${by.name}, but the Reverend gave you an alibi.`)
+      return
+    }
     by.wary = Math.min(1, by.wary + 0.35)
     this.missions.onTrouble()
     this.sounds.push({ sound: 'caught', volume: 1 })
@@ -478,6 +518,7 @@ export class Game implements World {
   }
 
   private placePlayer(x: number, z: number): void {
+    this.seated = null
     const b = this.player.body
     b.x = x
     b.z = z
@@ -577,6 +618,7 @@ export class Game implements World {
     this.updateSightGuide()
     this.updateVisitors(delta)
     this.updateKeith(delta)
+    this.updateChaplain(delta)
     this.updateDisguise(delta)
     this.dynamic.ducts.visible = this.player.inVent
     const carHere = this.carPresent
@@ -589,7 +631,7 @@ export class Game implements World {
     const pb = this.player.body
     this.dynamic.marker.position.set(pb.x, pb.y + (this.player.inVent ? 3.6 : 2.9) + Math.sin(performance.now() / 300) * 0.08, pb.z)
     const beacons: { x: number; z: number; hex: number }[] = this.keith.body.visible ? [{ x: this.keith.body.x, z: this.keith.body.z, hex: HEX.stainedBlue }] : []
-    if (!this.hard) for (const t of this.missions.mapTargets()) beacons.push({ x: t.x, z: t.z, hex: HEX.gateYellow })
+    if (!this.hard) for (const t of this.jobTargets()) beacons.push({ x: t.x, z: t.z, hex: HEX.gateYellow })
     this.dynamic.setBeacons(beacons)
     this.crowd.update(this.bodies, delta)
   }
@@ -773,8 +815,11 @@ export class Game implements World {
       b.y = 0
     }
 
+    // Sitting: stay put until you move, then get up off the seat.
+    if (this.seated && (input.move.x || input.move.z)) this.standUp()
+
     // Movement.
-    const mv = input.move
+    const mv = this.seated ? { x: 0, z: 0 } : input.move
     p.running = input.running && !p.sneaking
     const speed = p.inVent ? CRAWL_SPEED * (input.running ? 1.4 : p.sneaking ? 0.6 : 1) : p.running ? RUN_SPEED : p.sneaking ? SNEAK_SPEED : PLAYER_SPEED
     const dx = mv.x * speed * delta
@@ -817,7 +862,7 @@ export class Game implements World {
       const bx = b.x
       const bz = b.z
       moveCircle(b, dx, dz, 0.34, (tx, ty) => this.playerBlocked(tx, ty))
-      this.grid.pushOutOfProps(b, 0.34)
+      if (!this.seated) this.grid.pushOutOfProps(b, 0.34)
       this.doorAssist(bx, bz, mv, speed * delta)
     }
     const moving = face.x !== 0 || face.z !== 0
@@ -831,6 +876,7 @@ export class Game implements World {
     }
     b.y = p.inVent ? WALL_TOP : 0
     if (p.inVent) b.pose = 'crawl'
+    else if (this.seated) b.pose = 'sit'
     else if (this.fightingFor > 0) b.pose = 'fight'
     else if (b.pose !== 'phone' || moving) b.pose = 'walk'
     if (p.running && moving && !p.inVent) this.emit({ x: b.x, z: b.z, radius: 5, kind: 'clank' })
@@ -1150,7 +1196,12 @@ export class Game implements World {
     }
     if (p.zone === p.cell && this.post.waiting) {
       const cell = this.grid.cells.get(p.cell)!
-      if (near(cell.bunks[0].x, cell.bunks[0].z, 2.2)) add('E', 'Read the note on your bunk', () => this.readBunkNote())
+      if (near(cell.bunks[0].x, cell.bunks[0].z, 2.2)) {
+        // The note beats a chat with your cellmate sat on the bunk.
+        const chat = out.findIndex((o) => o.key === 'E' && o.label.startsWith('Talk to'))
+        if (chat >= 0) out.splice(chat, 1)
+        add('E', 'Read the note on your bunk', () => this.readBunkNote())
+      }
     }
     if (p.zone === p.cell) {
       const cell = this.grid.cells.get(p.cell)!
@@ -1161,7 +1212,44 @@ export class Game implements World {
     this.missions.prompts(add)
     pickup?.()
 
+    // Any bench, chair, pew, sofa or bunk edge. Lowest of all.
+    if (this.seated) add('E', 'Stand up', () => this.standUp())
+    else {
+      let seat: { x: number; z: number; yaw: number } | null = null
+      let sd = 1.2
+      for (const st of this.grid.seats) {
+        const d = Math.hypot(st.x - b.x, st.z - b.z)
+        if (d < sd) {
+          sd = d
+          seat = st
+        }
+      }
+      const taken = seat && this.bodies.some((o) => o !== b && o.visible && o.pose === 'sit' && Math.hypot(o.x - seat!.x, o.z - seat!.z) < 0.45)
+      if (seat && !taken) add('E', 'Sit down', () => this.sitDown(seat!))
+    }
+
     this.prompts = out
+  }
+
+  /** Where you are sitting, if you are. Move to get up. */
+  seated: { x: number; z: number; yaw: number } | null = null
+
+  private sitDown(seat: { x: number; z: number; yaw: number }): void {
+    const b = this.player.body
+    this.seated = seat
+    b.x = seat.x
+    b.z = seat.z
+    b.yaw = seat.yaw
+    b.pose = 'sit'
+    b.poseTime = 0
+    b.speed = 0
+  }
+
+  private standUp(): void {
+    if (!this.seated) return
+    this.seated = null
+    this.player.body.pose = 'stand'
+    this.grid.pushOutOfProps(this.player.body, 0.34)
   }
 
   private chewSoap(): void {
@@ -1385,6 +1473,7 @@ export class Game implements World {
       return
     }
     this.sleeping = true
+    this.seated = null
     const cell = this.grid.cells.get(p.cell)!
     p.body.x = cell.bunks[0].x
     p.body.z = cell.bunks[0].z + 1.1
@@ -1826,6 +1915,11 @@ export class Game implements World {
       })
     }
     if (near(this.keith.body, 1.9) && this.keith.body.visible) add('E', `Talk to ${this.keith.name} (X-ray, hi-vis, mug)`, () => this.talkToKeith())
+    const rev = this.chaplain
+    if (near(rev.body, 2.0) && rev.body.visible) {
+      const hint = rev.stage === 'none' ? ' (has a job)' : rev.stage === 'hunting' && this.player.inventory.count('hymnBook') >= 3 ? ' (hand in the hymn books)' : ''
+      add('E', `Talk to ${rev.name}${hint}`, () => this.talkToChaplain())
+    }
     const vend = { x: (21 + 0.5) * 2, z: (49.2 + 0.5) * 2 + 0.6 }
     if (p.zone === 'visits' && near(vend, 1.6) && !this.clock.locked) {
       add('R', 'Vending machine: blue drink (1 Greggs voucher)', () => {
@@ -1977,6 +2071,143 @@ export class Game implements World {
     k.body.yaw = period === 'work' ? Math.PI / 2 : 0
     if (k.speechTimer > 0) k.speechTimer -= delta
     if (k.speechTimer > 0) this.bubbles.push({ body: k.body, text: k.speech })
+  }
+
+  /** Every job's targets for the map: the missions, plus the Reverend's. */
+  jobTargets(): { x: number; z: number; label: string }[] {
+    const out = this.missions.mapTargets()
+    const r = this.chaplain
+    const here = r.body.visible
+    if (r.stage === 'none' && here) out.push({ x: r.body.x, z: r.body.z, label: 'The Reverend (has a job)' })
+    if (r.stage === 'hunting') {
+      if (this.player.inventory.count('hymnBook') >= 3) {
+        if (here) out.push({ x: r.body.x, z: r.body.z, label: 'The Reverend' })
+      } else for (const it of this.dynamic.items) if (it.id === 'hymnBook') out.push({ x: it.x, z: it.z, label: 'Hymn book' })
+    }
+    return out
+  }
+
+  private updateChaplain(delta: number): void {
+    const r = this.chaplain
+    const period = this.clock.period
+    // In his chapel all day, behind the altar, facing the pews. Lunch with
+    // the lads in the canteen, because he believes in it.
+    const altar = this.fixtures.altar
+    let spot = { x: altar.x + 1.2, z: altar.z, yaw: Math.PI / 2, pose: 'stand' as 'stand' | 'sit' | 'talk' }
+    if (period === 'lunch') spot = { x: 46 * 2, z: 27 * 2, yaw: 0, pose: 'sit' }
+    r.body.visible = !this.clock.locked
+    if (this.talkingTo !== r.body) {
+      r.body.x = spot.x
+      r.body.z = spot.z
+      r.body.yaw = spot.yaw
+      r.body.pose = spot.pose
+    }
+    r.body.speed = 0
+    r.speechTimer -= delta
+    if (r.speechTimer <= 0 && r.body.visible && Math.hypot(this.player.body.x - r.body.x, this.player.body.z - r.body.z) < 7 && this.rng() < delta * 0.08) {
+      r.speech = pick2(this.rng, [
+        'Lovely to see a new face. Well. An old face. A face.',
+        'Panto auditions Thursday. We need a back half of a horse.',
+        'The Lord moves in mysterious ways. So does the tea trolley.',
+        'Choir at four. Bring your lungs.',
+      ])
+      r.speechTimer = 5
+    }
+    if (r.speechTimer > 0 && r.body.visible) this.bubbles.push({ body: r.body, text: r.speech })
+  }
+
+  /** Puts the three stolen hymn books out where they were last seen. */
+  private scatterHymnBooks(): void {
+    for (const spot of Game.HYMN_SPOTS) {
+      const t = this.grid.randomTileIn(spot.zone, this.rng)
+      const c = tileCentre(t.tx, t.ty)
+      this.dynamic.spawnItem('hymnBook', c.x + (this.rng() - 0.5) * 0.8, c.z + (this.rng() - 0.5) * 0.8, spot.zone)
+    }
+  }
+
+  private talkToChaplain(): void {
+    const r = this.chaplain
+    const p = this.player
+    const inv = p.inventory
+    const title = `${r.name}, chaplain`
+    this.converse(r.body)
+    if (r.stage === 'none') {
+      this.ui.talk(
+        title,
+        `Ah, ${p.name}! The Greggs business. I have prayed for you, and separately for the sausage rolls. Now, a small crisis: somebody has stolen three of my hymn books. Three! I have a choir of eleven and a man called Tiny who only knows the words to Jerusalem. Bring them back and I will owe you one. A proper one.`,
+        [
+          {
+            label: 'Take the job: find three hymn books',
+            enabled: true,
+            run: () => {
+              r.stage = 'hunting'
+              this.scatterHymnBooks()
+              this.ui.talk(
+                title,
+                `Bless you. Word on the landing is one is levelling the pool table in the games room, one is a soap dish in the showers, and one is holding up the bench press in the gym. Hymns Ancient and Modern, red covers, moustaches on all the bishops. Do not ask about the moustaches.`,
+                [],
+                'chaplain.accept',
+              )
+              this.toast('New job: The Missing Hymn Books. Find three hymn books for the Reverend.', 'good')
+            },
+          },
+          {
+            label: 'What do I get?',
+            enabled: true,
+            run: () =>
+              this.ui.talk(
+                title,
+                "Three Greggs vouchers from the collection plate, which I shall confess on Sunday. And a favour. If you are ever somewhere you should not be, and an officer has you by the collar, I may well remember that you were at choir practice. Once. I can lie once. Twice is a habit.",
+                [],
+                'chaplain.reward',
+              ),
+          },
+        ],
+        'chaplain.intro',
+      )
+      return
+    }
+    if (r.stage === 'hunting') {
+      const have = inv.count('hymnBook')
+      if (have >= 3) {
+        this.ui.talk(title, `Is that...? All three! And only slightly damp. ${p.name}, you are a wonder.`, [
+          {
+            label: 'Hand over the hymn books',
+            enabled: true,
+            run: () => {
+              for (let i = 0; i < 3; i++) inv.remove('hymnBook')
+              r.stage = 'done'
+              r.alibi = true
+              let paid = 0
+              for (let i = 0; i < 3; i++) if (inv.add('voucher')) paid++
+              for (let i = paid; i < 3; i++) this.dynamic.spawnItem('voucher', p.body.x + 0.6, p.body.z + 0.4 * i, p.zone)
+              this.ui.talk(
+                title,
+                "Three vouchers, as promised. And remember: choir practice. If an officer ever drags you off somewhere awkward, you were with me, singing the alto line. Once, mind. I'm a chaplain, not a solicitor.",
+                [],
+                'chaplain.thanks',
+              )
+              this.toast(`Job done: The Missing Hymn Books. ${vouchers(3)}, and the Reverend owes you one alibi.`, 'good')
+            },
+          },
+        ], 'chaplain.found')
+      } else {
+        this.ui.talk(
+          title,
+          `${have ? `${have} of 3! Keep going.` : 'Any luck?'} The games room, the showers and the gym. If anyone asks, you are doing the Lord's work. Technically you are.`,
+          [],
+          'chaplain.waiting',
+        )
+      }
+      return
+    }
+    this.ui.talk(
+      title,
+      r.alibi
+        ? pick2(this.rng, ['Choir practice is still on, if you ever need it. Once.', 'The hymn books are back in the pews. Tiny is learning a second hymn. Miracles do happen.'])
+        : "I've already lied for you once, ${p.name}. I spent all of Sunday apologising. Panto auditions are Thursday, though.".replace('${p.name}', p.name),
+      [],
+    )
   }
 
   private talkToKeith(): void {

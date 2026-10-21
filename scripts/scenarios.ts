@@ -6,7 +6,7 @@
 import { Scene } from 'three'
 import { Game, type UiPort } from '../src/game/Game'
 import { screenCall } from '../src/game/Phone'
-import { TILE, tileCentre } from '../src/world/Grid'
+import { MAP_H, MAP_W, TILE, Tile, tileCentre } from '../src/world/Grid'
 import { findPath } from '../src/world/Nav'
 
 ;(globalThis as unknown as { window: unknown }).window = globalThis
@@ -52,6 +52,9 @@ function prompt(game: Game, text: string): boolean {
   const p = game.prompts.find((pr) => pr.label.includes(text))
   p?.run()
   return !!p
+}
+function worldToTileOf(d: { tx: number; ty: number }): { tx: number; ty: number } {
+  return { tx: d.tx, ty: d.ty }
 }
 function put(game: Game, tx: number, ty: number): void {
   const c = tileCentre(tx, ty)
@@ -276,7 +279,7 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
 // ---- Canteen tables are solid ----
 {
   const { game } = fresh()
-  const t = game.grid.props[0]
+  const t = game.grid.props.find((q) => Math.abs(q.x1 - q.x0 - 4.4) < 0.01 && Math.abs(q.z1 - q.z0 - 1.6) < 0.01)!
   const row = Math.floor((t.z0 + t.z1) / 2 / TILE)
   const path = findPath(game.grid, { tx: Math.floor(t.x0 / TILE) - 1, ty: row }, { tx: Math.floor(t.x1 / TILE) + 1, ty: row }, () => true)
   check('canteen: paths go round the tables', !!path && path.every((p) => !game.grid.underProp(p.tx, p.ty)), path?.map((p) => `${p.tx},${p.ty}`).join(' '))
@@ -286,8 +289,87 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   // A minute of lunch: no one ends up inside a table.
   game.clock.skipTo(12 * 60)
   run(game, 60)
-  const inside = [...game.prisoners, ...game.guards].filter((a) => game.grid.props.some((q) => a.body.x > q.x0 + 0.05 && a.body.x < q.x1 - 0.05 && a.body.z > q.z0 + 0.05 && a.body.z < q.z1 - 0.05))
+  const tables = game.grid.props.filter((q) => Math.abs(q.x1 - q.x0 - 4.4) < 0.01 && Math.abs(q.z1 - q.z0 - 1.6) < 0.01)
+  const inside = [...game.prisoners, ...game.guards].filter((a) => tables.some((q) => a.body.x > q.x0 + 0.05 && a.body.x < q.x1 - 0.05 && a.body.z > q.z0 + 0.05 && a.body.z < q.z1 - 0.05))
   check('canteen: a whole lunch with nobody walking through a table', inside.length === 0, inside.map((a) => a.body.x.toFixed(1) + ',' + a.body.z.toFixed(1)).join(' '))
+}
+
+// ---- Furniture: sit on it, never walk through it ----
+{
+  const { game } = fresh()
+  game.clock.skipTo(12 * 60)
+  run(game, 0.5)
+  // A free seat on a canteen bench.
+  const seat = game.grid.seats.find((st) => game.grid.zoneAtWorld(st.x, st.z) === 'hub' && !game.prisoners.some((p) => Math.hypot(p.x - st.x, p.z - st.z) < 0.6))!
+  game.player.body.x = seat.x
+  game.player.body.z = seat.z + (seat.yaw === 0 ? -0.9 : 0.9)
+  check('sit: offered at a canteen bench', prompt(game, 'Sit down'))
+  check('sit: sat on the bench, facing the table', game.player.body.pose === 'sit' && game.player.body.x === seat.x && game.player.body.z === seat.z && game.player.body.yaw === seat.yaw)
+  run(game, 0.5)
+  check('sit: stays sat until you move', game.player.body.pose === 'sit')
+  game.input.forced = { x: 0, z: seat.yaw === 0 ? -1 : 1 }
+  run(game, 0.5)
+  game.input.forced = null
+  check('sit: moving gets you up and off the bench', !game.seated && game.player.body.pose !== 'sit')
+
+  // Walk straight at a washing machine.
+  const washer = game.fixtures.washers[0]
+  game.player.body.x = washer.x
+  game.player.body.z = washer.z + 0.6
+  game.player.zone = 'laundry'
+  let inside = false
+  game.input.forced = { x: 0, z: -1 }
+  for (let i = 0; i < 60; i++) {
+    game.update(1 / 30)
+    const b = game.player.body
+    if (game.grid.props.some((q) => b.x > q.x0 + 0.02 && b.x < q.x1 - 0.02 && b.z > q.z0 + 0.02 && b.z < q.z1 - 0.02)) inside = true
+  }
+  game.input.forced = null
+  check('solid: you cannot walk into a washing machine', !inside)
+
+  // No piece of furniture cuts off any part of the prison.
+  const seen = new Set<number>()
+  const start = worldToTileOf(game.grid.cells.get('cellA7')!.door)
+  const queue = [start]
+  seen.add(start.ty * MAP_W + start.tx)
+  while (queue.length) {
+    const t = queue.pop()!
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = t.tx + dx
+      const ny = t.ty + dy
+      const k = ny * MAP_W + nx
+      if (nx < 0 || ny < 0 || nx >= MAP_W || ny >= MAP_H || seen.has(k)) continue
+      const tile = game.grid.tile(nx, ny)
+      if (tile !== Tile.Floor && tile !== Tile.Door && tile !== Tile.Outside) continue
+      if (game.grid.underProp(nx, ny)) continue
+      seen.add(k)
+      queue.push({ tx: nx, ty: ny })
+    }
+  }
+  const cutOff: string[] = []
+  for (let ty = 0; ty < MAP_H; ty++) for (let tx = 0; tx < MAP_W; tx++) {
+    if (game.grid.tile(tx, ty) === Tile.Floor && !game.grid.underProp(tx, ty) && !seen.has(ty * MAP_W + tx) && game.grid.zone(tx, ty) !== 'outside') cutOff.push(`${game.grid.zone(tx, ty)}@${tx},${ty}`)
+  }
+  if (cutOff.length) for (let ty = 53; ty <= 59; ty++) {
+    let row = ''
+    for (let tx = 55; tx <= 70; tx++) row += game.grid.underProp(tx, ty) ? 'X' : ['#', '.', 'D', 'P', 'o'][game.grid.tile(tx, ty)]
+    console.log('   ', ty, row)
+  }
+  check('solid: furniture never cuts off a room', cutOff.length === 0, [...new Set(cutOff.map((c) => c.split('@')[0]))].join(' ') + ' | ' + cutOff.slice(0, 8).join(' '))
+
+  // A day of the regime: no one ends up stuck inside a table or machine.
+  const solids = game.grid.props.filter((q) => !game.grid.seats.some((st) => st.x > q.x0 - 0.05 && st.x < q.x1 + 0.05 && st.z > q.z0 - 0.05 && st.z < q.z1 + 0.05))
+  game.clock.skipTo(8 * 60)
+  let worst = ''
+  for (let i = 0; i < 12; i++) {
+    run(game, 20)
+    for (const a of [...game.prisoners, ...game.guards]) {
+      if (a.ko > 0 || a.body.pose === 'sleep') continue
+      const q = solids.find((q) => a.body.x > q.x0 + 0.1 && a.body.x < q.x1 - 0.1 && a.body.z > q.z0 + 0.1 && a.body.z < q.z1 - 0.1)
+      if (q) worst = `${a.body.x.toFixed(1)},${a.body.z.toFixed(1)} ${game.clock.text} ${a.zone}`
+    }
+  }
+  check('solid: nobody walks through tables, machines or gym kit all day', !worst, worst)
 }
 
 // ---- Sleeping on your bunk ----
@@ -303,6 +385,40 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   run(game, 0.2)
   game.input.forced = null
   check('sleep: waking climbs down to the floor', !game.sleeping && game.player.body.y === 0 && game.player.body.pose !== 'sleep')
+}
+
+// ---- The Reverend's hymn books ----
+{
+  const { game, log } = fresh()
+  run(game, 1)
+  const rev = game.chaplain
+  check('chaplain: in his chapel by day, wearing his collar', rev.body.visible && rev.body.clergy && game.grid.zoneAtWorld(rev.body.x, rev.body.z) === 'chapel')
+  check('chaplain: shows on the map with a job', game.jobTargets().some((t) => t.label.startsWith('The Reverend')))
+  game.player.body.x = rev.body.x + 1.2
+  game.player.body.z = rev.body.z
+  check('chaplain: talk prompt', prompt(game, 'Talk to Reverend'))
+  lastTalk?.options.find((o) => o.label.startsWith('Take the job'))?.run()
+  const books = game.dynamic.items.filter((it) => it.id === 'hymnBook')
+  check('chaplain: three hymn books turn up in the games room, showers and gym', books.length === 3 && ['games', 'showers', 'gym'].every((z) => books.some((b) => game.grid.zoneAtWorld(b.x, b.z) === z)), books.map((b) => game.grid.zoneAtWorld(b.x, b.z)).join(' '))
+  check('chaplain: the map lights up the books', game.jobTargets().filter((t) => t.label === 'Hymn book').length === 3)
+  for (const b of books) {
+    game.dynamic.removeItem(b)
+    game.player.inventory.add('hymnBook')
+  }
+  const before = game.player.inventory.count('voucher')
+  ;(game as any).talkToChaplain()
+  lastTalk?.options.find((o) => o.label.startsWith('Hand over'))?.run()
+  check('chaplain: books handed in for three vouchers and an alibi', rev.stage === 'done' && rev.alibi && game.player.inventory.count('voucher') === before + 3 && !game.player.inventory.has('hymnBook'))
+  // Caught out of bounds: the alibi saves the attempt, once.
+  game.clock.skipTo(23 * 60)
+  run(game, 1)
+  game.player.attempt = 'gate'
+  ;(game as any).caught(game.guards[0])
+  check('chaplain: the alibi means the first catch does not count', game.memory.attemptsUsed === 0 && !rev.alibi && log.some((l) => l.includes('Choir practice')), log[log.length - 1])
+  game.player.attempt = 'gate'
+  game.punished = false
+  ;(game as any).caught(game.guards[0])
+  check('chaplain: and only the first', game.memory.attemptsUsed === 1)
 }
 
 // ---- Map targets on normal ----
@@ -606,7 +722,8 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   game.player.body.z = cell.bunks[0].z + 0.5
   run(game, 0.2)
   check('notes: announced when you get back', log.some((l) => l.includes('note on your bunk')))
-  check('notes: read it on your bunk', prompt(game, 'Read the note') && log.some((l) => l.startsWith('[note]')) && game.post.notes.length === 1)
+  const notePrompts = game.prompts.map((p) => p.label).join(', ')
+  check('notes: read it on your bunk', prompt(game, 'Read the note') && log.some((l) => l.startsWith('[note]')) && game.post.notes.length === 1, notePrompts + ' @' + game.player.body.x.toFixed(2) + ',' + game.player.body.z.toFixed(2) + ' bunk ' + cell.bunks[0].x + ',' + cell.bunks[0].z)
   // Next morning, more post.
   game.clock.skipTo(6 * 60 + 25)
   run(game, 4)

@@ -469,6 +469,9 @@ function buildPrisonerTree(world: World): Node<Prisoner> {
       s.body.z = bed.z + 1.1
       s.body.y = s.bunk === 0 ? 0.62 : 1.72
       s.body.yaw = 0
+      // Forget whatever they last turned to look at, or the legs keep
+      // swinging the body round to face it and they end up off the bunk.
+      s.lookYaw = null
       return 'running'
     }),
   )

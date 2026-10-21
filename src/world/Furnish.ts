@@ -22,6 +22,7 @@ export interface AnnexFixtures {
   visitorsGate: { x: number; z: number }
   pews: { x: number; z: number }[]
   xray: { x: number; z: number }
+  altar: { x: number; z: number }
 }
 
 const at = (tx: number, ty: number, y = 0, ry = 0): Place => ({ x: (tx + 0.5) * TILE, y, z: (ty + 0.5) * TILE, ry })
@@ -59,11 +60,13 @@ export function furnishAnnexes(add: Add): AnnexFixtures {
     visitorsGate: { x: (15 + 0.5) * TILE, z: (58 + 0.5) * TILE },
     pews: [],
     xray: { x: 0, z: 0 },
+    altar: { x: 0, z: 0 },
   }
 
   // ---- Chapel: pews facing an altar, stained glass, an organ, and the
   //      Christmas panto costume box nobody has opened since 2009 ----
   const altar = at(10.6, 44)
+  f.altar = { x: altar.x, z: altar.z }
   add(box(0.9, 0.95, 2.6, altar, HEX.wood), box(1.0, 0.04, 2.7, { ...altar, y: 0.95 }, HEX.altarCloth))
   add(box(0.08, 1.2, 0.12, { x: 20.6, y: 1.3, z: 89 }, HEX.stainedGold), box(0.08, 0.12, 0.6, { x: 20.6, y: 2.05, z: 89 }, HEX.stainedGold))
   add(cyl(0.05, 0.05, 0.35, { ...altar, y: 0.99, z: altar.z - 0.9 }, HEX.paper, 8), ball(0.05, { ...altar, y: 1.4, z: altar.z - 0.9 }, HEX.fire))
@@ -139,7 +142,7 @@ export function furnishAnnexes(add: Add): AnnexFixtures {
 
   // ---- Officers' mess: a sofa that has seen things, a kettle, a biscuit
   //      tin, a fridge with a note on it, and a rack of spare uniforms ----
-  const sofa = at(67, 52.2)
+  const sofa = at(67, 51.3)
   add(box(3, 0.45, 0.9, sofa, HEX.sofa), box(3, 0.6, 0.25, { ...sofa, y: 0.45, z: sofa.z + 0.35 }, HEX.sofa))
   for (const s of [-1, 1]) add(box(0.25, 0.65, 0.9, { ...sofa, x: sofa.x + s * 1.5 }, HEX.sofa))
   const counter = at(68.5, 49.2)
@@ -233,7 +236,7 @@ export function detailPass(add: Add, grid: Grid): void {
   // Laundry: pipes along the back wall and folded piles on the table.
   add(cylX(0.07, 12, { x: at(43.5, 8).x, y: 2.1, z: 8 * TILE + 0.12 }, HEX.metal, 10))
   add(cylX(0.05, 12, { x: at(43.5, 8).x, y: 1.85, z: 8 * TILE + 0.12 }, HEX.steel, 10))
-  for (let k = 0; k < 4; k++) add(box(0.5, 0.18 + (k % 2) * 0.12, 0.4, { x: at(43.5, 10.5).x - 1.6 + k * 1.1, y: 0.82, z: at(43.5, 10.5).z }, k % 2 ? HEX.cloth : HEX.paper))
+  for (let k = 0; k < 4; k++) add(box(0.5, 0.18 + (k % 2) * 0.12, 0.4, { x: at(43.5, 9.9).x - 1.6 + k * 1.1, y: 0.82, z: at(43.5, 9.9).z }, k % 2 ? HEX.cloth : HEX.paper))
   // Healthcare: posters about hand-washing and a set of scales.
   add(box(0.6, 0.8, 0.03, { x: at(26, 22).x, y: 1.3, z: 22 * TILE + 0.03 }, HEX.toothpaste), box(0.6, 0.8, 0.03, { x: at(28, 22).x, y: 1.3, z: 22 * TILE + 0.03 }, HEX.peas))
   add(box(0.5, 0.06, 0.5, { ...at(30, 25), y: 0 }, HEX.paper), box(0.06, 1.3, 0.06, { ...at(30, 25), z: at(30, 25).z + 0.22 }, HEX.steel))
