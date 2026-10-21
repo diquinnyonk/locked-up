@@ -1,0 +1,277 @@
+[
+ {
+  "key": "mission.soap-opera.brief",
+  "speaker": "Uncle (boss of The Firm)",
+  "line": "Bring Uncle a bar of soap, there's a good lad. Don't ask what it's for. It's for a mould. Of a key. Which I never mentioned."
+ },
+ {
+  "key": "mission.soap-opera.thanks",
+  "speaker": "Uncle (boss of The Firm)",
+  "line": "Lovely. Smells of roses and conspiracy. You did well."
+ },
+ {
+  "key": "mission.return-to-sender.brief",
+  "speaker": "Uncle (boss of The Firm)",
+  "line": "Pop this on the Crows' landing over on B wing. Put it down and walk away whistling. Don't open it. I mean it. I can see you thinking about it."
+ },
+ {
+  "key": "mission.return-to-sender.thanks",
+  "speaker": "Uncle (boss of The Firm)",
+  "line": "Ha! Kingy's face. Like a slapped haddock. Here's a drink for your trouble."
+ },
+ {
+  "key": "mission.quiet-word.brief",
+  "speaker": "Uncle (boss of The Firm)",
+  "line": "{target} of the Crows told the whole canteen my mum's trifle was shop-bought. Have a quiet word. Loudly. With your fists."
+ },
+ {
+  "key": "mission.quiet-word.thanks",
+  "speaker": "Uncle (boss of The Firm)",
+  "line": "He'll think twice before slandering a homemade trifle. Have this, I've got loads."
+ },
+ {
+  "key": "mission.pool-ball-robbery.brief",
+  "speaker": "Kingy (boss of The Crows)",
+  "line": "Need a pool ball, bruv. Don't matter what colour. Alright it matters a bit. Not the black one, that's bad luck innit."
+ },
+ {
+  "key": "mission.pool-ball-robbery.thanks",
+  "speaker": "Kingy (boss of The Crows)",
+  "line": "Peak. Absolute scenes. You are now an honorary Crow. Not really. But nearly."
+ },
+ {
+  "key": "mission.crowtax.brief",
+  "speaker": "Kingy (boss of The Crows)",
+  "line": "The Firm are rolling in Greggs vouchers. Bring us three and we'll call it a tax. A Crows tax. A Crowtax. I came up with that. Don't steal it."
+ },
+ {
+  "key": "mission.crowtax.thanks",
+  "speaker": "Kingy (boss of The Crows)",
+  "line": "Tax collected. HMRC could never. Here, have a screwdriver, it's surplus to requirements."
+ },
+ {
+  "key": "mission.bovver.brief",
+  "speaker": "Kingy (boss of The Crows)",
+  "line": "{target} from the Firm keeps calling us 'the Pigeons'. We are not pigeons. Go and explain the difference. With feeling."
+ },
+ {
+  "key": "mission.bovver.thanks",
+  "speaker": "Kingy (boss of The Crows)",
+  "line": "Did he say 'crow'? Tell me he said 'crow'. Legend."
+ },
+ {
+  "key": "mission.away-day.brief",
+  "speaker": "Skip (boss of Red Lions)",
+  "line": "Get to the flagpole during yard and give us a proper chant. Loud. Tuneful is optional. Heartfelt is not."
+ },
+ {
+  "key": "mission.away-day.thanks",
+  "speaker": "Skip (boss of Red Lions)",
+  "line": "I heard that from the showers. I welled up. Here, you earned it."
+ },
+ {
+  "key": "mission.half-time.brief",
+  "speaker": "Skip (boss of Red Lions)",
+  "line": "Five-a-side needs a goalpost. A canteen tray is basically a goalpost if you squint. Or if you're Gaz, who can't see anyway."
+ },
+ {
+  "key": "mission.half-time.thanks",
+  "speaker": "Skip (boss of Red Lions)",
+  "line": "Back of the net. Literally, now we've got a net. It's a tray. Shut up."
+ },
+ {
+  "key": "mission.derby-day.brief",
+  "speaker": "Skip (boss of Red Lions)",
+  "line": "{target} of the Northern Mob says the Lions bottled it in the last ruck. We did not bottle it. We tactically retreated. Go and correct him."
+ },
+ {
+  "key": "mission.derby-day.thanks",
+  "speaker": "Skip (boss of Red Lions)",
+  "line": "Tactical retreat avenged. Have a sock. It's my lucky one. It's been through a lot."
+ },
+ {
+  "key": "mission.sock-audit.brief",
+  "speaker": "The Accountant (boss of The Northern Mob)",
+  "line": "The books don't balance. We're two socks short. Find them. I'll know if they're not clean. I won't check. But I'll know."
+ },
+ {
+  "key": "mission.sock-audit.thanks",
+  "speaker": "The Accountant (boss of The Northern Mob)",
+  "line": "Ledger balanced. You may have a biscuit. Metaphorically. Here is a Greggs voucher."
+ },
+ {
+  "key": "mission.debt-collection.brief",
+  "speaker": "The Accountant (boss of The Northern Mob)",
+  "line": "{target} owes us three Twixes and an apology. We will take the apology out of his face. You will take it, I mean. I do accounts."
+ },
+ {
+  "key": "mission.debt-collection.thanks",
+  "speaker": "The Accountant (boss of The Northern Mob)",
+  "line": "Debt settled. Interest accrued. You are a credit to the profession."
+ },
+ {
+  "key": "mission.tea-proper.brief",
+  "speaker": "The Accountant (boss of The Northern Mob)",
+  "line": "Canteen tea is a crime against Yorkshire. Healthcare keeps proper teabags in the cupboard. Liberate them. Do it for the North."
+ },
+ {
+  "key": "mission.tea-proper.thanks",
+  "speaker": "The Accountant (boss of The Northern Mob)",
+  "line": "Now that is a brew. I could cry. I won't. But I could."
+ },
+ {
+  "key": "mission.brush.brief",
+  "speaker": "Gang member",
+  "line": "Get us a toothbrush. Mine's gone manky. Don't ask what I used it for. Grout. I used it for grout."
+ },
+ {
+  "key": "mission.brush.thanks",
+  "speaker": "Gang member",
+  "line": "Minty fresh. You're alright, you."
+ },
+ {
+  "key": "mission.love-letter.brief",
+  "speaker": "Gang member",
+  "line": "Give this to {target} on {wing} wing. If anyone asks, it's from your nan. If he asks, it's from me. If he laughs, it's from you."
+ },
+ {
+  "key": "mission.biscuit-run.brief",
+  "speaker": "Gang member",
+  "line": "Custard creams. A whole packet. I've had a day. I've had a week. I've had a fifteen-year stretch, frankly."
+ },
+ {
+  "key": "mission.biscuit-run.thanks",
+  "speaker": "Gang member",
+  "line": "Oh, that's the stuff. You're a gent. A crook, but a gent."
+ },
+ {
+  "key": "mission.racing-certainty.brief",
+  "speaker": "Officer",
+  "line": "The governor confiscated my Racing Post and then lost it in the games room. Three horses circled. One's called Lord Biscuitwick. Find it, and I might not see you once."
+ },
+ {
+  "key": "mission.racing-certainty.thanks",
+  "speaker": "Officer",
+  "line": "Lord Biscuitwick, each way. Lovely. Right. Next time I see you somewhere funny, I didn't."
+ },
+ {
+  "key": "mission.custard-crisis.brief",
+  "speaker": "Officer",
+  "line": "Officers' biscuit tin is empty and it's only Tuesday. Custard creams. You didn't get them from me, I didn't ask, and this conversation is a figment."
+ },
+ {
+  "key": "mission.custard-crisis.thanks",
+  "speaker": "Officer",
+  "line": "What biscuits? I see no biscuits. Mmf. Carry on, you."
+ },
+ {
+  "key": "mission.specs-appeal.brief",
+  "speaker": "Officer",
+  "line": "I've lost my reading glasses somewhere in the yard. Leopard print. On a little beaded chain. If you laugh, I'm nicking you."
+ },
+ {
+  "key": "mission.specs-appeal.thanks",
+  "speaker": "Officer",
+  "line": "Oh, I can see! Here, I found this bent bit of wire in my bag. No idea how it got there. You have it."
+ },
+ {
+  "key": "mission.hooch.brief",
+  "speaker": "Officer",
+  "line": "Somebody's brewing hooch on {wing} wing. Smells like a fruit bowl died in a sock. Have a sniff around {cell} and tell me what you find. Discreetly. Like a bloodhound in slippers."
+ },
+ {
+  "key": "mission.hooch.thanks",
+  "speaker": "Officer",
+  "line": "A bin bag of fermented oranges. Classic. Good work. Don't tell anyone it was you. They'll know anyway."
+ },
+ {
+  "key": "mission.quiet-shift.brief",
+  "speaker": "Officer",
+  "line": "I'm on a double and my feet are killing me. Keep your nose clean till {time}. No warnings, no nonsense, no 'accidents' with the mop."
+ },
+ {
+  "key": "mission.quiet-shift.thanks",
+  "speaker": "Officer",
+  "line": "Not a peep. A miracle. Here, for your services to my bunions."
+ },
+ {
+  "key": "mission.fantasy-football.brief",
+  "speaker": "Officer",
+  "line": "{target} has topped the officers' fantasy league three weeks running and he's not even IN it. Find out who he's picked as captain. For security reasons."
+ },
+ {
+  "key": "mission.fantasy-football.thanks",
+  "speaker": "Officer",
+  "line": "His NAN? Genius. Diabolical. Right, I owe you one. One."
+ },
+ {
+  "key": "keith.intro",
+  "speaker": "Keith (X-ray operator)",
+  "line": "Alright? Keith. I do the X-ray. Twenty-two years. Seen it all: phones in pies, a ferret in a duvet, a whole set of drums in a mattress once. Don't ask."
+ },
+ {
+  "key": "keith.paid",
+  "speaker": "Keith (X-ray operator)",
+  "line": "We never spoke. My eyes are terrible today. Terrible."
+ },
+ {
+  "key": "keith.bribed.1",
+  "speaker": "Keith (X-ray operator)",
+  "line": "Blue raspberry? And a sausage roll? ...You know, I get this cataract on Thursdays. Today feels like a Thursday. Eleven o'clock van. I'll be very busy with my sausage roll."
+ },
+ {
+  "key": "keith.bribed.2",
+  "speaker": "Keith (X-ray operator)",
+  "line": "Oh, that's the good blue. Right. If a basket comes through looking like a person, I'll assume it's a very lumpy duvet. Today only, mind."
+ },
+ {
+  "key": "keith.wants",
+  "speaker": "Keith (X-ray operator)",
+  "line": "A blue drink. The proper blue, from the vending machine in visits. And a sausage roll from the canteen. One of each. I am a man of simple tastes."
+ },
+ {
+  "key": "chaplain.intro",
+  "speaker": "Reverend Clive Bunting (chaplain)",
+  "line": "Ah! The Greggs Bandit, in my chapel! I have prayed for you, and separately for the sausage rolls. Now, a small crisis: somebody has stolen three of my hymn books. Three! I have a choir of eleven and a man called Tiny who only knows the words to Jerusalem. Bring them back and I will owe you one. A proper one."
+ },
+ {
+  "key": "chaplain.reward",
+  "speaker": "Reverend Clive Bunting (chaplain)",
+  "line": "Three Greggs vouchers from the collection plate, which I shall confess on Sunday. And a favour. If you are ever somewhere you should not be, and an officer has you by the collar, I may well remember that you were at choir practice. Once. I can lie once. Twice is a habit."
+ },
+ {
+  "key": "chaplain.accept",
+  "speaker": "Reverend Clive Bunting (chaplain)",
+  "line": "Bless you. Word on the landing is one is levelling the pool table in the games room, one is a soap dish in the showers, and one is holding up the bench press in the gym. Hymns Ancient and Modern, red covers, moustaches on all the bishops. Do not ask about the moustaches."
+ },
+ {
+  "key": "chaplain.waiting",
+  "speaker": "Reverend Clive Bunting (chaplain)",
+  "line": "Any luck? The games room, the showers and the gym. If anyone asks, you are doing the Lord's work. Technically you are."
+ },
+ {
+  "key": "chaplain.found",
+  "speaker": "Reverend Clive Bunting (chaplain)",
+  "line": "Is that...? All three! And only slightly damp. You are a wonder."
+ },
+ {
+  "key": "chaplain.thanks",
+  "speaker": "Reverend Clive Bunting (chaplain)",
+  "line": "Three vouchers, as promised. And remember: choir practice. If an officer ever drags you off somewhere awkward, you were with me, singing the alto line. Once, mind. I'm a chaplain, not a solicitor."
+ },
+ {
+  "key": "chaplain.after.1",
+  "speaker": "Reverend Clive Bunting (chaplain)",
+  "line": "Choir practice is still on, if you ever need it. Once."
+ },
+ {
+  "key": "chaplain.after.2",
+  "speaker": "Reverend Clive Bunting (chaplain)",
+  "line": "The hymn books are back in the pews. Tiny is learning a second hymn. Miracles do happen."
+ },
+ {
+  "key": "chaplain.spent",
+  "speaker": "Reverend Clive Bunting (chaplain)",
+  "line": "I've already lied for you once. I spent all of Sunday apologising. Panto auditions are Thursday, though."
+ }
+]

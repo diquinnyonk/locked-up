@@ -17,6 +17,7 @@ import { ITEMS, Inventory, type ItemId, RECIPES, type Recipe, SPAWNS, vouchers }
 import { screenCall } from './Phone'
 import { Missions } from './Missions'
 import { type BunkNote, type Letter, Post } from './Post'
+import { LINES } from './Lines'
 
 /** What the game needs from the interface. Implemented in ui/Ui.ts. */
 export interface UiPort {
@@ -2134,7 +2135,7 @@ export class Game implements World {
     if (r.stage === 'none') {
       this.ui.talk(
         title,
-        `Ah, ${p.name}! The Greggs business. I have prayed for you, and separately for the sausage rolls. Now, a small crisis: somebody has stolen three of my hymn books. Three! I have a choir of eleven and a man called Tiny who only knows the words to Jerusalem. Bring them back and I will owe you one. A proper one.`,
+        LINES['chaplain.intro'].text,
         [
           {
             label: 'Take the job: find three hymn books',
@@ -2144,7 +2145,7 @@ export class Game implements World {
               this.scatterHymnBooks()
               this.ui.talk(
                 title,
-                `Bless you. Word on the landing is one is levelling the pool table in the games room, one is a soap dish in the showers, and one is holding up the bench press in the gym. Hymns Ancient and Modern, red covers, moustaches on all the bishops. Do not ask about the moustaches.`,
+                LINES['chaplain.accept'].text,
                 [],
                 'chaplain.accept',
               )
@@ -2157,7 +2158,7 @@ export class Game implements World {
             run: () =>
               this.ui.talk(
                 title,
-                "Three Greggs vouchers from the collection plate, which I shall confess on Sunday. And a favour. If you are ever somewhere you should not be, and an officer has you by the collar, I may well remember that you were at choir practice. Once. I can lie once. Twice is a habit.",
+                LINES['chaplain.reward'].text,
                 [],
                 'chaplain.reward',
               ),
@@ -2170,7 +2171,7 @@ export class Game implements World {
     if (r.stage === 'hunting') {
       const have = inv.count('hymnBook')
       if (have >= 3) {
-        this.ui.talk(title, `Is that...? All three! And only slightly damp. ${p.name}, you are a wonder.`, [
+        this.ui.talk(title, LINES['chaplain.found'].text, [
           {
             label: 'Hand over the hymn books',
             enabled: true,
@@ -2183,7 +2184,7 @@ export class Game implements World {
               for (let i = paid; i < 3; i++) this.dynamic.spawnItem('voucher', p.body.x + 0.6, p.body.z + 0.4 * i, p.zone)
               this.ui.talk(
                 title,
-                "Three vouchers, as promised. And remember: choir practice. If an officer ever drags you off somewhere awkward, you were with me, singing the alto line. Once, mind. I'm a chaplain, not a solicitor.",
+                LINES['chaplain.thanks'].text,
                 [],
                 'chaplain.thanks',
               )
@@ -2192,22 +2193,13 @@ export class Game implements World {
           },
         ], 'chaplain.found')
       } else {
-        this.ui.talk(
-          title,
-          `${have ? `${have} of 3! Keep going.` : 'Any luck?'} The games room, the showers and the gym. If anyone asks, you are doing the Lord's work. Technically you are.`,
-          [],
-          'chaplain.waiting',
-        )
+        this.ui.talk(title, LINES['chaplain.waiting'].text, [], 'chaplain.waiting')
+        if (have) this.toast(`Hymn books found: ${have} of 3.`, 'neutral')
       }
       return
     }
-    this.ui.talk(
-      title,
-      r.alibi
-        ? pick2(this.rng, ['Choir practice is still on, if you ever need it. Once.', 'The hymn books are back in the pews. Tiny is learning a second hymn. Miracles do happen.'])
-        : "I've already lied for you once, ${p.name}. I spent all of Sunday apologising. Panto auditions are Thursday, though.".replace('${p.name}', p.name),
-      [],
-    )
+    const after = r.alibi ? pick2(this.rng, ['chaplain.after.1', 'chaplain.after.2'] as const) : 'chaplain.spent'
+    this.ui.talk(title, LINES[after].text, [], after)
   }
 
   private talkToKeith(): void {
@@ -2216,11 +2208,10 @@ export class Game implements World {
     const inv = this.player.inventory
     const need = this.memory.xrayBribe
     const paid = k.bribedDay === this.clock.day
-    const intro =
-      k.name === 'Keith'
-        ? "Alright? Keith. I do the X-ray. Twenty-two years. Seen it all: phones in pies, a ferret in a duvet, a whole set of drums in a mattress once. Don't ask."
-        : `${k.name}. I replaced Keith. Keith is now "between opportunities". I am not Keith. I want ${need} of everything.`
-    this.ui.talk(`${k.name}, X-ray operator`, paid ? "We never spoke. My eyes are terrible today. Terrible." : intro, [
+    const keith = k.name === 'Keith'
+    const intro = keith ? LINES['keith.intro'].text : `${k.name}. I replaced Keith. Keith is now "between opportunities". I am not Keith. I want ${need} of everything.`
+    const voice = paid ? 'keith.paid' : keith ? 'keith.intro' : undefined
+    this.ui.talk(`${k.name}, X-ray operator`, paid ? LINES['keith.paid'].text : intro, [
       {
         label: `Slip ${k.name} ${need} blue drink${need > 1 ? 's' : ''} and ${need} sausage roll${need > 1 ? 's' : ''}`,
         enabled: !paid && inv.count('blueDrink') >= need && inv.count('sausageRoll') >= need,
@@ -2230,14 +2221,8 @@ export class Game implements World {
             inv.remove('sausageRoll')
           }
           k.bribedDay = this.clock.day
-          this.ui.talk(
-            `${k.name}, X-ray operator`,
-            pick2(this.rng, [
-              "Blue raspberry? And a sausage roll? ...You know, I get this cataract on Thursdays. Today feels like a Thursday. Eleven o'clock van. I'll be very busy with my sausage roll.",
-              "Oh, that's the good blue. Right. If a basket comes through looking like a person, I'll assume it's a very lumpy duvet. Today only, mind.",
-            ]),
-            [],
-          )
+          const take = pick2(this.rng, ['keith.bribed.1', 'keith.bribed.2'] as const)
+          this.ui.talk(`${k.name}, X-ray operator`, LINES[take].text, [], take)
           this.toast(`${k.name} is paid off for today. Get in a laundry basket before 11:00.`, 'good')
         },
       },
@@ -2245,9 +2230,11 @@ export class Game implements World {
         label: 'Ask what he fancies',
         enabled: true,
         run: () =>
-          this.ui.talk(`${k.name}, X-ray operator`, `A blue drink. The proper blue, from the vending machine in visits. And a sausage roll from the canteen. ${need > 1 ? `${need} of each, mind. Inflation.` : 'One of each. I am a man of simple tastes.'}`, []),
+          need > 1
+            ? this.ui.talk(`${k.name}, X-ray operator`, `A blue drink. The proper blue, from the vending machine in visits. And a sausage roll from the canteen. ${need} of each, mind. Inflation.`, [])
+            : this.ui.talk(`${k.name}, X-ray operator`, LINES['keith.wants'].text, [], 'keith.wants'),
       },
-    ])
+    ], voice)
   }
 
   // ---- Crafting (called by the UI) ----
