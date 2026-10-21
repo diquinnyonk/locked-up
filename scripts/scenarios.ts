@@ -372,6 +372,38 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   check('solid: nobody walks through tables, machines or gym kit all day', !worst, worst)
 }
 
+// ---- People are solid ----
+{
+  const { game } = fresh()
+  game.clock.skipTo(12 * 60 + 10)
+  run(game, 2)
+  // Walk straight at someone standing still.
+  const other = game.guards.find((g) => g.ko <= 0 && g.body.visible && Math.abs(g.body.y) < 0.1)!
+  other.stop()
+  const b = game.player.body
+  b.x = other.x
+  b.z = other.z + 2.5
+  game.player.zone = game.grid.zoneAtWorld(b.x, b.z)
+  let closest = Infinity
+  game.input.forced = { x: 0, z: -1 }
+  for (let i = 0; i < 90; i++) {
+    game.update(1 / 30)
+    closest = Math.min(closest, Math.hypot(b.x - other.x, b.z - other.z))
+  }
+  game.input.forced = null
+  check('people: you cannot walk through an officer', closest > 0.6, closest.toFixed(2))
+
+  // A whole lunch in a full canteen: nobody stands inside anybody.
+  run(game, 20)
+  const up = [...game.prisoners, ...game.guards].filter((a) => a.ko <= 0 && a.body.visible && a.body.pose !== 'sleep' && a.body.pose !== 'down' && Math.abs(a.body.y) < 0.3)
+  let worst = Infinity
+  for (let i = 0; i < up.length; i++) for (let j = i + 1; j < up.length; j++) {
+    if (up[i].body.pose === 'sit' && up[j].body.pose === 'sit') continue
+    worst = Math.min(worst, Math.hypot(up[i].x - up[j].x, up[i].z - up[j].z))
+  }
+  check('people: at lunch nobody stands inside anybody', worst > 0.5, worst.toFixed(2))
+}
+
 // ---- Sleeping on your bunk ----
 {
   const { game } = fresh()

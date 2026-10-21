@@ -603,6 +603,7 @@ export class Game implements World {
       }
     }
     for (const a of agents) a.move(delta * (this.sleeping ? 2 : 1), agents)
+    this.separateBodies(agents)
     this.doors.update(delta)
     this.updateRiot(delta)
     this.missions.update()
@@ -976,6 +977,64 @@ export class Game implements World {
 
   private ventNoise = 0
   private pushingDoor = 0
+
+  /**
+   * Nobody walks through anybody. Every standing body is a circle; any two
+   * that overlap are pushed apart, the lighter one further. Prisoners and
+   * officers are heavier than you, so you bump off them rather than shove
+   * them aside. Anyone sitting, mid-conversation, or a fixture of the place
+   * (Keith, the Reverend, visitors) does not budge. Sleeping, knocked-out and
+   * crawling bodies, and anyone up in the ducts, are left out.
+   */
+  private separateBodies(agents: (Guard | Prisoner)[]): void {
+    const MIN = 0.68
+    const list: { b: Body; inv: number; move: (dx: number, dz: number) => void }[] = []
+    const upright = (b: Body) => b.visible && b.pose !== 'sleep' && b.pose !== 'down' && b.pose !== 'crawl' && Math.abs(b.y) < 0.3
+    const p = this.player
+    const pb = p.body
+    if (upright(pb) && !p.inVent && !this.climb) {
+      list.push({
+        b: pb,
+        inv: this.seated || this.talkingTo || this.punished ? 0 : 1,
+        move: (dx, dz) => {
+          moveCircle(pb, dx, dz, 0.34, (tx, ty) => this.playerBlocked(tx, ty))
+          this.grid.pushOutOfProps(pb, 0.34)
+        },
+      })
+    }
+    for (const a of agents) {
+      if (a.ko > 0 || !upright(a.body)) continue
+      const still = a.body.pose === 'sit' || a.body === this.talkingTo
+      list.push({ b: a.body, inv: still ? 0 : 0.5, move: (dx, dz) => a.nudge(dx, dz) })
+    }
+    const fixed = () => {}
+    for (const b of [this.keith.body, this.chaplain.body, ...this.visitors.map((v) => v.body)]) if (upright(b)) list.push({ b, inv: 0, move: fixed })
+
+    for (let i = 0; i < list.length; i++) {
+      const A = list[i]
+      for (let j = i + 1; j < list.length; j++) {
+        const B = list[j]
+        const w = A.inv + B.inv
+        if (w === 0) continue
+        let dx = B.b.x - A.b.x
+        let dz = B.b.z - A.b.z
+        if (Math.abs(dx) > MIN || Math.abs(dz) > MIN) continue
+        let d = Math.hypot(dx, dz)
+        if (d >= MIN) continue
+        const overlap = MIN - d
+        if (d < 1e-4) {
+          // Exactly on top of each other: part them along a fixed axis.
+          dx = 1
+          dz = 0
+          d = 1
+        }
+        const nx = dx / d
+        const nz = dz / d
+        if (A.inv) A.move(-nx * overlap * (A.inv / w), -nz * overlap * (A.inv / w))
+        if (B.inv) B.move(nx * overlap * (B.inv / w), nz * overlap * (B.inv / w))
+      }
+    }
+  }
 
   private playerBlocked(tx: number, ty: number): boolean {
     const t = this.grid.tile(tx, ty)

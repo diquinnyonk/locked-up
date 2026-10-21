@@ -155,6 +155,19 @@ export abstract class Agent {
   /** Where this body is going (or sitting): furniture holding it lets it in. */
   private heading: { x: number; z: number } | null = null
 
+  /** Moves the body, sliding along walls and round furniture. Bumping
+   *  into people goes through here too. */
+  nudge(dx: number, dz: number): void {
+    const grid = this.world.grid
+    moveCircle(this.body, dx, dz, RADIUS, (tx, ty) => {
+      const t = grid.tile(tx, ty)
+      if (t === Tile.Floor || t === Tile.Outside) return false
+      if (t === Tile.Door) return (grid.doorAtTile(tx, ty)?.openness ?? 0) < 0.6
+      return true
+    })
+    grid.pushOutOfProps(this.body, RADIUS, this.heading)
+  }
+
   /** Frame update: follow the path, open doors, avoid others. */
   move(delta: number, others: Agent[]): void {
     this.repath -= delta
@@ -221,14 +234,7 @@ export abstract class Agent {
     }
 
     const speed = Math.hypot(vx, vz)
-    const grid = this.world.grid
-    moveCircle(this.body, vx * delta, vz * delta, RADIUS, (tx, ty) => {
-      const t = grid.tile(tx, ty)
-      if (t === Tile.Floor || t === Tile.Outside) return false
-      if (t === Tile.Door) return (grid.doorAtTile(tx, ty)?.openness ?? 0) < 0.6
-      return true
-    })
-    grid.pushOutOfProps(this.body, RADIUS, this.heading)
+    this.nudge(vx * delta, vz * delta)
 
     this.body.speed += (Math.min(speed, this.wantSpeed + 0.5) - this.body.speed) * Math.min(1, delta * 8)
     let yaw = this.lookYaw

@@ -108,6 +108,12 @@ nobody cuts through the canteen tables any more. Stand by any bench, chair,
 pew, sofa or the edge of your bunk and press `E` to sit down; move to get
 up. Nobody sleeps off the side of their bunk either.
 
+People are solid too. You bump off prisoners and officers instead of walking
+through them (they are heavier than you, so you cannot just barge a man out
+of a doorway), and they jostle each other the same way. Anyone sitting, in
+the middle of a conversation, or rooted to their post like Keith and the
+Reverend does not budge at all.
+
 ## The map
 
 The minimap sits top right with your cell number on the card beside it.
