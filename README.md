@@ -116,16 +116,35 @@ Reverend does not budge at all.
 
 ## How people move
 
-Everyone is built from jointed parts (hips, knees, shoulders, elbows, a
-spine that twists) and animated in code, so a hundred people cost a handful
-of draw calls. Walking swings the hips and turns the shoulders against them;
-running pumps bent arms and leans in; a fight is a boxer's guard with jabs
-and crosses and a bounce; sitting puts thighs on the seat and hands on the
-knees with the odd shift of weight; crawling is hands and knees with a
-diagonal gait. Prisoners get beards, moustaches and quiffs, and a fair few
-officers have a moustache. `npm run dev` then `/poses.html` shows every pose
-side by side, with `?t=0.4` to freeze a moment and `?cam=side` to look from
-the side.
+Everyone is a rigged, animated character: the **KayKit Adventurers** pack by
+Kay Lousberg (CC0, free for any use), stripped down by `tools/people.py` to
+one 41-bone skeleton, four heads (long hair, short hair, bald with a beard,
+a blond quiff), two tops (a tunic and a vest), arms, legs and the 18
+animations the prison uses. The fantasy costumes are gone: every vertex
+carries a colour role (skin, hair, top, trim, trousers, shoes, belt), so the
+same tunic is a grey prison sweatshirt on one man, an officer's white shirt
+on the next and the chaplain's black on a third, and no textures ship.
+
+What someone is doing picks the clip, with a short blend between: idle,
+walk (sped up or slowed to match their pace), run, a fight of jabs, crosses
+and the odd kick, falling down, lying on a bunk, sitting on a bench, a
+cheer, picking things up, using the phone. The pack has no crawl, so the
+vents get a hand-made hands-and-knees pose laid onto the skeleton each
+frame. Officers' caps and ties, the chaplain's dog collar, moustaches and
+visitors' skirts are small meshes riding on the head, chest and hip bones.
+People far from you animate in steps to spare a phone the work, though they
+still move every frame.
+
+To rebuild the character data from the pack:
+
+```
+git clone https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0
+python3 tools/people.py KayKit-Character-Pack-Adventures-1.0/addons/kaykit_character_pack_adventures/Characters/gltf
+```
+
+`npm run dev` then `/poses.html` shows every pose side by side (`?t=0.4`
+freezes a moment, `?cam=side` looks from the side, `?pose=crawl` shows one,
+`?old=1` shows the jointed figures the game falls back to and the tests use).
 
 ## The map
 
@@ -386,3 +405,9 @@ src/
   audio/      synthesised sound
 scripts/      headless simulation and scenario checks
 ```
+
+## Credits
+
+Characters and animations: KayKit Character Pack: Adventurers 1.0 by Kay
+Lousberg (kaylousberg.itch.io), CC0. Everything else in the repository is
+made for this game.

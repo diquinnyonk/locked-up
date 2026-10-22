@@ -11,6 +11,7 @@ import { setToonSunDirection, toon } from '../art/toonMaterial'
 import { Engine } from '../core/Engine'
 import { CelPipeline } from '../render/CelPipeline'
 import { type Body, Crowd, makeBody, type Pose } from '../render/Crowd'
+import { People } from '../render/People'
 import { SOLID_LAYER } from '../render/CelPipeline'
 
 const q = new URLSearchParams(location.search)
@@ -33,11 +34,15 @@ const all: Spec[] = [
   { pose: 'fight', speed: 0, label: 'fight', style: { top: HEX.prisonMaroon, tache: true, hair: HEX.hairRed } },
   { pose: 'sit', speed: 0, label: 'sit', seat: true },
   { pose: 'crawl', speed: 1.4, label: 'crawl' },
-  { pose: 'walk', speed: 2.0, label: 'officer', style: { top: HEX.guardShirt, trousers: HEX.guardTrousers, cap: true, uniform: true } },
+  { pose: 'crawl', speed: 0, label: 'crawlstill' },
+  { pose: 'walk', speed: 2.0, label: 'officer', style: { top: HEX.guardShirt, trousers: HEX.guardTrousers, cap: true, uniform: true, tache: true, hair: null } },
+  { pose: 'stand', speed: 0, label: 'chaplain', style: { top: HEX.ink, trousers: HEX.ink, hair: HEX.hairGrey, clergy: true } },
+  { pose: 'stand', speed: 0, label: 'visitor', style: { top: HEX.dress, skirt: HEX.dress, hair: HEX.hairBlonde, longHair: true } },
+  { pose: 'sleep', speed: 0, label: 'sleep' },
 ]
 const only = q.get('pose')
 const specs = only ? all.filter((s) => s.label === only) : all
-const crowd = new Crowd(16)
+const crowd = q.get('old') ? new Crowd(16) : new People(16)
 engine.scene.add(crowd.group)
 const bodies = specs.map((s, i) => {
   const b = makeBody({ top: HEX.player, height: 1, build: 1.05, ...s.style })
@@ -56,10 +61,11 @@ const bodies = specs.map((s, i) => {
 })
 
 const cam = engine.camera
-const wide = specs.length * 2.6
+const wide = Math.max(2.2, specs.length) * 2.6
 if (q.get('cam') === 'side') cam.position.set(0, 1.2, wide * 0.5 + 1.5)
 else cam.position.set(0, 2.6, wide * 0.42 + 1.5)
-cam.lookAt(0, 0.7, 0)
+if (only) cam.position.set(q.get('cam') === 'side' ? 0 : 2.2, 1.3, 4.2)
+cam.lookAt(0, 0.6, 0)
 const freeze = q.get('t')
 let t = 0
 engine.onUpdate((delta) => {

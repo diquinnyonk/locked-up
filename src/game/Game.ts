@@ -1,4 +1,4 @@
-import { type Scene } from 'three'
+import { type Object3D, type Scene } from 'three'
 import { HEX } from '../art/palette'
 import { Input } from '../core/Input'
 import { type Body, Crowd, makeBody } from '../render/Crowd'
@@ -61,7 +61,9 @@ export class Game implements World {
   readonly post = new Post(this.rng)
   readonly fixtures: Fixtures
   readonly dynamic: Dynamic
-  readonly crowd: Crowd
+  /** Draws everyone. Starts as the light jointed crowd; the browser swaps in
+   *  the rigged People once the page is up (see useCrowd). */
+  crowd: { group: Object3D; paint(index: number, body: Body): void; update(bodies: Body[], delta: number): void }
   readonly guards: Guard[] = []
   readonly prisoners: Prisoner[] = []
   readonly noises: Noise[] = []
@@ -569,6 +571,9 @@ export class Game implements World {
       n.speed = 0
       if (n.pose !== 'sit') n.pose = 'talk'
       this.input.clear()
+      // Keep the floating markers out of the close-up.
+      this.dynamic.marker.visible = false
+      this.dynamic.setBeacons([])
       this.crowd.update(this.bodies, delta)
       return
     }
@@ -632,6 +637,7 @@ export class Game implements World {
     })
     const pb = this.player.body
     this.dynamic.marker.position.set(pb.x, pb.y + (this.player.inVent ? 3.6 : 2.9) + Math.sin(performance.now() / 300) * 0.08, pb.z)
+    this.dynamic.marker.visible = true
     const beacons: { x: number; z: number; hex: number }[] = this.keith.body.visible ? [{ x: this.keith.body.x, z: this.keith.body.z, hex: HEX.stainedBlue }] : []
     if (!this.hard) for (const t of this.jobTargets()) beacons.push({ x: t.x, z: t.z, hex: HEX.gateYellow })
     this.dynamic.setBeacons(beacons)
@@ -2138,6 +2144,15 @@ export class Game implements World {
     k.body.yaw = period === 'work' ? Math.PI / 2 : 0
     if (k.speechTimer > 0) k.speechTimer -= delta
     if (k.speechTimer > 0) this.bubbles.push({ body: k.body, text: k.speech })
+  }
+
+  /** Swaps how people are drawn, repainting everyone into the new crowd. */
+  useCrowd(next: Game['crowd']): void {
+    const parent = this.crowd.group.parent
+    parent?.remove(this.crowd.group)
+    this.crowd = next
+    this.bodies.forEach((b, i) => next.paint(i, b))
+    parent?.add(next.group)
   }
 
   /** Every job's targets for the map: the missions, plus the Reverend's. */
