@@ -564,6 +564,14 @@ export class Game implements World {
     if (this.talkingTo) {
       const p = this.player.body
       const n = this.talkingTo
+      // Step back to talking distance, so the close-up over your shoulder
+      // shows their face rather than the back of your head.
+      const gap = Math.hypot(p.x - n.x, p.z - n.z)
+      if (gap < TALK_GAP - 0.05 && gap > 1e-3) {
+        const step = Math.min(TALK_GAP - gap, delta * 3)
+        moveCircle(p, ((p.x - n.x) / gap) * step, ((p.z - n.z) / gap) * step, 0.34, (tx, ty) => this.playerBlocked(tx, ty))
+        this.grid.pushOutOfProps(p, 0.34)
+      }
       p.yaw = Math.atan2(n.x - p.x, n.z - p.z)
       n.yaw = Math.atan2(p.x - n.x, p.z - n.z)
       p.pose = 'stand'
@@ -2463,6 +2471,8 @@ export class Game implements World {
 }
 
 const WALL_TOP = 2.75
+/** How far apart two people stand to talk. */
+const TALK_GAP = 1.9
 
 function cellmateTip(round: number): string {
   return round === 1

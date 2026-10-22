@@ -147,8 +147,8 @@ engine.onUpdate((delta) => {
     dz /= d
     const rx = dz
     const rz = -dx
-    let chosen = { x: p.x + dx * 1.9 + rx * 1.35, z: p.z + dz * 1.9 + rz * 1.35 }
-    for (const [back, side] of [[1.9, 1.35], [1.9, -1.35], [1.4, 1.1], [1.4, -1.1], [1.0, 0.8], [1.0, -0.8], [0.6, 0.6]]) {
+    let chosen = { x: p.x + dx * 1.5 + rx * 1.7, z: p.z + dz * 1.5 + rz * 1.7 }
+    for (const [back, side] of [[1.5, 1.7], [1.5, -1.7], [1.1, 1.4], [1.1, -1.4], [0.8, 1.1], [0.8, -1.1], [0.4, 0.9]]) {
       const c = { x: p.x + dx * back + rx * side, z: p.z + dz * back + rz * side }
       const t = game.grid.tile(Math.floor(c.x / 2), Math.floor(c.z / 2))
       if (t === Tile.Floor || t === Tile.Outside || t === Tile.Door) {
