@@ -339,9 +339,19 @@ function furnishCell(add: (...g: BufferGeometry[]) => void, rect: Rect, _bunks: 
     for (const dx of [-0.5, 0.6]) add(box(0.08, 1.8, 0.08, { x: bunkX + dx, y: 0, z: midZ + (doorNorth ? 0.6 : -0.6) + dz }, HEX.bunk))
   }
 
-  // Toilet and sink by the door on the right.
-  add(cyl(0.26, 0.2, 0.42, { x: x1 - 0.5, y: 0, z: front + (doorNorth ? 0.4 : -0.4) }, HEX.porcelain, 10))
-  add(box(0.5, 0.35, 0.2, { x: x1 - 0.5, y: 0.35, z: front + (doorNorth ? 0.15 : -0.15) }, HEX.porcelain))
+  // A proper prison toilet by the door on the right: pedestal, bowl, seat,
+  // the lid up against a cistern on the wall, and a handle nobody uses.
+  const s = doorNorth ? 1 : -1
+  const tx = x1 - 0.62
+  const bowlZ = front + s * 0.12
+  add(cyl(0.24, 0.3, 0.28, { x: tx, y: 0, z: bowlZ }, HEX.porcelain, 16))
+  add(cyl(0.4, 0.28, 0.22, { x: tx, y: 0.26, z: bowlZ }, HEX.porcelain, 18))
+  add(ring(0.33, 0.06, { x: tx, y: 0.5, z: bowlZ }, HEX.porcelain))
+  add(cyl(0.27, 0.27, 0.02, { x: tx, y: 0.47, z: bowlZ }, 0x8fb7c4, 16))
+  add(box(0.7, 0.62, 0.06, { x: tx, y: 0.52, z: front - s * 0.12 }, HEX.porcelain))
+  add(box(0.78, 0.6, 0.3, { x: tx, y: 0.5, z: front - s * 0.32 }, HEX.porcelain))
+  add(box(0.82, 0.06, 0.34, { x: tx, y: 1.1, z: front - s * 0.32 }, HEX.porcelain))
+  add(box(0.14, 0.05, 0.05, { x: tx + 0.24, y: 0.95, z: front - s * 0.15 }, HEX.metal))
   add(box(0.5, 0.15, 0.4, { x: x1 - 0.3, y: 0.85, z: midZ }, HEX.porcelain))
   // Table and a stool.
   add(box(0.9, 0.06, 0.6, { x: x1 - 0.55, y: 0.72, z: back + (doorNorth ? -0.2 : 0.2) }, HEX.wood))

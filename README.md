@@ -114,6 +114,27 @@ of a doorway), and they jostle each other the same way. Anyone sitting, in
 the middle of a conversation, or rooted to their post like Keith and the
 Reverend does not budge at all.
 
+## Toilets, and other people's cells
+
+Every cell has a proper toilet. Sit on one (`E`), do your business (`R`),
+and then either flush (`R`) or stand up and walk off. Leave it unflushed
+and it sits there stinking, green fumes and all, until the man whose cell
+it is comes home. He goes spare. Whether he works out it was you depends
+on whether anyone saw you go in, whether you are hanging about nearby when
+he finds it, and how often it has happened before; your own cellmate always
+knows. If he knows, he comes for you (with a shiv if he is a hothead or in
+a firm), across the prison if need be; an old-timer just never forgives
+you, and a snitch tells an officer. If he does not know, the nearest poor
+soul gets the blame and the fists.
+
+Standing in somebody else's cell while he is there gets you told to leave.
+Stay, and it depends on the man: an old-timer tuts and threatens to write
+to his MP, a snitch goes to tell an officer, an ordinary lag or a fixer
+uses his fists, a firm man uses his fists or, if he is the boss or already
+has it in for you, a shiv, and a hothead gives you about two seconds before
+the shiv comes out. A shiv hits three times as hard as a fist. Leave and
+it is forgotten.
+
 ## How people move
 
 Everyone is a rigged, animated character: the **KayKit Adventurers** pack by

@@ -284,7 +284,18 @@ function tacheGeometry(): BufferGeometry {
   return onBone(mergeGeometries(parts), 'head')
 }
 
+/** A toothbrush-handle shiv with a taped grip and a razor edge. */
+function shivGeometry(): BufferGeometry {
+  const hand = bindPos('handslot.r')
+  const grip = new BoxGeometry(0.06, 0.06, 0.2)
+  grip.translate(hand.x, hand.y, hand.z + 0.02)
+  const blade = new BoxGeometry(0.03, 0.05, 0.22)
+  blade.translate(hand.x, hand.y, hand.z + 0.22)
+  return onBone(mergeGeometries([paint(grip.toNonIndexed(), HEX.plastic), paint(blade.toNonIndexed(), HEX.metal)]), 'handslot.r')
+}
+
 const ACCESSORY = {
+  shiv: shivGeometry(),
   cap: capGeometry(),
   uniform: uniformGeometry(),
   clergy: clergyGeometry(),
@@ -370,6 +381,7 @@ export class Person {
       return m
     }
     this.extras = {
+      shiv: extra(ACCESSORY.shiv, 'handslot.r'),
       cap: extra(ACCESSORY.cap, 'head'),
       uniform: extra(ACCESSORY.uniform, 'chest'),
       clergy: extra(ACCESSORY.clergy, 'chest'),
@@ -433,6 +445,7 @@ export class Person {
 
   update(b: Body, delta: number, animate = true): void {
     this.root.visible = b.visible
+    this.extras.shiv.visible = b.shiv
     if (!b.visible) return
     b.poseTime += delta
     b.stride += b.speed * delta * 3.2

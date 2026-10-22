@@ -65,6 +65,8 @@ export interface Body {
   uniform: boolean
   /** A vicar's white dog collar and a little wooden cross. */
   clergy: boolean
+  /** A shiv in the right hand. */
+  shiv: boolean
   /** Facial hair and a quiff, in the hair colour. */
   beard: boolean
   tache: boolean
@@ -97,6 +99,7 @@ export function makeBody(style: Partial<Body>): Body {
     uniform: false,
     clergy: false,
     beard: false,
+    shiv: false,
     tache: false,
     tuft: false,
     skirt: null,

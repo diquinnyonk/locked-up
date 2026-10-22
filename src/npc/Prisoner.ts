@@ -70,6 +70,12 @@ export class Prisoner extends Agent {
   hp = 10
   fighting = false
   fightTarget: Prisoner | 'player' | null = null
+  /** A shiv out: hits three times as hard, and shows in the hand. */
+  armed = false
+  /** Seconds left coming after you (an unflushed toilet, a trespass). */
+  hunt = 0
+  /** How long you have been standing in their cell while they watch. */
+  trespass = 0
   private punchTimer = 0
   cuffed = 0
   /** Saw you crafting or carrying: off to tell someone. */
@@ -312,7 +318,7 @@ export class Prisoner extends Agent {
       this.punchTimer = 0.7 + w.rng() * 0.5
       w.emit({ x: this.x, z: this.z, radius: 12, kind: 'fight' })
       if (w.rng() < 0.65) {
-        if (t === 'player') w.hurtPlayer(this.temperament === 'gang' ? 9 : 6, this)
+        if (t === 'player') w.hurtPlayer(this.armed ? 20 : this.temperament === 'gang' ? 9 : 6, this)
         else t.hit(2 + Math.floor(w.rng() * 2), this)
       }
     }
@@ -427,6 +433,24 @@ function buildPrisonerTree(world: World): Node<Prisoner> {
     }),
   )
 
+  // Coming for you: they have worked out what you did, and they will find
+  // you. Close enough, it turns into a fight.
+  const hunt = bt.sequence<Prisoner>(
+    'after you',
+    bt.when('hunting you', (s) => s.hunt > 0 && !world.clock.locked && !p.inVent && p.health > 0),
+    traced('find you', (s) => {
+      const d = s.distanceTo(p.body.x, p.body.z)
+      if (d < 9) {
+        s.fighting = true
+        s.fightTarget = 'player'
+        return 'running'
+      }
+      s.body.pose = 'walk'
+      s.goToWorld(p.body.x, p.body.z, RUN, 1)
+      return 'running'
+    }),
+  )
+
   const flee = bt.sequence<Prisoner>(
     'scared',
     bt.when('frightened', (s) => s.fearTimer > 0),
@@ -497,6 +521,6 @@ function buildPrisonerTree(world: World): Node<Prisoner> {
     return 'running'
   })
 
-  return bt.select<Prisoner>('prisoner', knockedOut, cuffed, fight, nightRiot, dayRiot, gangHunt, flee, snitch, sleep, regime)
+  return bt.select<Prisoner>('prisoner', knockedOut, cuffed, fight, nightRiot, dayRiot, hunt, gangHunt, flee, snitch, sleep, regime)
 }
 

@@ -404,6 +404,110 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   check('people: at lunch nobody stands inside anybody', worst > 0.5, worst.toFixed(2))
 }
 
+// ---- Toilets ----
+{
+  const { game, log } = fresh()
+  game.clock.skipTo(9 * 60 + 30)
+  run(game, 0.5)
+  const g = game as any
+  const cell = 'cellA6'
+  const seat = game.grid.seats.find((st) => st.toilet === cell)!
+  const sitOn = () => {
+    game.player.body.x = seat.x
+    game.player.body.z = seat.z + (seat.yaw === 0 ? 0.6 : -0.6)
+    game.player.zone = game.grid.zoneAtWorld(game.player.body.x, game.player.body.z)
+    g.sitDown(seat)
+  }
+  // Keep the owners out while you are in there.
+  const owners = game.prisoners.filter((pr) => pr.cell.zone === cell)
+  for (const o of owners) {
+    o.body.x = 70
+    o.body.z = 46
+    o.stop()
+  }
+  sitOn()
+  check('toilet: offers to do your business', prompt(game, 'Do your business'))
+  run(game, 4)
+  check('toilet: then to flush', prompt(game, 'Flush') && game.messes.size === 0)
+  g.standUp()
+  sitOn()
+  prompt(game, 'Do your business')
+  run(game, 4)
+  g.standUp()
+  check('toilet: walking off unflushed leaves a mess', game.messes.has(cell), log[log.length - 1])
+  // The owner comes home to it, and you are stood right there.
+  game.rng = (() => 0.01) as any
+  const owner = owners.find((o) => o.temperament !== 'old' && o.temperament !== 'snitch') ?? owners[0]
+  owner.temperament = 'lag'
+  const c = game.grid.cells.get(cell)!
+  owner.body.x = c.bunks[0].x + 0.6
+  owner.body.z = c.bunks[0].z
+  g.updateToilets(0.1)
+  check('toilet: the owner finds it, works out it was you and comes for you', !game.messes.has(cell) && owner.hunt > 0 && owner.grudge === 1, log[log.length - 1])
+}
+{
+  const { game, log } = fresh()
+  game.clock.skipTo(9 * 60 + 30)
+  run(game, 0.5)
+  const g = game as any
+  const mate = game.cellmate!
+  g.leaveMess(game.player.cell, false)
+  game.rng = (() => 0.99) as any
+  mate.temperament = 'hothead'
+  mate.body.x = game.grid.cells.get(game.player.cell)!.bunks[0].x + 0.6
+  mate.body.z = game.grid.cells.get(game.player.cell)!.bunks[0].z
+  g.updateToilets(0.1)
+  check('toilet: your own cellmate always knows, and a hothead brings a shiv', mate.hunt > 0 && mate.armed && mate.body.shiv, log[log.length - 1])
+}
+
+// ---- Standing in somebody else's cell ----
+{
+  const { game, log } = fresh()
+  game.clock.skipTo(9 * 60 + 30)
+  run(game, 0.5)
+  const g = game as any
+  const cell = 'cellA6'
+  const c = game.grid.cells.get(cell)!
+  const owner = game.prisoners.find((pr) => pr.cell.zone === cell)!
+  const setUp = (temper: string) => {
+    owner.temperament = temper as any
+    owner.fighting = false
+    owner.fightTarget = null
+    owner.armed = false
+    owner.trespass = 0
+    owner.report = false
+    owner.body.x = c.bunks[0].x + 0.6
+    owner.body.z = c.bunks[0].z
+    owner.stop()
+    game.player.body.x = c.bunks[1].x
+    game.player.body.z = c.bunks[1].z
+    game.player.zone = cell
+  }
+  setUp('lag')
+  g.updateTrespass(0.1)
+  check('cells: the owner tells you to get out', owner.trespass > 0 && owner.speech.length > 0, owner.speech)
+  g.updateTrespass(6)
+  check('cells: stay and an ordinary lag uses his fists', owner.fighting && owner.fightTarget === 'player' && !owner.armed, log[log.length - 1])
+  setUp('hothead')
+  g.updateTrespass(0.1)
+  g.updateTrespass(3)
+  check('cells: a hothead pulls a shiv', owner.fighting && owner.armed && owner.body.shiv)
+  setUp('old')
+  g.updateTrespass(0.1)
+  g.updateTrespass(6)
+  check('cells: an old-timer just tuts', !owner.fighting && log[log.length - 1].includes('disappointed'))
+  setUp('snitch')
+  g.updateTrespass(0.1)
+  g.updateTrespass(6)
+  check('cells: a snitch goes to tell an officer', owner.report && !owner.fighting)
+  // Leave, and it is forgotten.
+  game.player.body.x = 40
+  game.player.body.z = 30
+  game.player.zone = game.grid.zoneAtWorld(40, 30)
+  g.updateTrespass(0.1)
+  check('cells: leave and they let it go', owner.trespass === 0)
+}
+
 // ---- Sleeping on your bunk ----
 {
   const { game } = fresh()

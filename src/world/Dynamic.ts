@@ -228,6 +228,29 @@ export class Dynamic {
   private bunkNote: Mesh | null = null
 
   /** The folded note on your bunk. */
+  private readonly messes = new Map<string, Group>()
+
+  /** What you left in a toilet: a brown heap in the bowl and green stink
+   *  rising off it, until the owner finds it. */
+  setToiletMess(key: string, x: number, z: number, on: boolean): void {
+    let g = this.messes.get(key)
+    if (!g && !on) return
+    if (!g) {
+      g = new Group()
+      const heap = new Mesh(mergePainted([ball(0.15, { x: 0, y: 0.5, z: 0 }, 0x5b3a22, 1.2, 0.55, 1.1), ball(0.09, { x: 0.05, y: 0.58, z: 0.02 }, 0x6b4630)]), toon(0xffffff, { tinted: true }))
+      g.add(heap)
+      for (let i = 0; i < 3; i++) {
+        const wisp = new Mesh(mergePainted([box(0.1, 0.5, 0.1, { x: 0, y: 0, z: 0 }, 0x8ed15a), box(0.1, 0.1, 0.26, { x: 0, y: 0.45, z: 0.08 }, 0x8ed15a), box(0.1, 0.22, 0.1, { x: 0, y: 0.45, z: 0.2 }, 0x8ed15a)]), toon(0xffffff, { tinted: true, emissive: 0.6 }))
+        wisp.userData.wisp = i
+        g.add(wisp)
+      }
+      this.group.add(g)
+      this.messes.set(key, g)
+    }
+    g.position.set(x, 0, z)
+    g.visible = on
+  }
+
   setBunkNote(x: number, z: number, visible: boolean): void {
     if (!this.bunkNote) {
       this.bunkNote = new Mesh(mergePainted([box(0.34, 0.02, 0.26, { x: 0, y: 0, z: 0, ry: 0.3 }, HEX.paper), box(0.34, 0.02, 0.13, { x: 0.02, y: 0.02, z: 0.05, ry: 0.25 }, HEX.cloth)]), toon(0xffffff, { tinted: true, emissive: 0.3 }))
@@ -311,6 +334,17 @@ export class Dynamic {
       m.sealed.visible = g.sealed
       m.open.visible = !g.sealed && g.open
       m.shut.visible = !g.sealed && !g.open
+    }
+    for (const g of this.messes.values()) {
+      if (!g.visible) continue
+      for (const c of g.children) {
+        const i = c.userData.wisp as number | undefined
+        if (i === undefined) continue
+        const t = (this.time * 0.6 + i / 3) % 1
+        c.position.set(Math.sin(this.time * 2 + i * 2) * 0.12, 0.7 + t * 1.2, Math.cos(this.time * 1.7 + i) * 0.1)
+        c.rotation.y = this.time + i
+        c.scale.setScalar(1 - t * 0.6)
+      }
     }
     this.flag.visible = opts.flag
     if (opts.flag) {

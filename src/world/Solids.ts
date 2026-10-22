@@ -38,7 +38,10 @@ export function registerSolids(grid: Grid): void {
     const bunkX = x0 + 0.75
     bed(bunkX + 0.05, midZ + (doorNorth ? 0.6 : -0.6), 1.1, 2.6)
     grid.addSeat(cell.bunks[0].x + 0.55, cell.bunks[0].z, Math.PI / 2)
-    solid(x1 - 0.5, front + (doorNorth ? 0.4 : -0.4), 0.55, 0.55, false)
+    // The toilet: you can sit on it, so it is a seat you may step into.
+    const s = doorNorth ? 1 : -1
+    grid.addProp(x1 - 0.62, front - s * 0.05, 0.82, 0.95, false, true)
+    grid.addSeat(x1 - 0.62, front + s * 0.12, doorNorth ? 0 : Math.PI, cell.zone)
     solid(x1 - 0.55, back + (doorNorth ? -0.2 : 0.2), 0.9, 0.6, false)
     grid.addSeat(cell.bunks[1].x, cell.bunks[1].z, -Math.PI / 2)
   }

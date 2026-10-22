@@ -617,6 +617,8 @@ export class Game implements World {
     }
     for (const a of agents) a.move(delta * (this.sleeping ? 2 : 1), agents)
     this.separateBodies(agents)
+    this.updateToilets(delta)
+    this.updateTrespass(delta)
     this.doors.update(delta)
     this.updateRiot(delta)
     this.missions.update()
@@ -1286,8 +1288,16 @@ export class Game implements World {
     this.missions.prompts(add)
     pickup?.()
 
+    // On a toilet: do your business, then flush, or don't.
+    const loo = this.seated?.toilet
+    if (loo) {
+      const job = this.business
+      if (!job) add('R', 'Do your business', () => this.doBusiness(loo))
+      else if (job.done) add('R', 'Flush', () => this.flush())
+      else add('R', 'Concentrating...', () => {})
+    }
     // Any bench, chair, pew, sofa or bunk edge. Lowest of all.
-    if (this.seated) add('E', 'Stand up', () => this.standUp())
+    if (this.seated) add('E', this.business?.done ? 'Stand up (without flushing)' : 'Stand up', () => this.standUp())
     else {
       let seat: { x: number; z: number; yaw: number } | null = null
       let sd = 1.2
@@ -1313,7 +1323,185 @@ export class Game implements World {
   }
 
   /** Where you are sitting, if you are. Move to get up. */
-  seated: { x: number; z: number; yaw: number } | null = null
+  seated: { x: number; z: number; yaw: number; toilet?: string } | null = null
+  /** On a toilet, in progress or done. */
+  private business: { cell: string; t: number; done: boolean; witnessed: boolean; ownerSaw: boolean } | null = null
+  /** Cells with something unflushed in the toilet, and who might know. */
+  readonly messes = new Map<string, { witnessed: boolean; ownerSaw: boolean }>()
+  private toiletIncidents = 0
+
+  private doBusiness(cell: string): void {
+    this.business = { cell, t: 3.5, done: false, witnessed: false, ownerSaw: false }
+    this.toast('You settle in. This could take a minute.', 'neutral')
+  }
+
+  private flush(): void {
+    this.business = null
+    this.toast(pick2(this.rng, ['You flush. The pipes groan like a dying whale.', 'Flushed. The cistern sounds like a bin lorry reversing.', 'You flush, like a decent human being.']), 'neutral')
+  }
+
+  private leaveMess(cell: string, witnessed: boolean): void {
+    const ownerSaw = this.business?.ownerSaw ?? false
+    this.messes.set(cell, { witnessed, ownerSaw })
+    const seat = this.grid.seats.find((s) => s.toilet === cell)
+    if (seat) this.dynamic.setToiletMess(cell, seat.x, seat.z, true)
+    this.toast(cell === this.player.cell ? 'You leave it. In your own cell. Your cellmate will be thrilled.' : 'You walk away without flushing. Somebody is going to be very upset.', 'neutral')
+  }
+
+  /** Who could have seen you go: anyone with eyes on you nearby. */
+  private watchersOf(x: number, z: number, except?: Prisoner): number {
+    let n = 0
+    for (const a of [...this.prisoners, ...this.guards]) {
+      if (a === except || a.ko > 0 || a.body.pose === 'sleep') continue
+      if (Math.hypot(a.x - x, a.z - z) < 12 && this.grid.sightClear(a.x, a.z, x, z)) n++
+    }
+    return n
+  }
+
+  private updateToilets(delta: number): void {
+    const p = this.player
+    const job = this.business
+    if (job && !job.done) {
+      job.t -= delta
+      if (job.t <= 0) {
+        job.done = true
+        const owners = this.prisoners.filter((pr) => pr.cell.zone === job.cell)
+        job.ownerSaw = owners.some((o) => o.zone === job.cell && o.ko <= 0 && o.body.pose !== 'sleep')
+        job.witnessed = job.ownerSaw || this.watchersOf(p.body.x, p.body.z) > 0
+        this.toast(pick2(this.rng, ['Job done. Grim.', 'There. Better out than in.', 'Done. You would not want to be the next one in here.']), 'neutral')
+      }
+    }
+    // Shivs go away once the fight and the hunt are over.
+    for (const pr of this.prisoners) {
+      pr.hunt = Math.max(0, pr.hunt - delta)
+      if (pr.ko > 0) pr.hunt = 0
+      if (pr.armed && !pr.fighting && pr.hunt <= 0) {
+        pr.armed = false
+        pr.body.shiv = false
+      }
+    }
+    // An owner coming home to it.
+    for (const [cell, mess] of this.messes) {
+      if (this.business?.cell === cell && !this.business.done) continue
+      if (this.seated?.toilet === cell) continue
+      const owner = this.prisoners.find((pr) => pr.cell.zone === cell && pr.zone === cell && pr.ko <= 0 && pr.body.pose !== 'sleep' && !pr.fighting)
+      if (!owner) continue
+      this.messes.delete(cell)
+      this.dynamic.setToiletMess(cell, 0, 0, false)
+      this.discoverMess(owner, cell, mess)
+    }
+  }
+
+  private discoverMess(owner: Prisoner, cell: string, mess: { witnessed: boolean; ownerSaw: boolean }): void {
+    const p = this.player
+    const near = Math.hypot(owner.x - p.body.x, owner.z - p.body.z) < 12
+    const chance = cell === p.cell || mess.ownerSaw ? 1 : Math.min(0.95, 0.25 + (mess.witnessed ? 0.45 : 0) + (near ? 0.25 : 0) + this.toiletIncidents * 0.1)
+    this.toiletIncidents++
+    owner.trust = Math.max(0, owner.trust - 0.3)
+    if (this.rng() < chance) {
+      owner.grudge = 1
+      if (owner.gang) this.memory.annoy(owner.gang, 0.08)
+      owner.say(`WHO DID THIS?! ...${p.name}. It was YOU.`, 3.5)
+      if (owner.temperament === 'old') {
+        this.toast(`${owner.name} found what you left in his toilet and knows it was you. He is too old to fight, but he will never forgive you.`, 'bad')
+        return
+      }
+      if (owner.temperament === 'snitch') {
+        owner.report = true
+        this.toast(`${owner.name} found what you left in his toilet, knows it was you, and is off to tell an officer.`, 'bad')
+        return
+      }
+      owner.hunt = 120
+      if (owner.temperament === 'hothead' || owner.temperament === 'gang' || this.rng() < 0.25) {
+        owner.armed = true
+        owner.body.shiv = true
+      }
+      this.toast(`${owner.name} found what you left in his toilet. He knows it was you, and he is coming${owner.armed ? ' with a shiv' : ''}.`, 'bad')
+      return
+    }
+    // Wrong man: somebody nearby gets the blame, and the fists.
+    const victim = this.prisoners
+      .filter((o) => o !== owner && o.ko <= 0 && o.cuffed <= 0 && !o.fighting && o.body.visible && o.distanceTo(owner.x, owner.z) < 16)
+      .sort((a, b) => a.distanceTo(owner.x, owner.z) - b.distanceTo(owner.x, owner.z))[0]
+    if (victim && owner.temperament !== 'old') {
+      owner.say(`WHO DID THIS?! ...Was it YOU, ${victim.name}?!`, 3)
+      owner.fighting = true
+      owner.fightTarget = victim
+      victim.fighting = true
+      victim.fightTarget = owner
+      this.toast(`${owner.name} found what you left in his toilet and blames ${victim.name}. Fists are flying.`, 'good')
+    } else {
+      owner.say('WHO DID THIS?! I will find out. I WILL find out.', 3)
+      this.toast(`${owner.name} found what you left in his toilet. He has no idea who did it. Yet.`, 'neutral')
+    }
+  }
+
+  /**
+   * Standing in somebody else's cell while they are in it. They tell you to
+   * leave; stay, and what happens next depends on the man.
+   */
+  private updateTrespass(delta: number): void {
+    const p = this.player
+    const where = p.zone
+    const inside = where.startsWith('cell') && where !== p.cell && !p.inVent && !this.over && !this.talkingTo
+    for (const pr of this.prisoners) {
+      const home = pr.cell.zone
+      const watching = inside && home === where && pr.zone === home && pr.ko <= 0 && pr.cuffed <= 0 && pr.body.pose !== 'sleep' && !pr.fighting
+      if (!watching) {
+        if (pr.trespass > 0 && home !== where && pr.ko <= 0 && pr.zone === home && pr.trespass < 50) pr.say('And stay out.', 2)
+        pr.trespass = 0
+        continue
+      }
+      if (pr.trespass === 0) {
+        pr.face(p.body.x, p.body.z)
+        pr.say(
+          pr.temperament === 'hothead'
+            ? `Oi. ${p.name}. Out of my cell. NOW.`
+            : pr.temperament === 'old'
+              ? 'Can I help you, young man? This is my cell.'
+              : pr.temperament === 'snitch'
+                ? "You're not meant to be in here. I'm just saying."
+                : pick2(this.rng, [`What you doing in my cell, ${p.name}?`, 'Oi. Out. This is my peter.', 'You lost? This is my cell. Get out.']),
+          3,
+        )
+      }
+      pr.trespass += delta
+      const patience = pr.temperament === 'hothead' ? 2.5 : pr.temperament === 'gang' ? 4 : 5.5
+      if (pr.trespass < patience || pr.trespass >= 50) continue
+      pr.trespass = 50
+      pr.grudge = Math.min(1, pr.grudge + 0.2)
+      pr.trust = Math.max(0, pr.trust - 0.15)
+      switch (pr.temperament) {
+        case 'old':
+          pr.say('Some of us have to live here, you know. I shall be writing to my MP.', 3)
+          this.toast(`${pr.name} is very disappointed in you.`, 'neutral')
+          break
+        case 'snitch':
+          pr.say("Right. I'm telling.", 2.5)
+          pr.report = true
+          this.toast(`${pr.name} has gone to tell an officer you were in his cell.`, 'bad')
+          break
+        case 'hothead':
+          this.trespassFight(pr, true, "You're getting cut.")
+          break
+        case 'gang':
+          this.trespassFight(pr, pr.leader || pr.grudge > 0.4, `Nobody walks into a ${pr.gang ? GANGS[pr.gang].name : 'firm'} cell.`)
+          break
+        default:
+          this.trespassFight(pr, false, 'Right. You asked for it.')
+      }
+    }
+  }
+
+  private trespassFight(pr: Prisoner, shiv: boolean, line: string): void {
+    pr.say(line, 2.5)
+    pr.armed = shiv
+    pr.body.shiv = shiv
+    pr.fighting = true
+    pr.fightTarget = 'player'
+    pr.hunt = 20
+    this.toast(shiv ? `${pr.name} has pulled a shiv. Get out of his cell!` : `${pr.name} is coming at you. Get out of his cell!`, 'bad')
+  }
 
   private sitDown(seat: { x: number; z: number; yaw: number }): void {
     const b = this.player.body
@@ -1328,6 +1516,10 @@ export class Game implements World {
 
   private standUp(): void {
     if (!this.seated) return
+    // Walked off without flushing: it stays there for its owner to find.
+    const job = this.business
+    if (job?.done) this.leaveMess(job.cell, job.witnessed)
+    this.business = null
     this.seated = null
     this.player.body.pose = 'stand'
     this.grid.pushOutOfProps(this.player.body, 0.34)

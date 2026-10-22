@@ -98,7 +98,7 @@ export class Grid {
   private readonly doorAt = new Map<number, Door>()
   readonly rooms = new Map<string, Room>()
   /** Somewhere to sit: a bench, a chair, a pew, a bunk edge. */
-  readonly seats: { x: number; z: number; yaw: number }[] = []
+  readonly seats: { x: number; z: number; yaw: number; toilet?: string }[] = []
   /** Furniture nobody walks through, as world rectangles. */
   readonly props: { x0: number; z0: number; x1: number; z1: number; enter: boolean }[] = []
   /** Tiles whose middle a prop covers: paths go round them. */
@@ -336,8 +336,9 @@ export class Grid {
     return this.propTiles.has(ty * MAP_W + tx)
   }
 
-  addSeat(x: number, z: number, yaw: number): void {
-    this.seats.push({ x, z, yaw })
+  /** `toilet` names the cell whose toilet this is. */
+  addSeat(x: number, z: number, yaw: number, toilet?: string): void {
+    this.seats.push({ x, z, yaw, toilet })
   }
 
   /**
