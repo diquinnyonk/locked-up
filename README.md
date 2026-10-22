@@ -127,6 +127,11 @@ a firm), across the prison if need be; an old-timer just never forgives
 you, and a snitch tells an officer. If he does not know, the nearest poor
 soul gets the blame and the fists.
 
+Stand up halfway through and it drops out of you onto his floor, squashing
+with a splat in front of the bowl. That is worse: he is more likely to work
+out it was you, hunts you for longer, is twice as likely to bring a shiv,
+and even the old boys and the grasses come for you themselves.
+
 Standing in somebody else's cell while he is there gets you told to leave.
 Stay, and it depends on the man: an old-timer tuts and threatens to write
 to his MP, a snitch goes to tell an officer, an ordinary lag or a fixer

@@ -460,6 +460,38 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   check('toilet: your own cellmate always knows, and a hothead brings a shiv', mate.hunt > 0 && mate.armed && mate.body.shiv, log[log.length - 1])
 }
 
+{
+  // Stand up halfway through: it lands on the floor, and that is worse.
+  const { game, log } = fresh()
+  game.clock.skipTo(9 * 60 + 30)
+  run(game, 0.5)
+  const g = game as any
+  const cell = 'cellA6'
+  const seat = game.grid.seats.find((st) => st.toilet === cell)!
+  const owners = game.prisoners.filter((pr) => pr.cell.zone === cell)
+  for (const o of owners) {
+    o.body.x = 70
+    o.body.z = 46
+    o.stop()
+  }
+  game.player.body.x = seat.x
+  game.player.body.z = seat.z + (seat.yaw === 0 ? 0.6 : -0.6)
+  game.player.zone = cell
+  g.sitDown(seat)
+  prompt(game, 'Do your business')
+  run(game, 1)
+  g.standUp()
+  check('toilet: standing up mid-business drops it on the floor', game.messes.get(cell)?.floor === true, log[log.length - 1])
+  const owner = owners[0]
+  owner.temperament = 'old'
+  game.rng = (() => 0.01) as any
+  const c = game.grid.cells.get(cell)!
+  owner.body.x = c.bunks[0].x + 0.6
+  owner.body.z = c.bunks[0].z
+  g.updateToilets(0.1)
+  check('toilet: on his floor, even an old-timer comes for you', owner.hunt > 150 && !game.messes.has(cell), log[log.length - 1])
+}
+
 // ---- Standing in somebody else's cell ----
 {
   const { game, log } = fresh()

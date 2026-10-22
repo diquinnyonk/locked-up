@@ -236,19 +236,53 @@ export class Dynamic {
     let g = this.messes.get(key)
     if (!g && !on) return
     if (!g) {
-      g = new Group()
-      const heap = new Mesh(mergePainted([ball(0.15, { x: 0, y: 0.5, z: 0 }, 0x5b3a22, 1.2, 0.55, 1.1), ball(0.09, { x: 0.05, y: 0.58, z: 0.02 }, 0x6b4630)]), toon(0xffffff, { tinted: true }))
+      g = this.mess(0.5)
+      this.messes.set(key, g)
+    }
+    g.position.set(x, 0, z)
+    g.visible = on
+  }
+
+  /**
+   * Stood up mid-business: it drops from about seat height onto the floor,
+   * squashes as it lands, leaves a splat, and then sits there stinking.
+   */
+  dropFloorMess(key: string, x: number, z: number, fromY: number): void {
+    let g = this.messes.get(key)
+    if (!g) {
+      g = this.mess(0.07)
+      const splat = new Mesh(mergePainted([cyl(0.26, 0.26, 0.012, { x: 0, y: 0.004, z: 0 }, 0x4a2f1c, 14)]), toon(0xffffff, { tinted: true }))
+      splat.userData.splat = true
+      g.add(splat)
+      this.messes.set(key, g)
+    }
+    g.position.set(x, 0, z)
+    g.visible = true
+    g.userData.fall = { t: 0, from: fromY }
+  }
+
+  hideFloorMess(key: string): void {
+    const g = this.messes.get(key)
+    if (g) g.visible = false
+  }
+
+  private mess(heapY: number): Group {
+    {
+      const g = new Group()
+      const heap = new Mesh(mergePainted([ball(0.15, { x: 0, y: 0, z: 0 }, 0x5b3a22, 1.2, 0.55, 1.1), ball(0.09, { x: 0.05, y: 0.08, z: 0.02 }, 0x6b4630)]), toon(0xffffff, { tinted: true }))
+      heap.position.y = heapY
+      heap.userData.heap = heapY
+      heap.layers.enable(SOLID_LAYER)
       g.add(heap)
+      g.userData.wispY = heapY + 0.2
       for (let i = 0; i < 3; i++) {
         const wisp = new Mesh(mergePainted([box(0.1, 0.5, 0.1, { x: 0, y: 0, z: 0 }, 0x8ed15a), box(0.1, 0.1, 0.26, { x: 0, y: 0.45, z: 0.08 }, 0x8ed15a), box(0.1, 0.22, 0.1, { x: 0, y: 0.45, z: 0.2 }, 0x8ed15a)]), toon(0xffffff, { tinted: true, emissive: 0.6 }))
         wisp.userData.wisp = i
         g.add(wisp)
       }
       this.group.add(g)
-      this.messes.set(key, g)
+      return g
     }
-    g.position.set(x, 0, z)
-    g.visible = on
   }
 
   setBunkNote(x: number, z: number, visible: boolean): void {
@@ -337,11 +371,31 @@ export class Dynamic {
     }
     for (const g of this.messes.values()) {
       if (!g.visible) continue
+      // A drop with gravity, a squash on landing, then it settles.
+      const fall = g.userData.fall as { t: number; from: number } | undefined
+      let landed = true
+      if (fall) {
+        fall.t += delta
+        const drop = fall.from - 4.9 * fall.t * fall.t
+        const since = fall.t - Math.sqrt(fall.from / 4.9)
+        landed = drop <= 0
+        for (const c of g.children) {
+          if (c.userData.heap !== undefined) {
+            c.position.y = Math.max(c.userData.heap as number, drop)
+            const squash = landed ? Math.max(0, 1 - since / 0.3) : 0
+            c.scale.set(1 + squash * 0.6, 1 - squash * 0.55, 1 + squash * 0.6)
+          }
+          if (c.userData.splat) c.visible = landed
+        }
+        if (landed && since > 0.4) delete g.userData.fall
+      }
+      const wispY = (g.userData.wispY as number | undefined) ?? 0.7
       for (const c of g.children) {
         const i = c.userData.wisp as number | undefined
         if (i === undefined) continue
+        c.visible = landed
         const t = (this.time * 0.6 + i / 3) % 1
-        c.position.set(Math.sin(this.time * 2 + i * 2) * 0.12, 0.7 + t * 1.2, Math.cos(this.time * 1.7 + i) * 0.1)
+        c.position.set(Math.sin(this.time * 2 + i * 2) * 0.12, wispY + t * 1.2, Math.cos(this.time * 1.7 + i) * 0.1)
         c.rotation.y = this.time + i
         c.scale.setScalar(1 - t * 0.6)
       }
