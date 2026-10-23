@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Grim-on-the-Moor Voice Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rokkitt:wght@600;800&family=Literata:opsz,wght@7..72,400;7..72,600&display=swap">
+<style>
+/* Layout: a recording-session script on prison paper. One column of lines
+   grouped by who says them, a sticky tally bar, filters by character. */
+:root {
+  --ground: #dad7cd;
+  --paper: #f3f1ea;
+  --ink: #12222b;
+  --quiet: #55636a;
+  --rule: #c9c5b8;
+  --cover: #3f6a8f;
+  --accent: #f2c14e;
+  --stamp: #b5473f;
+  --good: #3f7a4f;
+  --display: 'Rokkitt', 'Rockwell', Georgia, serif;
+  --text: 'Literata', Georgia, 'Times New Roman', serif;
+  --mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #0d191f; --paper: #172a33; --ink: #ece9e0; --quiet: #9aa8ae; --rule: #2a404b;
+    --cover: #8fb4d6; --accent: #f2c14e; --stamp: #e07a70; --good: #7cc48e; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #0d191f; --paper: #172a33; --ink: #ece9e0; --quiet: #9aa8ae; --rule: #2a404b;
+  --cover: #8fb4d6; --accent: #f2c14e; --stamp: #e07a70; --good: #7cc48e; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font: 400 1rem/1.55 var(--text);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 48px;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--ground); }
+.wrap { max-width: 46rem; margin: 0 auto; display: grid; gap: 1.25rem; }
+header.top { padding-block: 1.5rem 0.25rem; display: grid; gap: 0.6rem; }
+h1 {
+  font: 800 clamp(2.2rem, 1.4rem + 4vw, 3.4rem) / 0.9 var(--display);
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  margin: 0;
+  text-wrap: balance;
+}
+.lede { margin: 0; max-width: 38rem; }
+.how { margin: 0; padding-left: 1.2rem; display: grid; gap: 0.25rem; color: var(--ink); }
+.how li::marker { color: var(--quiet); }
+.note { color: var(--quiet); font-size: 0.9rem; margin: 0; }
+
+.bar {
+  position: sticky;
+  top: env(safe-area-inset-top, 0px);
+  z-index: 5;
+  background: var(--ink);
+  color: var(--paper);
+  padding: 0.7rem 0.9rem;
+  display: grid;
+  gap: 0.6rem;
+}
+.tally { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+.tally b { font: 800 1.6rem/1 var(--display); font-variant-numeric: tabular-nums; }
+.tally span { font-size: 0.9rem; }
+.meter { height: 6px; background: color-mix(in srgb, var(--paper) 22%, transparent); }
+.meter i { display: block; height: 100%; width: 0; background: var(--accent); transition: width 0.3s; }
+.filters { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.filters button {
+  font: 600 0.8rem/1 var(--text);
+  border: 0;
+  padding: 0.45rem 0.6rem;
+  background: color-mix(in srgb, var(--paper) 14%, transparent);
+  color: var(--paper);
+  cursor: pointer;
+}
+.filters button[aria-pressed="true"] { background: var(--accent); color: #12222b; }
+.filters button:focus-visible, .btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+.saving { padding: 0.7rem 0.9rem; background: var(--paper); border-left: 5px solid var(--stamp); font-size: 0.92rem; }
+.saving[data-ok="true"] { border-left-color: var(--good); }
+
+section.who { display: grid; gap: 0.6rem; }
+section.who h2 {
+  font: 800 1.35rem/1.05 var(--display);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin: 0.6rem 0 0;
+  text-wrap: balance;
+}
+.count { font: 600 0.85rem var(--text); color: var(--quiet); text-transform: none; letter-spacing: 0; margin-left: 0.4rem; }
+
+article.line {
+  background: var(--paper);
+  padding: 0.9rem 1rem 1rem;
+  display: grid;
+  gap: 0.6rem;
+  border-left: 5px solid var(--rule);
+}
+article.line[data-done="true"] { border-left-color: var(--good); }
+.line .key { font: 0.78rem/1.2 var(--mono); color: var(--quiet); overflow-wrap: anywhere; display: flex; justify-content: space-between; gap: 0.6rem; }
+.line .state { font: 800 0.8rem/1.2 var(--display); text-transform: uppercase; letter-spacing: 0.04em; color: var(--quiet); white-space: nowrap; }
+.line[data-done="true"] .state { color: var(--good); }
+.line blockquote { margin: 0; font-size: 1.08rem; line-height: 1.5; max-width: 62ch; }
+.line blockquote .slot { background: color-mix(in srgb, var(--accent) 38%, transparent); padding: 0 0.2em; font-style: italic; }
+.line .hint { font-size: 0.85rem; color: var(--quiet); margin: 0; }
+.actions { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
+.btn {
+  font: 600 0.9rem/1 var(--text);
+  border: 0;
+  padding: 0.65rem 0.85rem;
+  background: var(--accent);
+  color: #12222b;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.btn.alt { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 2px var(--ink); }
+.btn.quiet { background: transparent; color: var(--stamp); padding-inline: 0.4rem; }
+.btn:disabled { opacity: 0.5; cursor: progress; }
+.btn:active { transform: translateY(1px); }
+.status { font-size: 0.85rem; color: var(--quiet); }
+.status.bad { color: var(--stamp); }
+audio { width: 100%; max-width: 100%; height: 36px; }
+input[type="file"] { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.empty { padding: 1rem; background: var(--paper); }
+@media (prefers-reduced-motion: reduce) { .meter i { transition: none; } }
+</style>
+<style>
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; }
+[hidden] { display: none !important; }
+.btn.rec { background: var(--stamp); color: #fff; }
+.btn.rec .dot { width: 0.6rem; height: 0.6rem; border-radius: 50%; background: #fff; animation: blink 1s infinite; }
+@keyframes blink { 50% { opacity: 0.2; } }
+@media (prefers-reduced-motion: reduce) { .btn.rec .dot { animation: none; } }
+.timer { font: 800 1rem var(--display); font-variant-numeric: tabular-nums; }
+.level { height: 6px; background: var(--rule); flex: 1 1 6rem; min-width: 4rem; }
+.level i { display: block; height: 100%; width: 0; background: var(--good); }
+.dl { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+article.line.armed { outline: 3px solid var(--accent); outline-offset: 2px; }
+a.btn { text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>Grim-on-the-Moor Voice Studio</h1>
+    <p class="lede">Every line in Locked Up that can be spoken. Record each one here with your phone's microphone, then download them all in one go for the game.</p>
+    <ol class="how">
+      <li>Tap <b>Record</b>, say the line, tap <b>Stop</b>. The first time, allow the microphone.</li>
+      <li>Play it back. Not right? Record it again; the new take replaces the old one.</li>
+      <li>Takes are kept on this phone until you clear them, so you can do a few lines at a time.</li>
+      <li>When you are done, tap <b>Download all takes</b> and send Claude the zip (Google Drive is easiest).</li>
+    </ol>
+    <p class="note">Highlighted words in a line are filled in by the game, like a prisoner's name. Say a stand-in such as "him" or "that wing" instead; the subtitle shows the real one. Somewhere quiet helps, with the phone a hand's width from your mouth.</p>
+  </header>
+
+  <div class="bar" role="region" aria-label="Progress">
+    <div class="tally"><b id="tally">0 of 0</b><span id="tally-note">recorded</span></div>
+    <div class="meter" aria-hidden="true"><i id="meter"></i></div>
+    <div class="filters" id="filters" role="group" aria-label="Show lines for"></div>
+  </div>
+
+  <div class="saving" id="saving" data-ok="true">
+    <div class="dl">
+      <button type="button" class="btn" id="zip">Download all takes</button>
+      <span id="zip-note" class="status">Nothing recorded yet.</span>
+    </div>
+  </div>
+
+  <main id="script"></main>
+</div>
+<script src="vendor/lame.min.js"></script>
+<script src="vendor/jszip.min.js"></script>
+<script id="lines" type="application/json">[{"key":"mission.soap-opera.brief","speaker":"Uncle (boss of The Firm)","line":"Bring Uncle a bar of soap, there's a good lad. Don't ask what it's for. It's for a mould. Of a key. Which I never mentioned."},{"key":"mission.soap-opera.thanks","speaker":"Uncle (boss of The Firm)","line":"Lovely. Smells of roses and conspiracy. You did well."},{"key":"mission.return-to-sender.brief","speaker":"Uncle (boss of The Firm)","line":"Pop this on the Crows' landing over on B wing. Put it down and walk away whistling. Don't open it. I mean it. I can see you thinking about it."},{"key":"mission.return-to-sender.thanks","speaker":"Uncle (boss of The Firm)","line":"Ha! Kingy's face. Like a slapped haddock. Here's a drink for your trouble."},{"key":"mission.quiet-word.brief","speaker":"Uncle (boss of The Firm)","line":"{target} of the Crows told the whole canteen my mum's trifle was shop-bought. Have a quiet word. Loudly. With your fists."},{"key":"mission.quiet-word.thanks","speaker":"Uncle (boss of The Firm)","line":"He'll think twice before slandering a homemade trifle. Have this, I've got loads."},{"key":"mission.pool-ball-robbery.brief","speaker":"Kingy (boss of The Crows)","line":"Need a pool ball, bruv. Don't matter what colour. Alright it matters a bit. Not the black one, that's bad luck innit."},{"key":"mission.pool-ball-robbery.thanks","speaker":"Kingy (boss of The Crows)","line":"Peak. Absolute scenes. You are now an honorary Crow. Not really. But nearly."},{"key":"mission.crowtax.brief","speaker":"Kingy (boss of The Crows)","line":"The Firm are rolling in Greggs vouchers. Bring us three and we'll call it a tax. A Crows tax. A Crowtax. I came up with that. Don't steal it."},{"key":"mission.crowtax.thanks","speaker":"Kingy (boss of The Crows)","line":"Tax collected. HMRC could never. Here, have a screwdriver, it's surplus to requirements."},{"key":"mission.bovver.brief","speaker":"Kingy (boss of The Crows)","line":"{target} from the Firm keeps calling us 'the Pigeons'. We are not pigeons. Go and explain the difference. With feeling."},{"key":"mission.bovver.thanks","speaker":"Kingy (boss of The Crows)","line":"Did he say 'crow'? Tell me he said 'crow'. Legend."},{"key":"mission.away-day.brief","speaker":"Skip (boss of Red Lions)","line":"Get to the flagpole during yard and give us a proper chant. Loud. Tuneful is optional. Heartfelt is not."},{"key":"mission.away-day.thanks","speaker":"Skip (boss of Red Lions)","line":"I heard that from the showers. I welled up. Here, you earned it."},{"key":"mission.half-time.brief","speaker":"Skip (boss of Red Lions)","line":"Five-a-side needs a goalpost. A canteen tray is basically a goalpost if you squint. Or if you're Gaz, who can't see anyway."},{"key":"mission.half-time.thanks","speaker":"Skip (boss of Red Lions)","line":"Back of the net. Literally, now we've got a net. It's a tray. Shut up."},{"key":"mission.derby-day.brief","speaker":"Skip (boss of Red Lions)","line":"{target} of the Northern Mob says the Lions bottled it in the last ruck. We did not bottle it. We tactically retreated. Go and correct him."},{"key":"mission.derby-day.thanks","speaker":"Skip (boss of Red Lions)","line":"Tactical retreat avenged. Have a sock. It's my lucky one. It's been through a lot."},{"key":"mission.sock-audit.brief","speaker":"The Accountant (boss of The Northern Mob)","line":"The books don't balance. We're two socks short. Find them. I'll know if they're not clean. I won't check. But I'll know."},{"key":"mission.sock-audit.thanks","speaker":"The Accountant (boss of The Northern Mob)","line":"Ledger balanced. You may have a biscuit. Metaphorically. Here is a Greggs voucher."},{"key":"mission.debt-collection.brief","speaker":"The Accountant (boss of The Northern Mob)","line":"{target} owes us three Twixes and an apology. We will take the apology out of his face. You will take it, I mean. I do accounts."},{"key":"mission.debt-collection.thanks","speaker":"The Accountant (boss of The Northern Mob)","line":"Debt settled. Interest accrued. You are a credit to the profession."},{"key":"mission.tea-proper.brief","speaker":"The Accountant (boss of The Northern Mob)","line":"Canteen tea is a crime against Yorkshire. Healthcare keeps proper teabags in the cupboard. Liberate them. Do it for the North."},{"key":"mission.tea-proper.thanks","speaker":"The Accountant (boss of The Northern Mob)","line":"Now that is a brew. I could cry. I won't. But I could."},{"key":"mission.brush.brief","speaker":"Gang member","line":"Get us a toothbrush. Mine's gone manky. Don't ask what I used it for. Grout. I used it for grout."},{"key":"mission.brush.thanks","speaker":"Gang member","line":"Minty fresh. You're alright, you."},{"key":"mission.love-letter.brief","speaker":"Gang member","line":"Give this to {target} on {wing} wing. If anyone asks, it's from your nan. If he asks, it's from me. If he laughs, it's from you."},{"key":"mission.biscuit-run.brief","speaker":"Gang member","line":"Custard creams. A whole packet. I've had a day. I've had a week. I've had a fifteen-year stretch, frankly."},{"key":"mission.biscuit-run.thanks","speaker":"Gang member","line":"Oh, that's the stuff. You're a gent. A crook, but a gent."},{"key":"mission.racing-certainty.brief","speaker":"Officer","line":"The governor confiscated my Racing Post and then lost it in the games room. Three horses circled. One's called Lord Biscuitwick. Find it, and I might not see you once."},{"key":"mission.racing-certainty.thanks","speaker":"Officer","line":"Lord Biscuitwick, each way. Lovely. Right. Next time I see you somewhere funny, I didn't."},{"key":"mission.custard-crisis.brief","speaker":"Officer","line":"Officers' biscuit tin is empty and it's only Tuesday. Custard creams. You didn't get them from me, I didn't ask, and this conversation is a figment."},{"key":"mission.custard-crisis.thanks","speaker":"Officer","line":"What biscuits? I see no biscuits. Mmf. Carry on, you."},{"key":"mission.specs-appeal.brief","speaker":"Officer","line":"I've lost my reading glasses somewhere in the yard. Leopard print. On a little beaded chain. If you laugh, I'm nicking you."},{"key":"mission.specs-appeal.thanks","speaker":"Officer","line":"Oh, I can see! Here, I found this bent bit of wire in my bag. No idea how it got there. You have it."},{"key":"mission.hooch.brief","speaker":"Officer","line":"Somebody's brewing hooch on {wing} wing. Smells like a fruit bowl died in a sock. Have a sniff around {cell} and tell me what you find. Discreetly. Like a bloodhound in slippers."},{"key":"mission.hooch.thanks","speaker":"Officer","line":"A bin bag of fermented oranges. Classic. Good work. Don't tell anyone it was you. They'll know anyway."},{"key":"mission.quiet-shift.brief","speaker":"Officer","line":"I'm on a double and my feet are killing me. Keep your nose clean till {time}. No warnings, no nonsense, no 'accidents' with the mop."},{"key":"mission.quiet-shift.thanks","speaker":"Officer","line":"Not a peep. A miracle. Here, for your services to my bunions."},{"key":"mission.fantasy-football.brief","speaker":"Officer","line":"{target} has topped the officers' fantasy league three weeks running and he's not even IN it. Find out who he's picked as captain. For security reasons."},{"key":"mission.fantasy-football.thanks","speaker":"Officer","line":"His NAN? Genius. Diabolical. Right, I owe you one. One."},{"key":"keith.intro","speaker":"Keith (X-ray operator)","line":"Alright? Keith. I do the X-ray. Twenty-two years. Seen it all: phones in pies, a ferret in a duvet, a whole set of drums in a mattress once. Don't ask."},{"key":"keith.paid","speaker":"Keith (X-ray operator)","line":"We never spoke. My eyes are terrible today. Terrible."},{"key":"keith.bribed.1","speaker":"Keith (X-ray operator)","line":"Blue raspberry? And a sausage roll? ...You know, I get this cataract on Thursdays. Today feels like a Thursday. Eleven o'clock van. I'll be very busy with my sausage roll."},{"key":"keith.bribed.2","speaker":"Keith (X-ray operator)","line":"Oh, that's the good blue. Right. If a basket comes through looking like a person, I'll assume it's a very lumpy duvet. Today only, mind."},{"key":"keith.wants","speaker":"Keith (X-ray operator)","line":"A blue drink. The proper blue, from the vending machine in visits. And a sausage roll from the canteen. One of each. I am a man of simple tastes."},{"key":"chaplain.intro","speaker":"Reverend Clive Bunting (chaplain)","line":"Ah! The Greggs Bandit, in my chapel! I have prayed for you, and separately for the sausage rolls. Now, a small crisis: somebody has stolen three of my hymn books. Three! I have a choir of eleven and a man called Tiny who only knows the words to Jerusalem. Bring them back and I will owe you one. A proper one."},{"key":"chaplain.reward","speaker":"Reverend Clive Bunting (chaplain)","line":"Three Greggs vouchers from the collection plate, which I shall confess on Sunday. And a favour. If you are ever somewhere you should not be, and an officer has you by the collar, I may well remember that you were at choir practice. Once. I can lie once. Twice is a habit."},{"key":"chaplain.accept","speaker":"Reverend Clive Bunting (chaplain)","line":"Bless you. Word on the landing is one is levelling the pool table in the games room, one is a soap dish in the showers, and one is holding up the bench press in the gym. Hymns Ancient and Modern, red covers, moustaches on all the bishops. Do not ask about the moustaches."},{"key":"chaplain.waiting","speaker":"Reverend Clive Bunting (chaplain)","line":"Any luck? The games room, the showers and the gym. If anyone asks, you are doing the Lord's work. Technically you are."},{"key":"chaplain.found","speaker":"Reverend Clive Bunting (chaplain)","line":"Is that...? All three! And only slightly damp. You are a wonder."},{"key":"chaplain.thanks","speaker":"Reverend Clive Bunting (chaplain)","line":"Three vouchers, as promised. And remember: choir practice. If an officer ever drags you off somewhere awkward, you were with me, singing the alto line. Once, mind. I'm a chaplain, not a solicitor."},{"key":"chaplain.after.1","speaker":"Reverend Clive Bunting (chaplain)","line":"Choir practice is still on, if you ever need it. Once."},{"key":"chaplain.after.2","speaker":"Reverend Clive Bunting (chaplain)","line":"The hymn books are back in the pews. Tiny is learning a second hymn. Miracles do happen."},{"key":"chaplain.spent","speaker":"Reverend Clive Bunting (chaplain)","line":"I've already lied for you once. I spent all of Sunday apologising. Panto auditions are Thursday, though."}]</script>
+<script src="recorder.js"></script>
+</body>
+</html>
