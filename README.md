@@ -432,8 +432,20 @@ src/
 scripts/      headless simulation and scenario checks
 ```
 
+## Recording the dialogue
+
+`recorder.html` on the project's GitHub Pages site is the voice studio: every
+spoken line with a Record button that uses the phone's microphone (the
+browser's own MediaRecorder), trims the silence, encodes an MP3 with lamejs
+and keeps each take on the device in IndexedDB until you are done. **Download
+all takes** bundles them with JSZip as `voices/<key>.mp3`, ready for
+`public/voices/`. `npm run pages` builds the site into `pages/` (the game at
+`index.html`, the studio at `recorder.html`); it is published from the
+`gh-pages` branch.
+
 ## Credits
 
 Characters and animations: KayKit Character Pack: Adventurers 1.0 by Kay
-Lousberg (kaylousberg.itch.io), CC0. Everything else in the repository is
-made for this game.
+Lousberg (kaylousberg.itch.io), CC0. The voice studio uses lamejs (LGPL-3.0,
+shipped unmodified as `recorder/vendor/lame.min.js`) and JSZip (MIT).
+Everything else in the repository is made for this game.

@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "tsx scripts/scenarios.ts",
     "sim": "tsx scripts/sim.ts",
-    "dialogue": "tsx scripts/dialogue.ts"
+    "dialogue": "tsx scripts/dialogue.ts",
+    "pages": "node scripts/pages.mjs"
   },
   "dependencies": {
     "three": "^0.185.1"

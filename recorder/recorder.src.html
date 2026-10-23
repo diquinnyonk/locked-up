@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Grim-on-the-Moor Voice Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rokkitt:wght@600;800&family=Literata:opsz,wght@7..72,400;7..72,600&display=swap">
+<style>
+/* Layout: a recording-session script on prison paper. One column of lines
+   grouped by who says them, a sticky tally bar, filters by character. */
+:root {
+  --ground: #dad7cd;
+  --paper: #f3f1ea;
+  --ink: #12222b;
+  --quiet: #55636a;
+  --rule: #c9c5b8;
+  --cover: #3f6a8f;
+  --accent: #f2c14e;
+  --stamp: #b5473f;
+  --good: #3f7a4f;
+  --display: 'Rokkitt', 'Rockwell', Georgia, serif;
+  --text: 'Literata', Georgia, 'Times New Roman', serif;
+  --mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #0d191f; --paper: #172a33; --ink: #ece9e0; --quiet: #9aa8ae; --rule: #2a404b;
+    --cover: #8fb4d6; --accent: #f2c14e; --stamp: #e07a70; --good: #7cc48e; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #0d191f; --paper: #172a33; --ink: #ece9e0; --quiet: #9aa8ae; --rule: #2a404b;
+  --cover: #8fb4d6; --accent: #f2c14e; --stamp: #e07a70; --good: #7cc48e; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font: 400 1rem/1.55 var(--text);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 48px;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--ground); }
+.wrap { max-width: 46rem; margin: 0 auto; display: grid; gap: 1.25rem; }
+header.top { padding-block: 1.5rem 0.25rem; display: grid; gap: 0.6rem; }
+h1 {
+  font: 800 clamp(2.2rem, 1.4rem + 4vw, 3.4rem) / 0.9 var(--display);
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  margin: 0;
+  text-wrap: balance;
+}
+.lede { margin: 0; max-width: 38rem; }
+.how { margin: 0; padding-left: 1.2rem; display: grid; gap: 0.25rem; color: var(--ink); }
+.how li::marker { color: var(--quiet); }
+.note { color: var(--quiet); font-size: 0.9rem; margin: 0; }
+
+.bar {
+  position: sticky;
+  top: env(safe-area-inset-top, 0px);
+  z-index: 5;
+  background: var(--ink);
+  color: var(--paper);
+  padding: 0.7rem 0.9rem;
+  display: grid;
+  gap: 0.6rem;
+}
+.tally { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+.tally b { font: 800 1.6rem/1 var(--display); font-variant-numeric: tabular-nums; }
+.tally span { font-size: 0.9rem; }
+.meter { height: 6px; background: color-mix(in srgb, var(--paper) 22%, transparent); }
+.meter i { display: block; height: 100%; width: 0; background: var(--accent); transition: width 0.3s; }
+.filters { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.filters button {
+  font: 600 0.8rem/1 var(--text);
+  border: 0;
+  padding: 0.45rem 0.6rem;
+  background: color-mix(in srgb, var(--paper) 14%, transparent);
+  color: var(--paper);
+  cursor: pointer;
+}
+.filters button[aria-pressed="true"] { background: var(--accent); color: #12222b; }
+.filters button:focus-visible, .btn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+.saving { padding: 0.7rem 0.9rem; background: var(--paper); border-left: 5px solid var(--stamp); font-size: 0.92rem; }
+.saving[data-ok="true"] { border-left-color: var(--good); }
+
+section.who { display: grid; gap: 0.6rem; }
+section.who h2 {
+  font: 800 1.35rem/1.05 var(--display);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin: 0.6rem 0 0;
+  text-wrap: balance;
+}
+.count { font: 600 0.85rem var(--text); color: var(--quiet); text-transform: none; letter-spacing: 0; margin-left: 0.4rem; }
+
+article.line {
+  background: var(--paper);
+  padding: 0.9rem 1rem 1rem;
+  display: grid;
+  gap: 0.6rem;
+  border-left: 5px solid var(--rule);
+}
+article.line[data-done="true"] { border-left-color: var(--good); }
+.line .key { font: 0.78rem/1.2 var(--mono); color: var(--quiet); overflow-wrap: anywhere; display: flex; justify-content: space-between; gap: 0.6rem; }
+.line .state { font: 800 0.8rem/1.2 var(--display); text-transform: uppercase; letter-spacing: 0.04em; color: var(--quiet); white-space: nowrap; }
+.line[data-done="true"] .state { color: var(--good); }
+.line blockquote { margin: 0; font-size: 1.08rem; line-height: 1.5; max-width: 62ch; }
+.line blockquote .slot { background: color-mix(in srgb, var(--accent) 38%, transparent); padding: 0 0.2em; font-style: italic; }
+.line .hint { font-size: 0.85rem; color: var(--quiet); margin: 0; }
+.actions { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
+.btn {
+  font: 600 0.9rem/1 var(--text);
+  border: 0;
+  padding: 0.65rem 0.85rem;
+  background: var(--accent);
+  color: #12222b;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.btn.alt { background: transparent; color: var(--ink); box-shadow: inset 0 0 0 2px var(--ink); }
+.btn.quiet { background: transparent; color: var(--stamp); padding-inline: 0.4rem; }
+.btn:disabled { opacity: 0.5; cursor: progress; }
+.btn:active { transform: translateY(1px); }
+.status { font-size: 0.85rem; color: var(--quiet); }
+.status.bad { color: var(--stamp); }
+audio { width: 100%; max-width: 100%; height: 36px; }
+input[type="file"] { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.empty { padding: 1rem; background: var(--paper); }
+@media (prefers-reduced-motion: reduce) { .meter i { transition: none; } }
+</style>
+<style>
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; }
+[hidden] { display: none !important; }
+.btn.rec { background: var(--stamp); color: #fff; }
+.btn.rec .dot { width: 0.6rem; height: 0.6rem; border-radius: 50%; background: #fff; animation: blink 1s infinite; }
+@keyframes blink { 50% { opacity: 0.2; } }
+@media (prefers-reduced-motion: reduce) { .btn.rec .dot { animation: none; } }
+.timer { font: 800 1rem var(--display); font-variant-numeric: tabular-nums; }
+.level { height: 6px; background: var(--rule); flex: 1 1 6rem; min-width: 4rem; }
+.level i { display: block; height: 100%; width: 0; background: var(--good); }
+.dl { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+article.line.armed { outline: 3px solid var(--accent); outline-offset: 2px; }
+a.btn { text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>Grim-on-the-Moor Voice Studio</h1>
+    <p class="lede">Every line in Locked Up that can be spoken. Record each one here with your phone's microphone, then download them all in one go for the game.</p>
+    <ol class="how">
+      <li>Tap <b>Record</b>, say the line, tap <b>Stop</b>. The first time, allow the microphone.</li>
+      <li>Play it back. Not right? Record it again; the new take replaces the old one.</li>
+      <li>Takes are kept on this phone until you clear them, so you can do a few lines at a time.</li>
+      <li>When you are done, tap <b>Download all takes</b> and send Claude the zip (Google Drive is easiest).</li>
+    </ol>
+    <p class="note">Highlighted words in a line are filled in by the game, like a prisoner's name. Say a stand-in such as "him" or "that wing" instead; the subtitle shows the real one. Somewhere quiet helps, with the phone a hand's width from your mouth.</p>
+  </header>
+
+  <div class="bar" role="region" aria-label="Progress">
+    <div class="tally"><b id="tally">0 of 0</b><span id="tally-note">recorded</span></div>
+    <div class="meter" aria-hidden="true"><i id="meter"></i></div>
+    <div class="filters" id="filters" role="group" aria-label="Show lines for"></div>
+  </div>
+
+  <div class="saving" id="saving" data-ok="true">
+    <div class="dl">
+      <button type="button" class="btn" id="zip">Download all takes</button>
+      <span id="zip-note" class="status">Nothing recorded yet.</span>
+    </div>
+  </div>
+
+  <main id="script"></main>
+</div>
+<script src="vendor/lame.min.js"></script>
+<script src="vendor/jszip.min.js"></script>
+<script id="lines" type="application/json">__LINES__</script>
+<script src="recorder.js"></script>
+</body>
+</html>
