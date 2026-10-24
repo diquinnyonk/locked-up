@@ -135,9 +135,8 @@ input[type="file"] { position: absolute; width: 1px; height: 1px; opacity: 0; po
 <div class="wrap">
   <header class="top">
     <h1>Grim-on-the-Moor Voice Studio</h1>
-    <p class="lede">Every line in Locked Up that can be spoken. Record each one on your phone, and it is saved here for Claude to put into the game.</p>
+    <p class="lede"><b>This is the old studio.</b> Pages on claude.ai are not allowed to use the microphone, so it cannot record. Record in the new studio instead, opened in Safari: <a href="https://diquinnyonk.github.io/locked-up/recorder.html" target="_blank" rel="noopener">diquinnyonk.github.io/locked-up/recorder.html</a>. Here you can still add a recording you already have, with Choose a file.</p>
     <ol class="how">
-      <li><b>Record</b> opens your camera in video mode. Film yourself saying the line (point it anywhere), stop, and tap Use Video. The studio keeps only the sound. This needs the page open in Safari or Chrome on your phone: inside the Claude app, and on a computer, Record opens files instead.</li>
       <li><b>Choose a file</b> takes a recording you already have: a voice memo, a video or an audio file. On an iPhone, Voice Memos need Share, Save to Files first.</li>
       <li>Play it back. If you want another go, record it again and the new take replaces the old one.</li>
     </ol>
@@ -245,7 +244,7 @@ input[type="file"] { position: absolute; width: 1px; height: 1px; opacity: 0; po
       <blockquote>${lineHtml(l.line)}</blockquote>
       ${take ? `<audio controls preload="none" id="play-${id}"></audio>` : ''}
       <div class="actions">
-        <label class="btn" for="rec-${id}">${take ? 'Record again' : 'Record'}</label>
+        <label class="btn" for="rec-${id}" hidden>${take ? 'Record again' : 'Record'}</label>
         <input type="file" id="rec-${id}" accept="video/*,audio/*" capture="user">
         <label class="btn alt" for="pick-${id}">Choose a file</label>
         <input type="file" id="pick-${id}" accept="audio/*,video/*,.m4a,.mp3,.wav,.aac,.ogg,.webm,.3gp,.amr,.mov">
