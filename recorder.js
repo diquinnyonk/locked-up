@@ -13,6 +13,10 @@
   const urls = new Map() // key -> object URL for playback
   let filter = 'All'
   let todoOnly = false
+  /** Lines recorded since the page opened stay on screen under "Still to
+   *  record", so a take never vanishes before you have heard it. */
+  const fresh = new Set()
+  let player = null
   let recording = null // { key, recorder, chunks, started, timer }
   let stream = null
   let audioCtx = null
@@ -81,7 +85,7 @@
     t.type = 'button'
     t.textContent = 'Still to record'
     t.setAttribute('aria-pressed', String(todoOnly))
-    t.onclick = () => { todoOnly = !todoOnly; renderFilters(); render() }
+    t.onclick = () => { todoOnly = !todoOnly; fresh.clear(); renderFilters(); render() }
     el.append(t)
   }
 
@@ -97,7 +101,7 @@
   function render() {
     renderTally()
     const main = document.getElementById('script')
-    const shown = LINES.filter((l) => (filter === 'All' || l.speaker === filter) && (!todoOnly || !takes.has(l.key) || recording?.key === l.key))
+    const shown = LINES.filter((l) => (filter === 'All' || l.speaker === filter) && (!todoOnly || !takes.has(l.key) || fresh.has(l.key) || recording?.key === l.key))
     if (!shown.length) {
       main.innerHTML = '<p class="empty">Nothing left to record here.</p>'
       return
@@ -135,10 +139,12 @@
         ${live
           ? `<button type="button" class="btn rec" id="rec-${id}"><span class="dot"></span>Stop <span class="timer" id="t-${id}">0.0s</span></button><span class="level" aria-hidden="true"><i id="lv-${id}"></i></span>`
           : `<button type="button" class="btn" id="rec-${id}" ${recording ? 'disabled' : ''}>${take ? 'Record again' : 'Record'}</button>`}
-        ${take && !live ? `<a class="btn alt" href="${url(l.key)}" download="${esc(l.key)}.mp3">Save MP3</a><button type="button" class="btn quiet" id="del-${id}">Delete take</button>` : ''}
+        ${take && !live ? `<button type="button" class="btn alt" id="play-${id}">Play</button><a class="btn alt" href="${url(l.key)}" download="${esc(l.key)}.mp3">Save MP3</a><button type="button" class="btn quiet" id="del-${id}">Delete take</button>` : ''}
         <span class="status" id="st-${id}"></span>
       </div>`
     a.querySelector(`#rec-${id}`).onclick = () => (live ? stop() : start(l))
+    const play = a.querySelector(`#play-${id}`)
+    if (play) play.onclick = () => playTake(l.key)
     const del = a.querySelector(`#del-${id}`)
     if (del) del.onclick = async () => {
       await dropTake(l.key)
@@ -146,6 +152,12 @@
       render()
     }
     return a
+  }
+
+  function playTake(key) {
+    if (player) player.pause()
+    player = new Audio(url(key))
+    player.play().catch(() => status(key, 'Tap Play to hear it.'))
   }
 
   function url(key) {
@@ -234,12 +246,12 @@
       const take = { blob: mp3.blob, seconds: mp3.seconds, at: new Date().toISOString() }
       forget(l.key)
       takes.set(l.key, take)
+      fresh.add(l.key)
       await saveTake(l.key, take)
       render()
-      status(l.key, 'Saved.')
-      // On to the next line still to record.
-      const next = LINES.find((x) => !takes.has(x.key) && (filter === 'All' || x.speaker === filter))
-      if (next) document.getElementById(`line-${docId(next.key)}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      status(l.key, 'Saved. Playing it back...')
+      playTake(l.key)
+      document.getElementById(`line-${docId(l.key)}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })
     } catch (e) {
       render()
       status(l.key, 'That take did not save. Try again.', true)
