@@ -273,5 +273,885 @@
   "key": "chaplain.spent",
   "speaker": "Reverend Clive Bunting (chaplain)",
   "line": "I've already lied for you once. I spent all of Sunday apologising. Panto auditions are Thursday, though."
+ },
+ {
+  "key": "officer.right-youre-coming-with-me-15y8",
+  "speaker": "Officer",
+  "line": "Right, {name}, you're coming with me."
+ },
+ {
+  "key": "officer.behind-your-door-ebzn",
+  "speaker": "Officer",
+  "line": "{name}! Behind your door!"
+ },
+ {
+  "key": "officer.whats-all-this-then-confiscated-1xfs",
+  "speaker": "Officer",
+  "line": "What's all this then? {thing}. Confiscated."
+ },
+ {
+  "key": "officer.clean-off-you-go-u8k1",
+  "speaker": "Officer",
+  "line": "Clean. Off you go."
+ },
+ {
+  "key": "officer.wheres-gone-1v1z",
+  "speaker": "Officer",
+  "line": "Where's {name} gone?!"
+ },
+ {
+  "key": "prisoner.on-my-floor-it-was-15r9",
+  "speaker": "Prisoner",
+  "line": "ON MY FLOOR?! ...{name}. It was YOU."
+ },
+ {
+  "key": "prisoner.who-did-this-it-was-1ec6",
+  "speaker": "Prisoner",
+  "line": "WHO DID THIS?! ...{name}. It was YOU."
+ },
+ {
+  "key": "prisoner.who-did-this-was-it-196r",
+  "speaker": "Prisoner",
+  "line": "WHO DID THIS?! ...Was it YOU, {someone}?!"
+ },
+ {
+  "key": "prisoner.who-did-this-i-will-cpp1",
+  "speaker": "Prisoner",
+  "line": "WHO DID THIS?! I will find out. I WILL find out."
+ },
+ {
+  "key": "prisoner.and-stay-out-kpv4",
+  "speaker": "Prisoner",
+  "line": "And stay out."
+ },
+ {
+  "key": "prisoner.oi-out-of-my-cell-ycff",
+  "speaker": "Prisoner",
+  "line": "Oi. {name}. Out of my cell. NOW."
+ },
+ {
+  "key": "prisoner.can-i-help-you-young-ogcw",
+  "speaker": "Prisoner",
+  "line": "Can I help you, young man? This is my cell."
+ },
+ {
+  "key": "prisoner.youre-not-meant-to-be-1lez",
+  "speaker": "Prisoner",
+  "line": "You're not meant to be in here. I'm just saying."
+ },
+ {
+  "key": "prisoner.what-you-doing-in-my-1n5k",
+  "speaker": "Prisoner",
+  "line": "What you doing in my cell, {name}?"
+ },
+ {
+  "key": "prisoner.oi-out-this-is-my-nf0u",
+  "speaker": "Prisoner",
+  "line": "Oi. Out. This is my peter."
+ },
+ {
+  "key": "prisoner.you-lost-this-is-my-bmzm",
+  "speaker": "Prisoner",
+  "line": "You lost? This is my cell. Get out."
+ },
+ {
+  "key": "prisoner.some-of-us-have-to-kdv3",
+  "speaker": "Prisoner",
+  "line": "Some of us have to live here, you know. I shall be writing to my MP."
+ },
+ {
+  "key": "prisoner.right-im-telling-145d",
+  "speaker": "Prisoner",
+  "line": "Right. I'm telling."
+ },
+ {
+  "key": "prisoner.youre-getting-cut-z56t",
+  "speaker": "Prisoner",
+  "line": "You're getting cut."
+ },
+ {
+  "key": "prisoner.nobody-walks-into-a-firm-b30o",
+  "speaker": "Prisoner",
+  "line": "Nobody walks into a firm cell."
+ },
+ {
+  "key": "prisoner.right-you-asked-for-it-154f",
+  "speaker": "Prisoner",
+  "line": "Right. You asked for it."
+ },
+ {
+  "key": "officer.well-well-look-what-crawled-a81w",
+  "speaker": "Officer",
+  "line": "Well, well. Look what crawled out."
+ },
+ {
+  "key": "officer.oi-get-your-hands-off-1w46",
+  "speaker": "Officer",
+  "line": "Oi! Get your hands off!"
+ },
+ {
+  "key": "officer.not-now-youre-not-on-s1eb",
+  "speaker": "Officer",
+  "line": "Not now, {name}. You're not on the movement list."
+ },
+ {
+  "key": "officer.assaulting-an-officer-etf6",
+  "speaker": "Officer",
+  "line": "Assaulting an officer?!"
+ },
+ {
+  "key": "officer.who-put-that-up-there-1xrj",
+  "speaker": "Officer",
+  "line": "Who put that up there?"
+ },
+ {
+  "key": "officer.ive-got-my-eye-on-isfi",
+  "speaker": "Officer",
+  "line": "I've got my eye on you. Both of them. This one's glass."
+ },
+ {
+  "key": "officer.dont-even-think-about-it-1gci",
+  "speaker": "Officer",
+  "line": "Don't even think about it. I can see you thinking. Your lips move."
+ },
+ {
+  "key": "officer.move-along-before-i-find-lgw1",
+  "speaker": "Officer",
+  "line": "Move along before I find a reason."
+ },
+ {
+  "key": "officer.ah-you-just-the-person-ioe5",
+  "speaker": "Officer",
+  "line": "Ah. You. Just the person. Keep your voice down."
+ },
+ {
+  "key": "officer.psst-over-here-no-act-1ew6",
+  "speaker": "Officer",
+  "line": "Psst. Over here. No, act natural. NATURAL."
+ },
+ {
+  "key": "officer.you-look-like-someone-who-3hkp",
+  "speaker": "Officer",
+  "line": "You look like someone who can keep their mouth shut. Can you? Good."
+ },
+ {
+  "key": "officer.ah-the-greggs-bandit-ive-296y",
+  "speaker": "Officer",
+  "line": "Ah, the Greggs Bandit. I've got my eye on you. And on my lunch."
+ },
+ {
+  "key": "officer.what-do-you-want-if-bpdj",
+  "speaker": "Officer",
+  "line": "What do you want? If it is the telly remote, the answer is no."
+ },
+ {
+  "key": "officer.keep-your-nose-clean-and-1pcu",
+  "speaker": "Officer",
+  "line": "Keep your nose clean and we will get along famously."
+ },
+ {
+  "key": "officer.not-now-im-on-my-ded7",
+  "speaker": "Officer",
+  "line": "Not now, I'm on my break. I'm always on my break."
+ },
+ {
+  "key": "officer.lovely-weather-for-it-not-upze",
+  "speaker": "Officer",
+  "line": "Lovely weather for it. Not that you would know."
+ },
+ {
+  "key": "officer.if-youre-after-the-toilet-19n7",
+  "speaker": "Officer",
+  "line": "If you're after the toilet roll, there is none. There's never any."
+ },
+ {
+  "key": "prisoner.cheers-1klp",
+  "speaker": "Prisoner",
+  "line": "Cheers."
+ },
+ {
+  "key": "prisoner.after-what-you-have-done-a12s",
+  "speaker": "Prisoner",
+  "line": "After what you have done to my lads? Not for all the sausage rolls in Grim-on-the-Moor."
+ },
+ {
+  "key": "prisoner.pleasure-doing-business-give-the-mb51",
+  "speaker": "Prisoner",
+  "line": "Pleasure doing business. Give the word (G) on {wing} wing and my lads go up. You have two days."
+ },
+ {
+  "key": "prisoner.nobody-kicks-off-without-the-cadg",
+  "speaker": "Prisoner",
+  "line": "{thing} Nobody kicks off without the firm that runs the landing. Pay the boss, and mind who you pay: the Firm and the Crows hate each other, and so do the Lions and the Mob."
+ },
+ {
+  "key": "prisoner.word-is-all-since-your-msbt",
+  "speaker": "Prisoner",
+  "line": "Word is {thing}{thing} All since your little stunt."
+ },
+ {
+  "key": "prisoner.every-time-you-mess-about-axdz",
+  "speaker": "Prisoner",
+  "line": "Every time you mess about, the screws come down on all of us. Keep it up."
+ },
+ {
+  "key": "prisoner.mind-your-own-nm0m",
+  "speaker": "Prisoner",
+  "line": "Mind your own."
+ },
+ {
+  "key": "prisoner.the-screws-carry-the-keys-1f67",
+  "speaker": "Prisoner",
+  "line": "The screws carry the keys on their belts. Get behind one while he's arguing about the footy."
+ },
+ {
+  "key": "prisoner.toothpaste-in-the-strike-plate-uvyd",
+  "speaker": "Prisoner",
+  "line": "Toothpaste in the strike plate sets like concrete. Door looks locked. It isn't. Whitening AND escaping."
+ },
+ {
+  "key": "prisoner.bang-on-your-door-at-11z9",
+  "speaker": "Prisoner",
+  "line": "Bang on your door at night like you are dying and they have to take you to healthcare. Make it a good groan. They score you."
+ },
+ {
+  "key": "prisoner.proper-kickoff-on-the-landing-1m3e",
+  "speaker": "Prisoner",
+  "line": "Proper kick-off on the landing and every screw in the place comes running. Doors get left open. Kettles get left on."
+ },
+ {
+  "key": "prisoner.phones-are-taped-never-say-1hpx",
+  "speaker": "Prisoner",
+  "line": "Phones are taped. Never say when. Never say how. Talk about your nan. Everybody talks about their nan."
+ },
+ {
+  "key": "prisoner.lads-used-to-run-a-1xsr",
+  "speaker": "Prisoner",
+  "line": "Lads used to run a red rag up the yard flagpole for their people on the road. Like semaphore, but dodgier."
+ },
+ {
+  "key": "prisoner.maintenance-has-every-tool-you-2cru",
+  "speaker": "Prisoner",
+  "line": "Maintenance has every tool you could want. Shame it's behind a red door. Shame about a lot of things."
+ },
+ {
+  "key": "prisoner.the-vents-run-over-everything-hm7y",
+  "speaker": "Prisoner",
+  "line": "The vents run over everything except the cells. Except some cells... I have said too much. I always say too much."
+ },
+ {
+  "key": "prisoner.two-sheets-knotted-make-a-1jo9",
+  "speaker": "Prisoner",
+  "line": "Two sheets knotted make a rope. Bend a fork and tape it on and it is a hook. Blue Peter taught me that. Sort of."
+ },
+ {
+  "key": "prisoner.soap-takes-a-key-impression-16i4",
+  "speaker": "Prisoner",
+  "line": "Soap takes a key impression lovely. Melt a fork into it with a lighter. Do not do it in the canteen. Ask me how I know."
+ },
+ {
+  "key": "prisoner.chew-soap-before-you-fake-1a5v",
+  "speaker": "Prisoner",
+  "line": "Chew soap before you fake it. Froth sells it. Tastes like a disappointing Tuesday."
+ },
+ {
+  "key": "prisoner.officers-get-bored-bored-officers-1ayg",
+  "speaker": "Prisoner",
+  "line": "Officers get bored. Bored officers want favours. Do one and they might not see you. Once."
+ },
+ {
+  "key": "prisoner.never-trust-a-man-who-9b5b",
+  "speaker": "Prisoner",
+  "line": "Never trust a man who says 'with all due respect'. Or a man in maroon. Or the fish pie."
+ },
+ {
+  "key": "prisoner.see-that-grille-behind-the-1xbp",
+  "speaker": "Prisoner",
+  "line": "See that grille behind the table? Maintenance never put it on the list. Screws are rusted to nothing; a spoon'd turn them. Goes up into the ducts. Don't get caught in there, mind, or they'll weld it."
+ },
+ {
+  "key": "prisoner.theyve-been-at-all-the-qv6p",
+  "speaker": "Prisoner",
+  "line": "They've been at all the locks since you started. Keep your head down for a day or two. They forget faster than you think. They don't, actually."
+ },
+ {
+  "key": "prisoner.what-do-you-want-qemj",
+  "speaker": "Prisoner",
+  "line": "What do YOU want?"
+ },
+ {
+  "key": "prisoner.oh-it-is-you-marvellous-wnnf",
+  "speaker": "Prisoner",
+  "line": "Oh, it is you. Marvellous. Smashing. Go away."
+ },
+ {
+  "key": "prisoner.you-know-who-i-am-y0kh",
+  "speaker": "Prisoner",
+  "line": "You know who I am. {someone} run {wing} wing."
+ },
+ {
+  "key": "prisoner.you-lost-oes9",
+  "speaker": "Prisoner",
+  "line": "You lost?"
+ },
+ {
+  "key": "prisoner.you-look-like-you-want-axhu",
+  "speaker": "Prisoner",
+  "line": "You look like you want something. Everyone wants something."
+ },
+ {
+  "key": "prisoner.looking-for-something-i-can-uunv",
+  "speaker": "Prisoner",
+  "line": "Looking for something? I can get things. Not Freddos. Never ask me for Freddos."
+ },
+ {
+  "key": "prisoner.psst-batteries-wire-a-lighter-1roy",
+  "speaker": "Prisoner",
+  "line": "Psst. Batteries, wire, a lighter, a screwdriver. Cash or Greggs vouchers. Mostly vouchers. Only vouchers."
+ },
+ {
+  "key": "prisoner.alright-1yk1",
+  "speaker": "Prisoner",
+  "line": "Alright, {name}."
+ },
+ {
+  "key": "prisoner.oi-oi-its-the-greggs-11dd",
+  "speaker": "Prisoner",
+  "line": "Oi oi, it's the Greggs Bandit!"
+ },
+ {
+  "key": "prisoner.is-it-true-you-nicked-13p5",
+  "speaker": "Prisoner",
+  "line": "Is it true you nicked a festive bake? In OCTOBER? Respect."
+ },
+ {
+  "key": "prisoner.my-cousin-works-in-that-1d3n",
+  "speaker": "Prisoner",
+  "line": "My cousin works in that Greggs. She has nightmares."
+ },
+ {
+  "key": "prisoner.alright-1s3y",
+  "speaker": "Prisoner",
+  "line": "Alright?"
+ },
+ {
+  "key": "prisoner.yalright-our-kid-1hdq",
+  "speaker": "Prisoner",
+  "line": "Y'alright, our kid?"
+ },
+ {
+  "key": "prisoner.wotcha-ytqi",
+  "speaker": "Prisoner",
+  "line": "Wotcha."
+ },
+ {
+  "key": "prisoner.ey-up-1cqj",
+  "speaker": "Prisoner",
+  "line": "Ey up."
+ },
+ {
+  "key": "prisoner.alright-chief-kettle-on-vd6l",
+  "speaker": "Prisoner",
+  "line": "Alright, chief? Kettle on?"
+ },
+ {
+  "key": "prisoner.do-i-know-you-i-1e7o",
+  "speaker": "Prisoner",
+  "line": "Do I know you? I feel like I know you. Did you do my mum's guttering?"
+ },
+ {
+  "key": "prisoner.evening-officer-hang-on-18ou",
+  "speaker": "Prisoner",
+  "line": "Evening, officer... hang on."
+ },
+ {
+  "key": "prisoner.since-when-do-they-let-1sdj",
+  "speaker": "Prisoner",
+  "line": "Since when do they let screws wear trainers?"
+ },
+ {
+  "key": "prisoner.is-that-you-it-is-zr9x",
+  "speaker": "Prisoner",
+  "line": "Is that you? It is, isn't it. Say nothing. Say NOTHING."
+ },
+ {
+  "key": "prisoner.nice-frock-1qd6",
+  "speaker": "Prisoner",
+  "line": "Nice frock."
+ },
+ {
+  "key": "prisoner.alright-darling-oh-no-ofmk",
+  "speaker": "Prisoner",
+  "line": "Alright, darling? ...Oh no."
+ },
+ {
+  "key": "prisoner.is-that-the-panto-wig-lexv",
+  "speaker": "Prisoner",
+  "line": "Is that the panto wig? Bold."
+ },
+ {
+  "key": "prisoner.youve-got-lovely-ankles-ill-j7k4",
+  "speaker": "Prisoner",
+  "line": "You've got lovely ankles, I'll give you that."
+ },
+ {
+  "key": "officer.right-new-uniform-nobody-mention-183m",
+  "speaker": "Officer",
+  "line": "Right. New uniform. Nobody mention the boxers."
+ },
+ {
+  "key": "officer.hang-about-is-six-foot-1hmx",
+  "speaker": "Officer",
+  "line": "Hang about. {officer} is six foot four with a moustache. You are neither."
+ },
+ {
+  "key": "officer.warrant-card-thats-a-tesco-twbs",
+  "speaker": "Officer",
+  "line": "Warrant card? ...That's a Tesco Clubcard."
+ },
+ {
+  "key": "officer.madam-you-have-a-prison-143p",
+  "speaker": "Officer",
+  "line": "Madam, you have a prison number on your neck. And a beard."
+ },
+ {
+  "key": "officer.lovely-to-see-you-mrs-7wtn",
+  "speaker": "Officer",
+  "line": "Lovely to see you, Mrs... Mrs... that's a pillowcase, not a handbag."
+ },
+ {
+  "key": "officer.this-pillowcase-is-breathing-ukcq",
+  "speaker": "Officer",
+  "line": "This pillowcase is breathing."
+ },
+ {
+  "key": "officer.since-when-do-towels-wear-hp40",
+  "speaker": "Officer",
+  "line": "Since when do towels wear trainers?"
+ },
+ {
+  "key": "reverend.lovely-to-see-a-new-klez",
+  "speaker": "Reverend Clive Bunting (chaplain)",
+  "line": "Lovely to see a new face. Well. An old face. A face."
+ },
+ {
+  "key": "reverend.panto-auditions-thursday-we-need-1r00",
+  "speaker": "Reverend Clive Bunting (chaplain)",
+  "line": "Panto auditions Thursday. We need a back half of a horse."
+ },
+ {
+  "key": "reverend.the-lord-moves-in-mysterious-o88n",
+  "speaker": "Reverend Clive Bunting (chaplain)",
+  "line": "The Lord moves in mysterious ways. So does the tea trolley."
+ },
+ {
+  "key": "reverend.choir-at-four-bring-your-16bf",
+  "speaker": "Reverend Clive Bunting (chaplain)",
+  "line": "Choir at four. Bring your lungs."
+ },
+ {
+  "key": "keith.a-blue-drink-the-proper-1d6r",
+  "speaker": "Keith (X-ray operator)",
+  "line": "A blue drink. The proper blue, from the vending machine in visits. And a sausage roll from the canteen. {thing} of each, mind. Inflation."
+ },
+ {
+  "key": "officer.what-was-that-in-the-xgzp",
+  "speaker": "Officer",
+  "line": "What was that? ...In the vents?"
+ },
+ {
+  "key": "officer.who-threw-that-y5i1",
+  "speaker": "Officer",
+  "line": "Who threw that?"
+ },
+ {
+  "key": "officer.hello-1dza",
+  "speaker": "Officer",
+  "line": "Hello?"
+ },
+ {
+  "key": "prisoner.from-who-tell-him-yes-ln0p",
+  "speaker": "Prisoner",
+  "line": "From WHO? ...Tell him yes. No. Tell him maybe. Tell him I'm thinking about it."
+ },
+ {
+  "key": "prisoner.is-this-lipstick-is-this-1ost",
+  "speaker": "Prisoner",
+  "line": "Is this lipstick? Is this... is this Rimmel? Oh, he shouldn't have."
+ },
+ {
+  "key": "prisoner.right-im-going-to-read-ta0m",
+  "speaker": "Prisoner",
+  "line": "Right. I'm going to read this in private and you are going to forget my face."
+ },
+ {
+  "key": "giver.well-chop-chop-62oq",
+  "speaker": "Job giver (officer or prisoner)",
+  "line": "Well? Chop chop. {thing}"
+ },
+ {
+  "key": "giver.im-not-getting-any-younger-1htj",
+  "speaker": "Job giver (officer or prisoner)",
+  "line": "I'm not getting any younger. Neither are you, in here. {thing}"
+ },
+ {
+  "key": "giver.tick-tock-i-said-tick-a9zw",
+  "speaker": "Job giver (officer or prisoner)",
+  "line": "Tick tock. I said tick tock. {thing}"
+ },
+ {
+  "key": "giver.actually-forget-it-wrong-time-1es4",
+  "speaker": "Job giver (officer or prisoner)",
+  "line": "Actually, forget it. Wrong time, wrong face."
+ },
+ {
+  "key": "giver.your-loss-literally-1t6t",
+  "speaker": "Job giver (officer or prisoner)",
+  "line": "Your loss. Literally."
+ },
+ {
+  "key": "giver.suit-yourself-sunshine-8vvu",
+  "speaker": "Job giver (officer or prisoner)",
+  "line": "Suit yourself, sunshine."
+ },
+ {
+  "key": "giver.fine-i-will-remember-this-xedg",
+  "speaker": "Job giver (officer or prisoner)",
+  "line": "Fine. I will remember this. I remember everything."
+ },
+ {
+  "key": "prisoner.its-coming-home-1k2v",
+  "speaker": "Prisoner",
+  "line": "It's coming home!"
+ },
+ {
+  "key": "prisoner.oi-oi-18gs",
+  "speaker": "Prisoner",
+  "line": "Oi oi!"
+ },
+ {
+  "key": "prisoner.get-in-1gib",
+  "speaker": "Prisoner",
+  "line": "Get in!"
+ },
+ {
+  "key": "prisoner.shut-up-79uq",
+  "speaker": "Prisoner",
+  "line": "Shut UP!"
+ },
+ {
+  "key": "prisoner.oi-are-you-sniffing-my-1u68",
+  "speaker": "Prisoner",
+  "line": "Oi! Are you sniffing my cell?!"
+ },
+ {
+  "key": "prisoner.grass-1ypw",
+  "speaker": "Prisoner",
+  "line": "Grass."
+ },
+ {
+  "key": "prisoner.out-out-weirdo-zwjk",
+  "speaker": "Prisoner",
+  "line": "Out. Out! Weirdo."
+ },
+ {
+  "key": "officer.hang-about-since-when-has-sxne",
+  "speaker": "Officer",
+  "line": "Hang about. Since when has {officer} had a prison tattoo?"
+ },
+ {
+  "key": "officer.youre-not-on-the-rota-tz1n",
+  "speaker": "Officer",
+  "line": "You're not on the rota. Nobody that ugly is on the rota."
+ },
+ {
+  "key": "officer.nice-try-your-ties-a-r2nq",
+  "speaker": "Officer",
+  "line": "Nice try, {name}. Your tie's a sock."
+ },
+ {
+  "key": "officer.madam-you-appear-to-have-1gpf",
+  "speaker": "Officer",
+  "line": "Madam... you appear to have a beard."
+ },
+ {
+  "key": "officer.thats-not-a-visitor-thats-kt7o",
+  "speaker": "Officer",
+  "line": "That's not a visitor, that's {name} in a frock!"
+ },
+ {
+  "key": "officer.excuse-me-love-your-wigs-1jvx",
+  "speaker": "Officer",
+  "line": "Excuse me, love, your wig's on backwards. And you're a prisoner."
+ },
+ {
+  "key": "officer.i-didnt-see-nothing-were-hcfr",
+  "speaker": "Officer",
+  "line": "I didn't see nothing. We're square, {name}."
+ },
+ {
+  "key": "officer.is-that-no-no-it-fhyg",
+  "speaker": "Officer",
+  "line": "Is that... no. No it isn't. Lovely evening."
+ },
+ {
+  "key": "officer.studies-ceiling-intently-g3at",
+  "speaker": "Officer",
+  "line": "*studies ceiling intently*"
+ },
+ {
+  "key": "officer.oi-stop-right-there-you-gwdb",
+  "speaker": "Officer",
+  "line": "Oi! {name}! Stop right there, you absolute weapon!"
+ },
+ {
+  "key": "officer.escape-escape-somebody-put-the-dh6w",
+  "speaker": "Officer",
+  "line": "Escape! Escape! Somebody put the kettle down and RUN!"
+ },
+ {
+  "key": "officer.stop-ive-got-a-bad-1tvu",
+  "speaker": "Officer",
+  "line": "Stop, {name}! I've got a bad knee!"
+ },
+ {
+  "key": "officer.code-red-code-red-somebody-9z2u",
+  "speaker": "Officer",
+  "line": "Code red! Code red! Somebody fetch my whistle!"
+ },
+ {
+  "key": "officer.i-can-see-you-mostly-fz37",
+  "speaker": "Officer",
+  "line": "{name}! I can SEE you! Mostly!"
+ },
+ {
+  "key": "officer.lost-them-typical-z724",
+  "speaker": "Officer",
+  "line": "Lost them. Typical."
+ },
+ {
+  "key": "officer.whered-he-go-he-was-x9l0",
+  "speaker": "Officer",
+  "line": "Where'd he go? He was RIGHT there."
+ },
+ {
+  "key": "officer.gone-like-my-pension-1ka2",
+  "speaker": "Officer",
+  "line": "Gone. Like my pension."
+ },
+ {
+  "key": "officer.oi-this-isnt-a-stately-13d3",
+  "speaker": "Officer",
+  "line": "Oi, {name}! This isn't a stately home, you can't just wander about!"
+ },
+ {
+  "key": "officer.where-do-you-think-you-1mw6",
+  "speaker": "Officer",
+  "line": "{name}! Where do you think you are, Center Parcs? Back to your landing."
+ },
+ {
+  "key": "officer.right-back-you-go-or-7xif",
+  "speaker": "Officer",
+  "line": "Right, {name}. Back you go, or I'm telling the governor. And your mum."
+ },
+ {
+  "key": "officer.i-dont-know-what-youre-d1rp",
+  "speaker": "Officer",
+  "line": "{name}, I don't know what you're doing and I don't want to know. Shoo."
+ },
+ {
+  "key": "officer.get-down-down-12la",
+  "speaker": "Officer",
+  "line": "Get down! Down!"
+ },
+ {
+  "key": "officer.hands-behind-your-back-19ld",
+  "speaker": "Officer",
+  "line": "Hands behind your back!"
+ },
+ {
+  "key": "officer.pack-it-in-the-lot-ccbv",
+  "speaker": "Officer",
+  "line": "Pack it in, the lot of you!"
+ },
+ {
+  "key": "officer.have-some-decorum-jynd",
+  "speaker": "Officer",
+  "line": "Have some decorum!"
+ },
+ {
+  "key": "officer.i-am-too-old-for-gvj9",
+  "speaker": "Officer",
+  "line": "I am too old for this!"
+ },
+ {
+  "key": "officer.arms-up-a-little-bird-1tjl",
+  "speaker": "Officer",
+  "line": "Arms up, {name}. A little bird says you're carrying."
+ },
+ {
+  "key": "officer.pockets-turn-them-out-slowly-1lft",
+  "speaker": "Officer",
+  "line": "Pockets, {name}. Turn them out. Slowly. Like a magician."
+ },
+ {
+  "key": "officer.i-can-hear-you-up-1ro7",
+  "speaker": "Officer",
+  "line": "I can hear you up there! Come out! I am not coming in, I have a bad back!"
+ },
+ {
+  "key": "officer.is-that-a-pigeon-thats-jt04",
+  "speaker": "Officer",
+  "line": "Is that a pigeon? That's not a pigeon. OUT!"
+ },
+ {
+  "key": "officer.mice-do-not-wear-trainers-ybkv",
+  "speaker": "Officer",
+  "line": "Mice do not wear trainers. Out you come."
+ },
+ {
+  "key": "officer.toothpaste-in-the-lock-cheeky-1km5",
+  "speaker": "Officer",
+  "line": "Toothpaste in the lock?! Cheeky sod."
+ },
+ {
+  "key": "officer.is-that-colgate-in-my-qbb0",
+  "speaker": "Officer",
+  "line": "Is that... Colgate? In MY lock?"
+ },
+ {
+  "key": "officer.minty-very-minty-very-nicked-sfh7",
+  "speaker": "Officer",
+  "line": "Minty. Very minty. Very NICKED."
+ },
+ {
+  "key": "officer.behind-your-doors-gents-o6qx",
+  "speaker": "Officer",
+  "line": "Behind your doors, gents!"
+ },
+ {
+  "key": "officer.bangup-come-on-ive-got-h4fn",
+  "speaker": "Officer",
+  "line": "Bang-up! Come on, I've got Corrie on at nine!"
+ },
+ {
+  "key": "officer.doors-in-five-minutes-1n61",
+  "speaker": "Officer",
+  "line": "Doors in five minutes!"
+ },
+ {
+  "key": "officer.chop-chop-teeth-wee-bed-19sb",
+  "speaker": "Officer",
+  "line": "Chop chop! Teeth, wee, bed!"
+ },
+ {
+  "key": "officer.you-look-fine-to-me-1una",
+  "speaker": "Officer",
+  "line": "You look fine to me. Have a glass of water and a word with yourself."
+ },
+ {
+  "key": "officer.thats-not-a-groan-thats-1d8h",
+  "speaker": "Officer",
+  "line": "That's not a groan, that's an amateur groan. Get some kip."
+ },
+ {
+  "key": "officer.dying-are-we-again-shame-1620",
+  "speaker": "Officer",
+  "line": "Dying, are we? Again? Shame. Night night."
+ },
+ {
+  "key": "officer.alright-out-you-come-slowly-pcvy",
+  "speaker": "Officer",
+  "line": "Alright {name}, out you come. Slowly. If you're sick on my shoes there'll be trouble."
+ },
+ {
+  "key": "officer.suit-yourself-ikc2",
+  "speaker": "Officer",
+  "line": "Suit yourself."
+ },
+ {
+  "key": "officer.keep-up-1s4u",
+  "speaker": "Officer",
+  "line": "Keep up."
+ },
+ {
+  "key": "officer.sit-on-the-bed-nursell-6hy5",
+  "speaker": "Officer",
+  "line": "Sit on the bed. Nurse'll be along. She's on her biscuit break, so, a while."
+ },
+ {
+  "key": "officer.right-nurse-says-two-paracetamol-1879",
+  "speaker": "Officer",
+  "line": "Right. Nurse says two paracetamol and stop being a drama queen. Back to bed."
+ },
+ {
+  "key": "prisoner.screws-out-oaxv",
+  "speaker": "Prisoner",
+  "line": "Screws out!"
+ },
+ {
+  "key": "prisoner.oi-oi-oi-1ywk",
+  "speaker": "Prisoner",
+  "line": "Oi oi oi!"
+ },
+ {
+  "key": "prisoner.we-want-proper-gravy-1hbt",
+  "speaker": "Prisoner",
+  "line": "We want proper gravy!"
+ },
+ {
+  "key": "prisoner.free-the-telly-t8r0",
+  "speaker": "Prisoner",
+  "line": "Free the telly!"
+ },
+ {
+  "key": "prisoner.bring-back-the-custard-1yn0",
+  "speaker": "Prisoner",
+  "line": "Bring back the custard!"
+ },
+ {
+  "key": "prisoner.come-on-then-sb1t",
+  "speaker": "Prisoner",
+  "line": "Come on then!"
+ },
+ {
+  "key": "prisoner.have-it-s20y",
+  "speaker": "Prisoner",
+  "line": "Have it!"
+ },
+ {
+  "key": "prisoner.you-what-q0un",
+  "speaker": "Prisoner",
+  "line": "You what?!"
+ },
+ {
+  "key": "prisoner.thats-for-the-custard-79my",
+  "speaker": "Prisoner",
+  "line": "That's for the custard!"
+ },
+ {
+  "key": "prisoner.not-the-face-1mf2",
+  "speaker": "Prisoner",
+  "line": "Not the face!"
+ },
+ {
+  "key": "prisoner.send-their-regards-cco9",
+  "speaker": "Prisoner",
+  "line": "{someone} send their regards."
+ },
+ {
+  "key": "prisoner.wrong-place-smj5",
+  "speaker": "Prisoner",
+  "line": "Wrong place, {name}."
+ },
+ {
+  "key": "prisoner.nowhere-to-run-in-here-1h8o",
+  "speaker": "Prisoner",
+  "line": "Nowhere to run in here."
+ },
+ {
+  "key": "prisoner.guv-s-carrying-you-didnt-3ncy",
+  "speaker": "Prisoner",
+  "line": "Guv... {name}'s carrying. You didn't hear it from me. I'm not here."
  }
 ]

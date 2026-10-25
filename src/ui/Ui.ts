@@ -4,6 +4,7 @@ import { HEX, css } from '../art/palette'
 import type { Game, UiPort } from '../game/Game'
 import { ITEMS, INVENTORY_SLOTS, type ItemId, RECIPES, vouchers } from '../game/Items'
 import { itemIcon } from './itemIcons'
+import { keyFor } from '../audio/lineKeys'
 import { ATTEMPTS_PER_ROUND, METHOD_NAMES, ROUNDS, type Method } from '../npc/Memory'
 import { MAP_H, MAP_W, PLAYER_CELL, Tile } from '../world/Grid'
 import { GANGS, GANG_IDS, gangOfWing } from '../npc/Gangs'
@@ -89,11 +90,13 @@ export class Ui implements UiPort {
     close.onclick = () => this.closePanels()
     list.append(close)
     body.append(list)
-    this.onSpeak?.(voice ?? null, line)
+    this.onSpeak?.(voice ?? keyFor(line), line)
   }
 
   /** Set by the game: plays a recorded line when there is one. */
   onSpeak: ((voice: string | null, line: string) => void) | null = null
+  /** Set by the game: a nearby speech bubble has just appeared. */
+  onRemark: ((voice: string | null) => void) | null = null
   /** Set by the game: the conversation is over. */
   onClose: (() => void) | null = null
 
@@ -562,7 +565,11 @@ export class Ui implements UiPort {
       }
       el.style.display = 'block'
       el.style.transform = `translate(${((v.x + 1) / 2) * w}px, ${((1 - v.y) / 2) * h}px) translate(-50%, -100%)`
-      if (el.textContent !== b.text) el.textContent = b.text
+      if (el.textContent !== b.text) {
+        el.textContent = b.text
+        // Said within earshot, and not over a conversation: voice it.
+        if (!g.talkingTo && Math.hypot(b.body.x - g.player.body.x, b.body.z - g.player.body.z) < 10) this.onRemark?.(keyFor(b.text))
+      }
       i++
     }
     for (; i < this.bubblePool.length; i++) this.bubblePool[i].style.display = 'none'

@@ -69,6 +69,7 @@ function begin(): void {
     voice.stop()
   }
   ui.onSpeak = (key) => voice.play(key)
+  ui.onRemark = (key) => voice.remark(key)
   buildTouchControls(game.input, () => ui.toggleMenu('main'))
   document.getElementById('menubtn')!.onclick = () => ui.toggleMenu('main')
   document.getElementById('mapbtn')!.onclick = () => ui.toggleMap()

@@ -8,6 +8,7 @@ import { Game, type UiPort } from '../src/game/Game'
 import { screenCall } from '../src/game/Phone'
 import { MAP_H, MAP_W, TILE, Tile, tileCentre } from '../src/world/Grid'
 import { findPath } from '../src/world/Nav'
+import { keyFor } from '../src/audio/lineKeys'
 
 ;(globalThis as unknown as { window: unknown }).window = globalThis
 ;(globalThis as unknown as { addEventListener: unknown }).addEventListener = () => {}
@@ -538,6 +539,38 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   game.player.zone = game.grid.zoneAtWorld(40, 30)
   g.updateTrespass(0.1)
   check('cells: leave and they let it go', owner.trespass === 0)
+}
+
+// ---- Every spoken line has a recording key ----
+{
+  const { game } = fresh()
+  const said = new Set<string>()
+  const listen = () => {
+    for (const a of [...game.prisoners, ...game.guards]) if (a.speech && a.speechTimer > 0) said.add(a.speech)
+    if (lastTalk) said.add(lastTalk.line)
+  }
+  // Talk to a few people of each kind, then let a day run.
+  for (const pr of game.prisoners.slice(0, 30)) {
+    ;(game as any).talkTo(pr)
+    listen()
+    game.endConversation()
+  }
+  for (const g of game.guards.slice(0, 8)) {
+    ;(game as any).talkToGuard(g)
+    listen()
+    game.endConversation()
+  }
+  for (let h = 0; h < 18; h++) {
+    for (let i = 0; i < 40; i++) {
+      game.update(1 / 4)
+      listen()
+    }
+  }
+  const lines = [...said].filter((t) => t.replace(/[^A-Za-z]/g, '').length >= 3)
+  const missing = lines.filter((t) => !keyFor(t))
+  check('voices: what people say matches a recordable line', lines.length >= 15 && missing.length / lines.length < 0.08, `${lines.length - missing.length}/${lines.length} matched; missing: ${missing.slice(0, 4).join(' | ')}`)
+  check('voices: an officer on his break has a key', keyFor("Not now, I'm on my break. I'm always on my break.") === 'officer.not-now-im-on-my-ded7')
+  check('voices: a line with a name in it still finds its key', !!keyFor(`Alright, ${game.player.name}.`) && !!keyFor('WHO DID THIS?! ...Dave. It was YOU.'))
 }
 
 // ---- Sleeping on your bunk ----

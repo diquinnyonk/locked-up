@@ -25,7 +25,7 @@
   const speakers = ['All', ...new Set(LINES.map((l) => l.speaker))]
   const short = (s) => s.replace(/ \(.*\)$/, '')
   const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
-  const slots = { target: 'a name', wing: 'a wing', cell: 'a cell', time: 'a time', giver: 'a name' }
+  const slots = { target: 'a name', wing: 'a wing', cell: 'a cell', time: 'a time', giver: 'a name', name: 'their name', someone: 'a name', officer: 'an officer', thing: '...' }
   const lineHtml = (t) => esc(t).replace(/\{(\w+)\}/g, (_m, k) => `<span class="slot">${slots[k] || k}</span>`)
 
   // ---- Storage: IndexedDB, so takes survive closing the page ----
