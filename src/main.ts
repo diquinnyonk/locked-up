@@ -9,6 +9,7 @@ import { Sfx } from './audio/Sfx'
 import { buildTouchControls } from './ui/Touch'
 import { Voice } from './audio/Voice'
 import { playIntro } from './ui/Intro'
+import { playTour, tourSeen } from './ui/Tour'
 import { Tile } from './world/Grid'
 import { People } from './render/People'
 
@@ -56,7 +57,6 @@ form.addEventListener('submit', (e) => {
 })
 
 function begin(): void {
-  const name = game.player.name
   game.clock.minutes = 8 * 60 - 20
   game.input.enabled = true
   game.input.clear()
@@ -74,9 +74,30 @@ function begin(): void {
   document.getElementById('menubtn')!.onclick = () => ui.toggleMenu('main')
   document.getElementById('mapbtn')!.onclick = () => ui.toggleMap()
   document.getElementById('minimap')!.onclick = () => ui.toggleMap()
+  ui.onTour = () => tour(() => {})
+  // The first time, a walk round the screen before anything else.
+  if (tourSeen()) welcome()
+  else tour(welcome)
+}
+
+/** The tour, with the prison holding its breath until it is done. */
+function tour(after: () => void): void {
+  ui.paused = true
+  game.input.enabled = false
+  ui.hideCard()
+  playTour(game.player.name, game.hard, () => {
+    ui.paused = false
+    game.input.enabled = true
+    game.input.clear()
+    after()
+  })
+}
+
+function welcome(): void {
+  const name = game.player.name
   ui.card(
     `${name}, the Greggs Bandit`,
-    `Welcome to HMP Grim-on-the-Moor. You share cell A8 with ${game.cellmate?.name ?? 'a stranger'}.\nGet out of your cell, get out of the wing, get over the wall, and have someone waiting when you do.\nOut of bounds only counts as an attempt once an officer sees you, and if you make it back to your cell it never happened.${game.hard ? '' : ' The pale shapes on the floor are what each officer can see.'}\nPress J (or Menu) for your notebook: the main mission, your jobs, your pockets and everything the prison learns.`,
+    `Welcome to HMP Grim-on-the-Moor. You share cell A8 with ${game.cellmate?.name ?? 'a stranger'}.\nGet out of your cell, get out of the wing, get over the wall, and have someone waiting when you do.\nOut of bounds only counts as an attempt once an officer sees you, and if you make it back to your cell it never happened.${game.hard ? '' : ' The pale shapes on the floor are what each officer can see.'}\nEvery control is in the Notebook (J, or Menu) under How to play.`,
     30,
   )
 }

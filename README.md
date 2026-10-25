@@ -31,6 +31,17 @@ rolls and a festive bake), which in Grim-on-the-Moor, under the Pastry Protectio
 of 1987, is worse than murder. Everyone inside knows your name. Prisoners and
 officers call you the Greggs Bandit.
 
+## Your first day: the tour
+
+The first time you play, the game stops before day one for a walk round the
+screen (`src/ui/Tour.ts`): moving, doing things, the clock and the regime,
+being noticed, jobs, the map, your pockets, the Notebook and its pages,
+nights, and talking. Each card points at the part of the screen it is about,
+with the keys on a keyboard or the button names on a phone. It can be
+skipped, and it is remembered on the device so it only shows once. The
+Notebook has a **How to play** page listing every control, with a button to
+take the tour again.
+
 ## Post, and the notes on your bunk
 
 The post comes round every morning at unlock: a letter from home most days,

@@ -4,6 +4,8 @@ import { HEX, css } from '../art/palette'
 import type { Game, UiPort } from '../game/Game'
 import { ITEMS, INVENTORY_SLOTS, type ItemId, RECIPES, vouchers } from '../game/Items'
 import { itemIcon } from './itemIcons'
+import { CONTROLS } from './Tour'
+import { isTouch } from './Touch'
 import { castLine, voiceFor } from '../audio/cast'
 import { keyFor } from '../audio/lineKeys'
 import { ATTEMPTS_PER_ROUND, METHOD_NAMES, ROUNDS, type Method } from '../npc/Memory'
@@ -15,7 +17,7 @@ import { type BunkNote, type Letter, governorsLetter } from '../game/Post'
  * The interface, in DOM. Flat ink panels on paper, hard edges, no gradients:
  * the same graphic language as the cel world underneath it.
  */
-export type MenuTab = 'main' | 'jobs' | 'pockets' | 'post' | 'notes'
+export type MenuTab = 'main' | 'jobs' | 'pockets' | 'post' | 'notes' | 'help'
 
 const $ = <T extends HTMLElement>(sel: string) => document.querySelector(sel) as T
 
@@ -213,6 +215,7 @@ export class Ui implements UiPort {
       ['pockets', 'Pockets'],
       ['post', g.post.unread ? `Post (${g.post.unread})` : 'Post'],
       ['notes', 'Notes'],
+      ['help', 'How to play'],
     ]
     for (const [id, label] of names) {
       const b = document.createElement('button')
@@ -228,6 +231,7 @@ export class Ui implements UiPort {
     else if (tab === 'jobs') this.renderJobs(body)
     else if (tab === 'pockets') this.renderPockets(body)
     else if (tab === 'post') this.renderPost(body)
+    else if (tab === 'help') this.renderHelp(body)
     else this.renderNotes(body)
   }
 
@@ -415,6 +419,24 @@ export class Ui implements UiPort {
     back.onclick = () => this.openMenu('post')
     body.append(back)
   }
+
+  /** Every control, and the first-day tour again. */
+  private renderHelp(body: HTMLElement): void {
+    const touch = isTouch()
+    const rows = CONTROLS.map((c) => `<li><span class="keys">${touch ? `<b>${escape(c.touch)}</b>` : c.keys.map((k) => `<kbd>${k}</kbd>`).join('')}</span><span>${escape(c.what)}</span></li>`).join('')
+    body.innerHTML = `<p class="hint">Anything you can do right where you are shows at the bottom of the screen with its ${touch ? 'button' : 'key'}.</p><ul class="controls-list">${rows}</ul>`
+    const again = document.createElement('button')
+    again.type = 'button'
+    again.textContent = 'Show me round again'
+    again.onclick = () => {
+      this.closePanels()
+      this.onTour?.()
+    }
+    body.append(again)
+  }
+
+  /** Set by the game: runs the tour of the screen. */
+  onTour: (() => void) | null = null
 
   private renderNotes(body: HTMLElement): void {
     const g = this.game!

@@ -1420,3 +1420,76 @@ body.panel-open #prompts {
     font-size: 1.05rem;
   }
 }
+
+/* ---- How to play, and the first-day tour ---- */
+#panel .controls-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.2rem 0 0.6rem;
+  display: grid;
+  gap: 0.45rem;
+}
+#panel .controls-list li {
+  display: grid;
+  grid-template-columns: 7.5rem 1fr;
+  align-items: center;
+  gap: 0.6rem;
+}
+#panel .controls-list kbd { margin-right: 0.25em; }
+
+#tour {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+}
+#tour .hole {
+  position: fixed;
+  outline: 3px solid var(--accent);
+  box-shadow: 0 0 0 200vmax rgb(18 34 43 / 66%); /* taste-skill-ignore: dims everything but the thing being pointed at */
+  transition: left 260ms ease, top 260ms ease, width 260ms ease, height 260ms ease;
+  pointer-events: none;
+}
+#tour.centred .hole {
+  inset: 50% auto auto 50%;
+  width: 0;
+  height: 0;
+  outline: 0;
+}
+#tour .card {
+  position: fixed;
+  width: min(400px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: var(--float); /* taste-skill-ignore: floating overlay */
+  padding: 1.1rem 1.2rem 1.2rem;
+  display: grid;
+  gap: 0.6rem;
+  transition: left 260ms ease, top 260ms ease;
+}
+#tour.centred .card {
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(520px, calc(100vw - 32px));
+}
+#tour .card.turn { animation: tour-in 320ms ease; }
+@keyframes tour-in {
+  from { opacity: 0.3; translate: 0 8px; }
+}
+#tour .count { font: 600 var(--step-small) var(--text); color: var(--quiet); }
+#tour h2 {
+  font: 800 1.6rem / 0.95 var(--display);
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+#tour .text { display: grid; gap: 0.55rem; line-height: 1.45; }
+#tour .text ul { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.3rem; }
+#tour .text kbd { margin-right: 0.2em; }
+#tour .controls { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.3rem; }
+#tour .controls .spacer { flex: 1; }
+@media (prefers-reduced-motion: reduce) {
+  #tour .card.turn { animation: none; }
+  #tour .hole, #tour .card { transition: none; }
+}
