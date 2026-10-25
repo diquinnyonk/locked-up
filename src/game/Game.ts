@@ -77,7 +77,7 @@ export class Game implements World {
   alarm = { active: false, timer: 0, x: 0, z: 0 }
 
   /** Speech bubbles for the UI to draw this frame. */
-  readonly bubbles: { body: Body; text: string }[] = []
+  readonly bubbles: { body: Body; text: string; who: string | null }[] = []
   prompts: Prompt[] = []
   cellmate: Prisoner | null = null
 
@@ -277,6 +277,11 @@ export class Game implements World {
 
   requestDoor(door: Door, who: 'guard' | 'prisoner' | 'player', block?: string, from?: string): boolean {
     return this.doors.request(door, who, block, this.riot.active, from)
+  }
+
+  /** Whose voice comes out of this body, for recorded lines. */
+  voiceOf(body: Body | null): string | null {
+    return [...this.guards, ...this.prisoners].find((a) => a.body === body)?.voiceId ?? null
   }
 
   say(body: Body, text: string, seconds = 2.6): void {
@@ -628,7 +633,7 @@ export class Game implements World {
     // Speech bubbles near the player.
     this.bubbles.length = 0
     for (const a of agents) {
-      if (a.speechTimer > 0 && a.speech && Math.hypot(a.x - this.player.body.x, a.z - this.player.body.z) < 22) this.bubbles.push({ body: a.body, text: a.speech })
+      if (a.speechTimer > 0 && a.speech && Math.hypot(a.x - this.player.body.x, a.z - this.player.body.z) < 22) this.bubbles.push({ body: a.body, text: a.speech, who: a.voiceId })
     }
 
     // Visuals.
@@ -2366,7 +2371,7 @@ export class Game implements World {
     k.body.speed = 0
     k.body.yaw = period === 'work' ? Math.PI / 2 : 0
     if (k.speechTimer > 0) k.speechTimer -= delta
-    if (k.speechTimer > 0) this.bubbles.push({ body: k.body, text: k.speech })
+    if (k.speechTimer > 0) this.bubbles.push({ body: k.body, text: k.speech, who: null })
   }
 
   /** Swaps how people are drawn, repainting everyone into the new crowd. */
@@ -2418,7 +2423,7 @@ export class Game implements World {
       ])
       r.speechTimer = 5
     }
-    if (r.speechTimer > 0 && r.body.visible) this.bubbles.push({ body: r.body, text: r.speech })
+    if (r.speechTimer > 0 && r.body.visible) this.bubbles.push({ body: r.body, text: r.speech, who: null })
   }
 
   /** Puts the three stolen hymn books out where they were last seen. */

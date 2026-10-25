@@ -22,6 +22,8 @@ export interface ScannedLine {
   speaker: string
   line: string
   where: string
+  /** Lines from the same list of alternatives share a pool. */
+  pool?: string
 }
 
 const FILES = ['src/game/Game.ts', 'src/game/Missions.ts', 'src/npc/Guard.ts', 'src/npc/Prisoner.ts']
@@ -197,12 +199,23 @@ function scanFile(file: string): ScannedLine[] {
     return 'Prisoner'
   }
 
+  // Lists of alternatives: a line built from one of these (perhaps with
+  // more on the end) may be swapped for another from the same list.
+  const short = file.split('/').pop()!.replace(/\.ts$/, '')
+  const pooled: [string, string][] = []
+  for (const n of all) {
+    if (n.type !== 'ArrayExpression' || n.elements.length < 2 || n.elements.some((e: Node) => !e || e.type === 'ArrayExpression')) continue
+    for (const e of n.elements) for (const t of collect(e)) if (t.trim().length >= 6) pooled.push([t.trim(), `${short}:${n.start}`])
+  }
+  pooled.sort((a, b) => b[0].length - a[0].length)
+  const poolOf = (line: string) => pooled.find(([t]) => line === t || line.startsWith(t + ' '))?.[1]
+
   const lines: ScannedLine[] = []
   const add = (speaker: string, templates: string[], where: string) => {
     for (const t of templates) {
       const line = t.trim()
       if (line.replace(/\{\w+\}/g, '').replace(/[^A-Za-z]/g, '').length < 3) continue
-      lines.push({ speaker, line, where: `${file.split('/').pop()} ${where}`.trim() })
+      lines.push({ speaker, line, where: `${file.split('/').pop()} ${where}`.trim(), pool: poolOf(line) })
     }
   }
   for (const n of all) {

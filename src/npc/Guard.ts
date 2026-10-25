@@ -1,6 +1,7 @@
 import { HEX } from '../art/palette'
 import { type Body, makeBody } from '../render/Crowd'
 import { type BlockId, type Door, TILE, blockOfZone, tileCentre, worldToTile } from '../world/Grid'
+import { OFFICER_NAMES, voiceSlug } from './names'
 import { Agent } from './Agent'
 import { type Node, type Status, bt, traced } from './BehaviourTree'
 import type { World } from './World'
@@ -30,12 +31,7 @@ import type { World } from './World'
  */
 export type GuardRole = 'gate' | 'landing' | 'escort' | 'central'
 
-const NAMES = [
-  'Mr Higginbottom', 'Ms Bottomley', 'Mr Crumpet', 'Mrs Thistlethwaite',
-  'Mr Pickles', 'Ms Doubleday', 'Mr Snodgrass', 'Mr Wellbeloved',
-  'Ms Puddifoot', 'Mr Gristle', 'Mrs Battenberg', 'Mr Sidebottom',
-  'Mr Featherstonehaugh', 'Ms Clutterbuck', 'Mr Ramsbottom', 'Mrs Shufflebotham',
-]
+const NAMES = OFFICER_NAMES
 
 const WALK = 2.6
 const RUN = 5.2
@@ -90,6 +86,7 @@ export class Guard extends Agent {
     })
     super(body, world)
     this.name = NAMES[index]
+    this.voiceId = voiceSlug(this.name)
     this.block = block
     this.duty = duty
     this.post = post

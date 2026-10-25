@@ -443,6 +443,19 @@ all takes** bundles them with JSZip as `voices/<key>.mp3`, ready for
 `index.html`, the studio at `recorder.html`); it is published from the
 `gh-pages` branch.
 
+Every officer and every prisoner has a voice of their own. Prisoners keep
+the same name and bunk from game to game (`src/npc/names.ts`), and the boss
+of each firm always speaks as the boss. Lines any officer or any prisoner
+might say are shared out, one owner to a line, in `dialogue/cast.json`:
+`npm run dialogue` gives new lines to whoever has least to say and never
+moves a line that already has an owner (edit the file to move one). When
+somebody is about to say a line from a list of alternatives, they say one of
+their own from that list instead (`src/audio/cast.ts`), and a recording only
+plays in the mouth of the character it belongs to. An officer's job is
+offered by the officer whose job it is, and an errand by its owner, so the
+brief is in their voice. The studio lists the lines by character, with a
+picker to do one voice at a time.
+
 ## Credits
 
 Characters and animations: KayKit Character Pack: Adventurers 1.0 by Kay

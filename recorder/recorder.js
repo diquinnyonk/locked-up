@@ -11,7 +11,8 @@
   const LINES = JSON.parse(document.getElementById('lines').textContent)
   const takes = new Map() // key -> { blob, seconds, at }
   const urls = new Map() // key -> object URL for playback
-  let filter = 'All'
+  let filter = 'All' // one character, or All
+  let group = 'All' // Officers, Prisoners, Bosses, Named characters, or All
   let todoOnly = false
   /** Lines recorded since the page opened stay on screen under "Still to
    *  record", so a take never vanishes before you have heard it. */
@@ -22,8 +23,10 @@
   let audioCtx = null
 
   const docId = (key) => key.replace(/[^A-Za-z0-9_-]/g, '_')
-  const speakers = ['All', ...new Set(LINES.map((l) => l.speaker))]
+  const GROUPS = ['Officers', 'Prisoners', 'Bosses', 'Named characters']
+  const groupOf = (l) => l.group || 'Named characters'
   const short = (s) => s.replace(/ \(.*\)$/, '')
+  const role = (s) => (/ \((.*)\)$/.exec(s) || [])[1] || ''
   const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
   const slots = { target: 'a name', wing: 'a wing', cell: 'a cell', time: 'a time', giver: 'a name', name: 'their name', someone: 'a name', officer: 'an officer', thing: '...' }
   const lineHtml = (t) => esc(t).replace(/\{(\w+)\}/g, (_m, k) => `<span class="slot">${slots[k] || k}</span>`)
@@ -73,12 +76,13 @@
   function renderFilters() {
     const el = document.getElementById('filters')
     el.innerHTML = ''
-    for (const s of speakers) {
+    for (const g of ['All', ...GROUPS]) {
       const b = document.createElement('button')
       b.type = 'button'
-      b.textContent = s === 'All' ? 'Everyone' : short(s)
-      b.setAttribute('aria-pressed', String(filter === s))
-      b.onclick = () => { filter = s; renderFilters(); render() }
+      const n = new Set(LINES.filter((l) => g === 'All' || groupOf(l) === g).map((l) => l.speaker)).size
+      b.textContent = g === 'All' ? 'Everyone' : `${g} (${n})`
+      b.setAttribute('aria-pressed', String(group === g && filter === 'All'))
+      b.onclick = () => { group = g; filter = 'All'; renderFilters(); render() }
       el.append(b)
     }
     const t = document.createElement('button')
@@ -87,6 +91,30 @@
     t.setAttribute('aria-pressed', String(todoOnly))
     t.onclick = () => { todoOnly = !todoOnly; fresh.clear(); renderFilters(); render() }
     el.append(t)
+    // One character at a time, so each voice can be done in one sitting.
+    const pickLabel = document.createElement('label')
+    pickLabel.className = 'pick'
+    pickLabel.textContent = 'Voice '
+    const sel = document.createElement('select')
+    sel.innerHTML = `<option value="All">Everyone${group === 'All' ? '' : ` in ${group.toLowerCase()}`}</option>`
+    for (const g of GROUPS) {
+      if (group !== 'All' && g !== group) continue
+      const og = document.createElement('optgroup')
+      og.label = g
+      for (const sp of new Set(LINES.filter((l) => groupOf(l) === g).map((l) => l.speaker))) {
+        const all = LINES.filter((l) => l.speaker === sp)
+        const done = all.filter((l) => takes.has(l.key)).length
+        const o = document.createElement('option')
+        o.value = sp
+        o.textContent = `${short(sp)}  ${done}/${all.length}`
+        o.selected = sp === filter
+        og.append(o)
+      }
+      sel.append(og)
+    }
+    sel.onchange = () => { filter = sel.value; renderFilters(); render() }
+    pickLabel.append(sel)
+    el.append(pickLabel)
   }
 
   function renderTally() {
@@ -99,9 +127,10 @@
   }
 
   function render() {
+    renderFilters() // the picker shows each voice's progress
     renderTally()
     const main = document.getElementById('script')
-    const shown = LINES.filter((l) => (filter === 'All' || l.speaker === filter) && (!todoOnly || !takes.has(l.key) || fresh.has(l.key) || recording?.key === l.key))
+    const shown = LINES.filter((l) => (filter === 'All' ? group === 'All' || groupOf(l) === group : l.speaker === filter) && (!todoOnly || !takes.has(l.key) || fresh.has(l.key) || recording?.key === l.key))
     if (!shown.length) {
       main.innerHTML = '<p class="empty">Nothing left to record here.</p>'
       return
@@ -117,7 +146,7 @@
       sec.className = 'who'
       const all = LINES.filter((l) => l.speaker === speaker)
       const done = all.filter((l) => takes.has(l.key)).length
-      sec.innerHTML = `<h2>${esc(speaker)}<span class="count">${done} of ${all.length}</span></h2>`
+      sec.innerHTML = `<h2>${esc(short(speaker))}<span class="count">${done} of ${all.length}</span></h2>${role(speaker) ? `<p class="role">${esc(role(speaker))}</p>` : ''}`
       for (const l of lines) sec.append(card(l))
       main.append(sec)
     }

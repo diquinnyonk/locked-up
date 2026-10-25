@@ -4,6 +4,7 @@ import { HEX, css } from '../art/palette'
 import type { Game, UiPort } from '../game/Game'
 import { ITEMS, INVENTORY_SLOTS, type ItemId, RECIPES, vouchers } from '../game/Items'
 import { itemIcon } from './itemIcons'
+import { castLine, voiceFor } from '../audio/cast'
 import { keyFor } from '../audio/lineKeys'
 import { ATTEMPTS_PER_ROUND, METHOD_NAMES, ROUNDS, type Method } from '../npc/Memory'
 import { MAP_H, MAP_W, PLAYER_CELL, Tile } from '../world/Grid'
@@ -69,6 +70,9 @@ export class Ui implements UiPort {
    */
   talk(title: string, line: string, options: { label: string; enabled: boolean; run: () => void }[], voice?: string): void {
     const speaking = !!this.game?.talkingTo
+    // Whoever is talking says their own line from the list, if they have one.
+    const who = this.game?.voiceOf(this.game.talkingTo) ?? null
+    if (!voice) line = castLine(who, line)
     this.openPanel(title, speaking ? 'dialogue' : '')
     const body = this.panel.querySelector('.body')!
     const p = document.createElement('p')
@@ -90,7 +94,7 @@ export class Ui implements UiPort {
     close.onclick = () => this.closePanels()
     list.append(close)
     body.append(list)
-    this.onSpeak?.(voice ?? keyFor(line), line)
+    this.onSpeak?.(voiceFor(voice ?? keyFor(line), who), line)
   }
 
   /** Set by the game: plays a recorded line when there is one. */
@@ -568,7 +572,7 @@ export class Ui implements UiPort {
       if (el.textContent !== b.text) {
         el.textContent = b.text
         // Said within earshot, and not over a conversation: voice it.
-        if (!g.talkingTo && Math.hypot(b.body.x - g.player.body.x, b.body.z - g.player.body.z) < 10) this.onRemark?.(keyFor(b.text))
+        if (!g.talkingTo && Math.hypot(b.body.x - g.player.body.x, b.body.z - g.player.body.z) < 10) this.onRemark?.(voiceFor(keyFor(b.text), b.who))
       }
       i++
     }

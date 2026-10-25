@@ -9,6 +9,8 @@ import { screenCall } from '../src/game/Phone'
 import { MAP_H, MAP_W, TILE, Tile, tileCentre } from '../src/world/Grid'
 import { findPath } from '../src/world/Nav'
 import { keyFor } from '../src/audio/lineKeys'
+import { castLine, ownerOf, voiceFor } from '../src/audio/cast'
+import script from '../dialogue/script.json'
 
 ;(globalThis as unknown as { window: unknown }).window = globalThis
 ;(globalThis as unknown as { addEventListener: unknown }).addEventListener = () => {}
@@ -571,6 +573,31 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   check('voices: what people say matches a recordable line', lines.length >= 15 && missing.length / lines.length < 0.08, `${lines.length - missing.length}/${lines.length} matched; missing: ${missing.slice(0, 4).join(' | ')}`)
   check('voices: an officer on his break has a key', keyFor("Not now, I'm on my break. I'm always on my break.") === 'officer.not-now-im-on-my-ded7')
   check('voices: a line with a name in it still finds its key', !!keyFor(`Alright, ${game.player.name}.`) && !!keyFor('WHO DID THIS?! ...Dave. It was YOU.'))
+}
+
+// ---- Every officer and prisoner has a voice of their own ----
+{
+  const { game } = fresh()
+  const { game: again } = fresh()
+  const people = [...game.guards, ...game.prisoners]
+  const ids = people.map((a) => a.voiceId)
+  const owners = new Set((script as { who?: string }[]).map((l) => l.who))
+  check('cast: everyone has their own voice', ids.every(Boolean) && new Set(ids).size === ids.length, `${new Set(ids).size}/${ids.length}`)
+  check('cast: and lines of their own to record', ids.every((id) => owners.has(id!)), ids.filter((id) => !owners.has(id!)).slice(0, 4).join(', '))
+  check('cast: the same people every game', game.prisoners.every((p, i) => p.name === again.prisoners[i].name || p.leader || again.prisoners[i].leader))
+  check('cast: the break line is Ms Bottomley\'s', ownerOf('officer.not-now-im-on-my-ded7') === 'ms-bottomley')
+  // Someone else's line from a list: they say their own from the same list.
+  const swapped = castLine('ms-bottomley', "Don't even think about it. I can see you thinking. Your lips move.")
+  check('cast: an officer says her own line, not his', swapped === "I've got my eye on you. Both of them. This one's glass.", swapped)
+  const named = castLine('ms-bottomley', 'Oi! Dave! Stop right there, you absolute weapon!')
+  check('cast: names carry over into her own line', named === 'Dave! I can SEE you! Mostly!', named)
+  const key = keyFor("Don't even think about it. I can see you thinking. Your lips move.")
+  check('cast: a recording plays only in its own voice', voiceFor(key, 'mr-crumpet') === key && voiceFor(key, 'ms-bottomley') === null && voiceFor('keith.intro', null) === 'keith.intro')
+  const bottomley = game.guards.find((g) => g.name === 'Ms Bottomley')!
+  bottomley.say('Move along before I find a reason.')
+  check('cast: in a speech bubble too', bottomley.speech === "I've got my eye on you. Both of them. This one's glass.", bottomley.speech)
+  const offers = [...(game.missions as any).officerOffers.entries()] as [any, any][]
+  check('cast: an officer\'s job is offered by its owner when they are free', offers.length > 0 && offers.every(([g, t]) => g.voiceId === ownerOf(`mission.${t.id}.brief`)), offers.map(([g, t]) => `${g.name}:${t.id}`).join(' '))
 }
 
 // ---- Sleeping on your bunk ----

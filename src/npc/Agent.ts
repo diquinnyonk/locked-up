@@ -1,3 +1,4 @@
+import { castLine } from '../audio/cast'
 import { type Body } from '../render/Crowd'
 import { type Door, TILE, Tile, worldToTile } from '../world/Grid'
 import { findPath, moveCircle } from '../world/Nav'
@@ -28,6 +29,10 @@ export abstract class Agent {
   tickTimer: number
   speech = ''
   speechTimer = 0
+  /** Whose voice this is, for recorded lines (see audio/cast.ts). */
+  voiceId: string | null = null
+  /** The line last asked for, so a line said every tick is not re-picked. */
+  private asked = ''
   /** Where this agent wants to face when standing still. */
   lookYaw: number | null = null
 
@@ -57,7 +62,9 @@ export abstract class Agent {
   }
 
   say(text: string, seconds = 2.6): void {
-    this.speech = text
+    // Their own line from the same list, if this one is somebody else's.
+    if (text !== this.asked || this.speechTimer <= 0) this.speech = castLine(this.voiceId, text, this.world.rng)
+    this.asked = text
     this.speechTimer = seconds
   }
 

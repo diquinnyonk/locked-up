@@ -1,3 +1,4 @@
+import { ownerOf } from '../audio/cast'
 import type { Guard } from '../npc/Guard'
 import { GANGS, GANG_IDS, type GangId } from '../npc/Gangs'
 import type { Prisoner } from '../npc/Prisoner'
@@ -269,14 +270,26 @@ export class Missions {
     const g = this.game
     this.officerOffers.clear()
     const pool = g.guards.filter((gu) => !this.active.some((m) => m.giver === gu))
+    // Each job is offered by the officer it belongs to when they are free,
+    // so the brief is said in their own voice.
     for (let i = 0; i < 3 && pool.length; i++) {
-      const gu = pool.splice(Math.floor(g.rng() * pool.length), 1)[0]
-      const options = OFFICER_JOBS.filter((t) => !this.active.some((m) => m.tpl.id === t.id))
-      this.officerOffers.set(gu, options[Math.floor(g.rng() * options.length)])
+      const options = OFFICER_JOBS.filter((t) => !this.active.some((m) => m.tpl.id === t.id) && ![...this.officerOffers.values()].includes(t))
+      if (!options.length) break
+      const tpl = options[Math.floor(g.rng() * options.length)]
+      const own = pool.find((gu) => gu.voiceId === ownerOf(`mission.${tpl.id}.brief`))
+      const gu = own ?? pool[Math.floor(g.rng() * pool.length)]
+      pool.splice(pool.indexOf(gu), 1)
+      this.officerOffers.set(gu, tpl)
     }
     this.memberOffers.clear()
-    const members = g.prisoners.filter((p) => p.gang && !p.leader)
-    for (let i = 0; i < 6 && members.length; i++) {
+    // Errands: whoever the errand belongs to asks first, firm or no firm;
+    // then members of the firms with something they want doing.
+    for (const t of ERRANDS) {
+      const own = g.prisoners.find((p) => p.voiceId === ownerOf(`mission.${t.id}.brief`) && !p.leader && !this.active.some((m) => m.giver === p))
+      if (own) this.memberOffers.set(own, t)
+    }
+    const members = g.prisoners.filter((p) => p.gang && !p.leader && !this.memberOffers.has(p))
+    while (this.memberOffers.size < 6 && members.length) {
       const p = members.splice(Math.floor(g.rng() * members.length), 1)[0]
       this.memberOffers.set(p, ERRANDS[Math.floor(g.rng() * ERRANDS.length)])
     }

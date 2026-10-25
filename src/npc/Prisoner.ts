@@ -2,6 +2,7 @@ import { HEX } from '../art/palette'
 import { type Body, type Pose, makeBody } from '../render/Crowd'
 import type { ItemId } from '../game/Items'
 import { type CellInfo, type Door, TILE, blockOfZone } from '../world/Grid'
+import { prisonerName, voiceSlug } from './names'
 import { Agent } from './Agent'
 import { GANGS, type GangId } from './Gangs'
 import { type Node, type Status, bt, traced } from './BehaviourTree'
@@ -30,8 +31,6 @@ import type { World } from './World'
  */
 export type Temperament = 'lag' | 'gang' | 'snitch' | 'hothead' | 'old' | 'fixer'
 
-const FIRST = ['Dave', 'Gaz', 'Tommo', 'Dean', 'Wayne', 'Kev', 'Lee', 'Jamal', 'Callum', 'Ryan', 'Darren', 'Nathan', 'Liam', 'Craig', 'Marcus', 'Kieran', 'Shane', 'Reece', 'Tariq', 'Mo', 'Jonno', 'Stu', 'Paddy', 'Ollie', 'Dwayne', 'Ade', 'Taff', 'Jock', 'Scouse', 'Fergus', 'Carl', 'Neil', 'Barry', 'Terry', 'Vince', 'Rocco', 'Ash', 'Dom', 'Jase', 'Rich']
-const NICK = ['Big', 'Little', 'Mad', 'Posh', 'Two-Sugars', 'Biscuits', 'Kettle', 'Dodgy', 'Fingers', 'Wonky', 'Chalky', 'Pie', 'Spanner', 'Bins', 'Gravy', 'Scampi', 'Sausage', 'Toast']
 
 const WALK = 2.2
 const RUN = 4.6
@@ -112,8 +111,8 @@ export class Prisoner extends Agent {
     this.bunk = bunk
     this.block = cell.block
     this.temperament = temperament
-    const first = FIRST[index % FIRST.length]
-    this.name = rng() < 0.4 ? `${NICK[Math.floor(rng() * NICK.length)]} ${first}` : first
+    this.name = prisonerName(index)
+    this.voiceId = voiceSlug(this.name)
     this.sells = temperament === 'fixer' ? STOCK[index % STOCK.length] : []
     if (temperament === 'old') this.trust = 0.3
     const b = cell.bunks[bunk]
@@ -139,7 +138,11 @@ export class Prisoner extends Agent {
     this.temperament = 'gang'
     this.trust = 0
     this.body.top = GANGS[gang].hex
-    if (leader) this.name = `${GANGS[gang].leaderNick} ${this.name.split(' ').pop()}`
+    if (leader) {
+      this.name = `${GANGS[gang].leaderNick} ${this.name.split(' ').pop()}`
+      // The boss of a firm always sounds like the boss.
+      this.voiceId = voiceSlug(GANGS[gang].leaderNick)
+    }
   }
 
   /** Will back you when it kicks off: a mate you have won over, or a member of a firm you have paid. */
