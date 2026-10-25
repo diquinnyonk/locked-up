@@ -73,48 +73,44 @@
 
   // ---- Rendering ----
 
+  function chip(label, pressed, onclick, cls) {
+    const b = document.createElement('button')
+    b.type = 'button'
+    b.textContent = label
+    if (cls) b.className = cls
+    b.setAttribute('aria-pressed', String(pressed))
+    b.onclick = onclick
+    return b
+  }
+
   function renderFilters() {
     const el = document.getElementById('filters')
     el.innerHTML = ''
+    // First choose a kind of character...
+    const top = document.createElement('div')
+    top.className = 'row'
     for (const g of ['All', ...GROUPS]) {
-      const b = document.createElement('button')
-      b.type = 'button'
       const n = new Set(LINES.filter((l) => g === 'All' || groupOf(l) === g).map((l) => l.speaker)).size
-      b.textContent = g === 'All' ? 'Everyone' : `${g} (${n})`
-      b.setAttribute('aria-pressed', String(group === g && filter === 'All'))
-      b.onclick = () => { group = g; filter = 'All'; renderFilters(); render() }
-      el.append(b)
+      top.append(chip(g === 'All' ? 'Everyone' : `${g} (${n})`, group === g, () => { group = g; filter = 'All'; render() }))
     }
-    const t = document.createElement('button')
-    t.type = 'button'
-    t.textContent = 'Still to record'
-    t.setAttribute('aria-pressed', String(todoOnly))
-    t.onclick = () => { todoOnly = !todoOnly; fresh.clear(); renderFilters(); render() }
-    el.append(t)
-    // One character at a time, so each voice can be done in one sitting.
-    const pickLabel = document.createElement('label')
-    pickLabel.className = 'pick'
-    pickLabel.textContent = 'Voice '
-    const sel = document.createElement('select')
-    sel.innerHTML = `<option value="All">Everyone${group === 'All' ? '' : ` in ${group.toLowerCase()}`}</option>`
-    for (const g of GROUPS) {
-      if (group !== 'All' && g !== group) continue
-      const og = document.createElement('optgroup')
-      og.label = g
-      for (const sp of new Set(LINES.filter((l) => groupOf(l) === g).map((l) => l.speaker))) {
-        const all = LINES.filter((l) => l.speaker === sp)
-        const done = all.filter((l) => takes.has(l.key)).length
-        const o = document.createElement('option')
-        o.value = sp
-        o.textContent = `${short(sp)}  ${done}/${all.length}`
-        o.selected = sp === filter
-        og.append(o)
-      }
-      sel.append(og)
+    top.append(chip('Still to record', todoOnly, () => { todoOnly = !todoOnly; fresh.clear(); render() }, 'todo'))
+    el.append(top)
+    if (group === 'All') return
+    // ...then one of them, to do a whole voice in one sitting.
+    const names = document.createElement('div')
+    names.className = 'row names'
+    names.setAttribute('aria-label', `${group} by name`)
+    const people = [...new Set(LINES.filter((l) => groupOf(l) === group).map((l) => l.speaker))].sort((a, b) => short(a).localeCompare(short(b)))
+    names.append(chip(`All ${group.toLowerCase()}`, filter === 'All', () => { filter = 'All'; render() }))
+    for (const sp of people) {
+      const all = LINES.filter((l) => l.speaker === sp)
+      const done = all.filter((l) => takes.has(l.key)).length
+      const b = chip('', filter === sp, () => { filter = sp; render(); document.getElementById('script').scrollIntoView({ block: 'start' }) })
+      b.innerHTML = `${esc(short(sp))} <small>${done}/${all.length}</small>`
+      if (done === all.length) b.dataset.done = 'true'
+      names.append(b)
     }
-    sel.onchange = () => { filter = sel.value; renderFilters(); render() }
-    pickLabel.append(sel)
-    el.append(pickLabel)
+    el.append(names)
   }
 
   function renderTally() {
@@ -127,7 +123,7 @@
   }
 
   function render() {
-    renderFilters() // the picker shows each voice's progress
+    renderFilters() // the names show each voice's progress
     renderTally()
     const main = document.getElementById('script')
     const shown = LINES.filter((l) => (filter === 'All' ? group === 'All' || groupOf(l) === group : l.speaker === filter) && (!todoOnly || !takes.has(l.key) || fresh.has(l.key) || recording?.key === l.key))

@@ -6,12 +6,15 @@
  *   npm run pages
  */
 import { execSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { cpSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 
 execSync('npx tsx scripts/dialogue.ts', { stdio: 'inherit' })
 execSync('npx vite build --base ./ --outDir pages --emptyOutDir', { stdio: 'inherit' })
 const lines = readFileSync('dialogue/script.json', 'utf8')
 const page = readFileSync('recorder/recorder.src.html', 'utf8').replace('__LINES__', JSON.stringify(JSON.parse(lines)).replace(/<\//g, '<\\/'))
+  // A new name for the script whenever it changes, so phones never keep an old copy.
+  .replace('src="recorder.js"', `src="recorder.js?v=${createHash('sha1').update(readFileSync('recorder/recorder.js')).digest('hex').slice(0, 8)}"`)
 writeFileSync('pages/recorder.html', page)
 cpSync('recorder/recorder.js', 'pages/recorder.js')
 mkdirSync('pages/vendor', { recursive: true })

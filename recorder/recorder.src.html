@@ -73,7 +73,12 @@ h1 {
 .tally span { font-size: 0.9rem; }
 .meter { height: 6px; background: color-mix(in srgb, var(--paper) 22%, transparent); }
 .meter i { display: block; height: 100%; width: 0; background: var(--accent); transition: width 0.3s; }
-.filters { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.filters { display: grid; gap: 0.5rem; }
+.filters .row { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.filters .names { max-height: 8.6rem; overflow-y: auto; padding-top: 0.5rem; border-top: 1px solid color-mix(in srgb, var(--paper) 22%, transparent); }
+.filters .names small { font-weight: 400; opacity: 0.75; margin-left: 0.15rem; }
+.filters .names button[data-done="true"] { box-shadow: inset 0 -3px 0 var(--good); }
+.filters .todo { margin-left: auto; }
 .filters button {
   font: 600 0.8rem/1 var(--text);
   border: 0;
@@ -97,9 +102,6 @@ section.who h2 {
   text-wrap: balance;
 }
 .role { margin: -0.4rem 0 0; font-size: 0.9rem; color: var(--quiet); }
-.pick { display: flex; align-items: center; gap: 0.4rem; font: 600 0.8rem/1 var(--text); flex: 1 1 14rem; }
-.pick select { flex: 1; min-width: 0; font: 600 0.9rem/1.2 var(--text); padding: 0.4rem; background: var(--paper); color: var(--ink); border: 0; }
-.pick select:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .count { font: 600 0.85rem var(--text); color: var(--quiet); text-transform: none; letter-spacing: 0; margin-left: 0.4rem; }
 
 article.line {
@@ -160,7 +162,7 @@ a.btn { text-decoration: none; }
   <header class="top">
     <h1>Grim-on-the-Moor Voice Studio</h1>
     <p class="lede">Every line in Locked Up that can be spoken. Record each one here with your phone's microphone, then download them all in one go for the game.</p>
-    <p class="lede">Every officer and every prisoner has lines of their own, and only ever says those, so each one can have a different voice. Pick a voice from the list to do all of one character's lines in one go.</p>
+    <p class="lede">Every officer and every prisoner has lines of their own, and only ever says those, so each one can have a different voice. Choose Officers or Prisoners, then a name, to do all of one character's lines in one go.</p>
     <ol class="how">
       <li>Tap <b>Record</b>, say the line, tap <b>Stop</b>. The first time, allow the microphone.</li>
       <li>Play it back. Not right? Record it again; the new take replaces the old one.</li>
