@@ -3,10 +3,11 @@
  * localStorage apart from the saved game: finishing a sentence clears the
  * save, never the records.
  */
-export type EndingId = 'escape' | 'jag' | 'staffDoor' | 'guardDisguise' | 'visitorDisguise' | 'laundry' | 'solitary' | 'gang'
+export type EndingId = 'escape' | 'tunnel' | 'jag' | 'staffDoor' | 'guardDisguise' | 'visitorDisguise' | 'laundry' | 'solitary' | 'gang'
 
 export const ENDINGS: { id: EndingId; title: string; won: boolean; hint: string }[] = [
   { id: 'escape', title: 'Free', won: true, hint: 'Somebody waiting on the road, and a way over or through the wall.' },
+  { id: 'tunnel', title: 'Like a mole', won: true, hint: 'Some escapes take weeks. Is that tile by your bunk loose?' },
   { id: 'jag', title: "The Governor's Jag", won: true, hint: 'The Governor keeps more than paperwork in his office.' },
   { id: 'staffDoor', title: 'Off shift early', won: true, hint: 'Officers have uniforms and keys. Officers also like sausage rolls.' },
   { id: 'guardDisguise', title: 'Clocked off', won: true, hint: 'Staff go home at shift change. Do you look like staff?' },

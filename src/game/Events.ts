@@ -136,6 +136,10 @@ export class Events {
       g.stash.length = 0
       g.toast(`They found the loose brick in your cell. ${lost} item${lost === 1 ? '' : 's'} gone.`, 'bad')
     } else if (g.stash.length) g.toast('They tapped every brick in your cell and missed the loose one. Close.', 'good')
+    if (g.tunnel.metres > 0) {
+      if (g.rng() < g.memory.tunnelFindChance) g.tunnelFound()
+      else g.toast('An officer stamps round your cell floor, steps right on the loose tile, and moves on.', 'good')
+    }
     // Out on your landing: a pat-down too.
     if (p.zone === `block${p.block}` || p.zone === p.cell) {
       const g2 = nearest(g.guards.filter((gu) => gu.ko <= 0 && !gu.chasing), p.body.x, p.body.z)

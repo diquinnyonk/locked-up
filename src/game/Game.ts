@@ -88,6 +88,9 @@ export class Game implements World {
   private disguisedAs: string | null = null
   /** The Governor's safe: what you know of the combination, and whether it is open. */
   readonly heist = { knowA: false, knowB: false, opened: false }
+  /** The tunnel under the loose tile by your bunk: metres dug. */
+  readonly tunnel = { metres: 0 }
+  private digging: { x: number; z: number; noise: number; heard: number; warned: number } | null = null
   /** Seconds left cracking the safe by ear, and where you knelt. */
   private cracking: { t: number; x: number; z: number; click: number } | null = null
   alarm = { active: false, timer: 0, x: 0, z: 0 }
@@ -429,6 +432,11 @@ export class Game implements World {
     const result = this.memory.fail(method, p.body.x, p.body.z)
     // Caught at the safe: the Governor changes the combination.
     if (method === 'safe') this.heist.knowA = this.heist.knowB = false
+    this.digging = null
+    if (method === 'tunnel' && this.tunnel.metres > 0) {
+      this.tunnel.metres = 0
+      this.toast('Maintenance pours concrete into your tunnel under the floor.', 'bad')
+    }
     this.cracking = null
     this.log.push(`Day ${this.clock.day}: caught by ${by.name} (${METHOD_NAMES[method]}).`)
     if (wasVent) {
@@ -468,6 +476,7 @@ export class Game implements World {
     const p = this.player
     this.punished = true
     p.inventory.confiscate()
+    if (searchCell && this.tunnel.metres > 0 && this.rng() < this.memory.tunnelFindChance) this.tunnelFound()
     if (searchCell && this.stash.length && this.rng() < 0.25 + this.memory.totalFailures * 0.08) {
       this.stash.length = 0
       this.toast('They spun your cell and found the stash.', 'bad')
@@ -519,13 +528,15 @@ export class Game implements World {
     p.health = 100
   }
 
-  private finish(won: boolean, how: 'escape' | 'gang' | 'solitary' | 'guardDisguise' | 'visitorDisguise' | 'laundry' | 'staffDoor' | 'jag', gang: GangId = 'firm'): void {
+  private finish(won: boolean, how: 'escape' | 'gang' | 'solitary' | 'guardDisguise' | 'visitorDisguise' | 'laundry' | 'staffDoor' | 'jag' | 'tunnel', gang: GangId = 'firm'): void {
     this.over = true
     this.input.enabled = false
     this.ending = { id: how === 'escape' ? 'escape' : how, won }
     const name = this.player.name
     const tally = `Day ${this.clock.day}. ${this.memory.totalFailures} failed attempt${this.memory.totalFailures === 1 ? '' : 's'}.`
-    if (won && how === 'jag') {
+    if (won && how === 'tunnel') {
+      this.ui.end(true, 'Like a mole', `${name} pushes up through the soil of the allotments beyond the wall, covered in clay, under a full moon. Somebody's prize marrows break the fall.\n${tally}\nAt morning roll call an officer lifts a loose floor tile in your cell and says a word the Bugle cannot print.`)
+    } else if (won && how === 'jag') {
       this.ui.end(true, "The Governor's Jag", `${name} slides into the cream leather seats of the Governor's Jaguar, adjusts the mirror, and drives out of the staff car park with a little wave at the gatehouse. The gatehouse waves back.\n${tally}\nThe Governor reports it stolen at nine the next morning. From the bus.`)
     } else if (won && how === 'staffDoor') {
       const who = this.disguisedAs ?? 'an officer'
@@ -967,6 +978,7 @@ export class Game implements World {
 
     this.updateLure(delta)
     this.updateHeist(delta)
+    this.updateTunnel(delta)
     this.updateIllegal()
     p.dodgy = this.dodgyTimer > 0 || p.inventory.weapon.damage >= 4 ? 1 : 0
 
@@ -1330,9 +1342,11 @@ export class Game implements World {
     if (p.zone === p.cell) {
       const cell = this.grid.cells.get(p.cell)!
       if (near(cell.bunks[1].x, cell.bunks[1].z, 1.6)) add('R', `Your stash (${this.stash.length}/4)`, () => this.openStash())
+      this.tunnelPrompts(add)
       if (near(cell.bunks[0].x, cell.bunks[0].z, 1.6) && this.clock.locked) add('E', 'Sleep (Z) till morning', () => this.trySleep())
       if (!this.clock.locked && !this.lure && !p.inVent && !this.memory.lureIgnored) add('H', 'Shout for an officer: "Guv! There\'s a rat!"', () => this.shoutForOfficer())
     }
+    if (inv.has('rubble') && p.zone === 'yard' && !this.clock.locked) add('R', `Shake the rubble out of your trouser legs (${inv.count('rubble')})`, () => this.scatterRubble())
     if (inv.has('spoon') && p.zone === 'yard') add('R', 'Grind the spoon flat on the concrete', () => this.craftNamed('flatSpoon'))
     this.missions.prompts(add)
     pickup?.()
@@ -1835,6 +1849,136 @@ export class Game implements World {
     }
   }
 
+  // ---- The tunnel under the loose tile ----
+
+  /** The loose floor tile beside your bunk, in the open where you can see it. */
+  private get tunnelSpot(): { x: number; z: number } {
+    const cell = this.grid.cells.get(this.player.cell)!
+    return { x: cell.rect.x0 * TILE + 1.85, z: ((cell.rect.y0 + cell.rect.y1 + 1) / 2) * TILE }
+  }
+
+  /** Metres a second for whatever you are digging with. */
+  private get digTool(): { name: string; rate: number } | null {
+    const inv = this.player.inventory
+    if (inv.has('screwdriver')) return { name: 'screwdriver', rate: 1 / 9 }
+    if (inv.has('flatSpoon')) return { name: 'flattened spoon', rate: 1 / 12 }
+    if (inv.has('spoon')) return { name: 'spoon', rate: 1 / 16 }
+    return null
+  }
+
+  private tunnelPrompts(add: (key: string, label: string, run: () => void) => void): void {
+    const p = this.player
+    const spot = this.tunnelSpot
+    if (!this.clock.locked || p.inVent || Math.hypot(p.body.x - spot.x, p.body.z - spot.z) > 1.3) return
+    if (this.memory.tunnelBlocked) {
+      add('E', 'The loose tile (solid concrete under it now)', () => this.toast('They poured concrete under every cell floor. This way is closed for good.', 'bad'))
+      return
+    }
+    const t = this.tunnel
+    if (t.metres >= TUNNEL_LENGTH) add('E', 'Crawl out through the tunnel', () => this.finish(true, 'tunnel'))
+    else if (this.digging) add('E', `Digging: ${t.metres.toFixed(1)} of ${TUNNEL_LENGTH} metres (step away to stop)`, () => this.stopDigging('You slide the tile back over the hole.'))
+    else {
+      const tool = this.digTool
+      add('E', tool ? `Dig under the loose tile (${tool.name}): ${t.metres.toFixed(1)} of ${TUNNEL_LENGTH} metres` : 'A loose floor tile: you need something to dig with', () => this.startDigging())
+    }
+  }
+
+  private startDigging(): void {
+    const p = this.player
+    const tool = this.digTool
+    if (!tool) {
+      this.toast('Under the loose tile is soft old clay. A spoon would do it, slowly. A screwdriver, less slowly.', 'neutral')
+      return
+    }
+    const mate = this.cellmate
+    if (mate && mate.ko <= 0 && mate.trust < TUNNEL_TRUST) {
+      mate.say(pick2(this.rng, ["Not in my cell you don't. Not for free.", 'You dig a hole, I go down with you. Make it worth my while.']), 3)
+      this.toast(`${mate.name} will grass on a tunnel unless they trust you. Greggs vouchers help.`, 'bad')
+      return
+    }
+    if (p.inventory.full) {
+      this.toast('Your pockets are full. Rubble has to go somewhere: get rid of it in the yard first.', 'bad')
+      return
+    }
+    this.digging = { x: p.body.x, z: p.body.z, noise: 1, heard: 0, warned: 0 }
+    this.toast(this.tunnel.metres === 0 ? 'You prise up the loose tile by your bunk and start on the clay underneath.' : `You lift the tile. ${this.tunnel.metres.toFixed(1)} metres so far.`, 'neutral')
+  }
+
+  private stopDigging(why: string): void {
+    this.digging = null
+    if (why) this.toast(why, 'neutral')
+  }
+
+  private updateTunnel(delta: number): void {
+    const p = this.player
+    const spot = this.tunnelSpot
+    const d = this.digging
+    this.dynamic.setTunnelHole(spot.x, spot.z, !!d && this.tunnel.metres > 0.05)
+    if (!d) return
+    if (!this.clock.locked || p.zone !== p.cell || p.inVent || Math.hypot(p.body.x - d.x, p.body.z - d.z) > 0.7) {
+      this.stopDigging('You slide the tile back over the hole.')
+      return
+    }
+    const tool = this.digTool
+    if (!tool) return this.stopDigging('Nothing left to dig with.')
+    p.body.pose = 'search'
+    const before = Math.floor(this.tunnel.metres)
+    this.tunnel.metres = Math.min(TUNNEL_LENGTH, this.tunnel.metres + delta * tool.rate)
+    const after = Math.floor(this.tunnel.metres)
+    if (after > before) {
+      p.inventory.add('rubble')
+      const milestone = TUNNEL_MILESTONES[after]
+      if (milestone) this.toast(milestone, 'good')
+      if (this.tunnel.metres >= TUNNEL_LENGTH) return this.stopDigging('')
+      if (p.inventory.full) return this.stopDigging('Your pockets are bulging with rubble. Shake it out in the yard tomorrow.')
+    }
+    // Scraping carries. An officer near your door for long enough hears it.
+    d.noise -= delta
+    if (d.noise <= 0) {
+      d.noise = 3
+      this.emit({ x: p.body.x, z: p.body.z, radius: 4, kind: 'clank' })
+    }
+    // Night officers pass about ten metres off; one who stops long enough to
+    // listen hears it. You get footsteps first, once each time one comes.
+    const near = this.guards.filter((g) => g.ko <= 0 && Math.hypot(g.x - p.body.x, g.z - p.body.z) < 11.5)
+    const close = this.guards.some((g) => g.ko <= 0 && Math.hypot(g.x - p.body.x, g.z - p.body.z) < 16)
+    if (close && d.warned <= 0) {
+      d.warned = 1
+      this.toast('Footsteps on the landing. Step away from the hole until they pass.', 'bad')
+    } else if (!close) d.warned = 0
+    if (near.length) d.heard += delta
+    else d.heard = Math.max(0, d.heard - delta * 0.5)
+    if (d.heard > 4) {
+      const g = near[0]
+      g.say(pick2(this.rng, ['What is that scraping? ...Right. Lights on. Stand AWAY from that floor.', "Are you DIGGING? In MY landing? With a SPOON?"]), 3)
+      this.methodHint = 'tunnel'
+      p.attempt = 'tunnel'
+      this.digging = null
+      this.caught(g)
+    }
+  }
+
+  /** A search finds the hole under the loose tile. */
+  tunnelFound(): void {
+    if (this.tunnel.metres <= 0) return
+    this.tunnel.metres = 0
+    this.memory.used.tunnel++
+    this.toast('They found the hole under the loose tile, and filled it with concrete. Back to the start.', 'bad')
+  }
+
+  private scatterRubble(): void {
+    const inv = this.player.inventory
+    const n = inv.count('rubble')
+    for (let i = 0; i < n; i++) inv.remove('rubble')
+    this.dodgyTimer = 2
+    const seen = this.guards.find((g) => g.ko <= 0 && g.canSeePlayer() && g.distanceTo(this.player.body.x, this.player.body.z) < 7)
+    if (seen) {
+      seen.suspicion = Math.max(seen.suspicion, 0.6)
+      seen.wary = Math.min(1, seen.wary + 0.15)
+      this.toast(`You shake ${n} lot${n === 1 ? '' : 's'} of rubble out of your trouser legs. ${seen.name} is looking at the little piles round your feet.`, 'bad')
+    } else this.toast(`You shake ${n} lot${n === 1 ? '' : 's'} of rubble out of your trouser legs and scuff it into the tarmac.`, 'good')
+  }
+
   // ---- The Governor's safe ----
 
   /**
@@ -2259,7 +2403,7 @@ export class Game implements World {
     return (
       !this.over && p.illegal === 0 && !p.attempt && !p.inVent && !p.inBasket && !p.escortedBy && !this.talkingTo &&
       !this.riot.active && !this.sickCall && !this.lure && !this.drugged && !this.climb && !this.alarm.active &&
-      !this.business && !this.cracking && !this.guards.some((g) => g.chasing)
+      !this.business && !this.cracking && !this.digging && !this.guards.some((g) => g.chasing)
     )
   }
 
@@ -2294,6 +2438,7 @@ export class Game implements World {
       missions: this.missions.toSave(),
       events: this.events.toSave(),
       heist: { ...this.heist },
+      tunnel: { ...this.tunnel },
       override: this.clock.override,
       post: this.post.toSave(),
       log: [...this.log],
@@ -2362,6 +2507,7 @@ export class Game implements World {
     this.missions.fromSave(s.missions)
     this.events.fromSave(s.events)
     if (s.heist) Object.assign(this.heist, s.heist)
+    if (s.tunnel) Object.assign(this.tunnel, s.tunnel)
     this.clock.override = s.override ?? null
     this.post.fromSave(s.post)
     this.log.splice(0, this.log.length, ...s.log)
@@ -3090,6 +3236,19 @@ export class Game implements World {
 
 const WALL_TOP = 2.75
 /** How far apart two people stand to talk. */
+/** Metres from under your bunk to the allotments beyond the wall. */
+export const TUNNEL_LENGTH = 30
+/** How far your cellmate must trust you before they will sleep over a tunnel. */
+const TUNNEL_TRUST = 0.4
+const TUNNEL_MILESTONES: Record<number, string> = {
+  5: 'Five metres. Down through the floor and into the old foundations.',
+  10: 'Ten metres. You break into an old Victorian drain. It smells like the canteen.',
+  15: 'Halfway. Somewhere above you, the yard. You can hear the flagpole halyard tapping.',
+  20: 'Twenty metres. The drain narrows. You are under the yard now.',
+  25: 'Twenty-five metres. Footings of the outer wall. You go under them.',
+  30: 'Thirty metres. Cold air, and the smell of compost. You are under the allotments beyond the wall. Crawl out tonight.',
+}
+
 /** How much a fixer must trust you before selling sleeping pills. */
 const PILLS_TRUST = 0.4
 const TALK_GAP = 1.9

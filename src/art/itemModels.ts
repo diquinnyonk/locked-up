@@ -82,6 +82,8 @@ function parts(id: ItemId): BufferGeometry[] {
       return [ring(0.07, 0.02, o(-0.14, 0.02), HEX.stainedGold), box(0.24, 0.03, 0.04, o(0.04, 0.02), HEX.stainedGold), box(0.04, 0.03, 0.07, o(0.12, 0.02, 0.04), HEX.stainedGold), box(0.04, 0.03, 0.05, o(0.04, 0.02, 0.035), HEX.stainedGold)]
     case 'jagKeys':
       return [box(0.14, 0.04, 0.22, o(-0.05, 0.02), HEX.ink), box(0.16, 0.03, 0.03, o(0.1, 0.02, -0.06), HEX.metal), box(0.06, 0.045, 0.06, o(-0.05, 0.04), HEX.stainedGold)]
+    case 'rubble':
+      return [ball(0.14, o(0, 0.08), HEX.cloth, 1.2, 0.7, 1), ball(0.05, o(0.12, 0.04, 0.06), HEX.brickShade), ball(0.04, o(-0.1, 0.03, 0.08), HEX.brick), ball(0.035, o(0.02, 0.03, -0.12), HEX.brickShade)]
     case 'hymnBook':
       return [box(0.36, 0.1, 0.26, o(), HEX.bookRed), box(0.34, 0.08, 0.24, o(0.015, 0.01), HEX.paper), box(0.08, 0.102, 0.03, o(0, 0, 0), HEX.stainedGold), box(0.03, 0.102, 0.12, o(0, 0, 0), HEX.stainedGold)]
     case 'guardUniform':

@@ -31,6 +31,28 @@ rolls and a festive bake), which in Grim-on-the-Moor, under the Pastry Protectio
 of 1987, is worse than murder. Everyone inside knows your name. Prisoners and
 officers call you the Greggs Bandit.
 
+## The long way: a tunnel
+
+There is a loose floor tile beside your bunk. Under it is soft old clay, and
+thirty metres beyond that, the allotments on the far side of the wall.
+
+- **Dig at night**, after lights out, in your own cell: with a spoon (slow), a
+  flattened spoon, or a screwdriver (quickest, about nine seconds a metre).
+  Step away and the tile goes back over the hole.
+- **Every metre is a pocketful of rubble.** When your pockets are full you
+  stop. Shake it out of your trouser legs in the yard by day (R), out of
+  sight: an officer who sees the little piles gets curious. In practice that
+  makes it a job of a week or so.
+- **It is noisy.** Night officers pass about ten metres off; you hear
+  footsteps first. One who stays close for four seconds hears the scraping,
+  and the tunnel is filled with concrete.
+- **Your cellmate** sleeps three feet from the hole and will not stand for it
+  unless they trust you.
+- **Searches**: a shakedown or a cell search after an attempt can find it.
+  Found twice, they pour concrete under every cell floor for good.
+- **Thirty metres** and you crawl out under the allotments: a new ending,
+  "Like a mole", no car needed.
+
 ## The Governor's safe
 
 The Governor's office, off the officers' mess, has a heavy old safe with a
@@ -102,7 +124,7 @@ version, then restarts the page to rebuild that prison.
 
 ## Endings and records
 
-There are eight endings: six escapes and two defeats. Every one you reach is
+There are nine endings: seven escapes and two defeats. Every one you reach is
 filed in this browser's localStorage (`src/game/Records.ts`), apart from the
 saved game, so finishing or starting again never wipes it. For each ending it
 keeps how many times you have reached it, when you first did, and three bests

@@ -1097,6 +1097,86 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   delete (globalThis as any).localStorage
 }
 
+// ---- The tunnel under the loose tile ----
+{
+  const { game, log } = fresh()
+  const p = game.player
+  const atPoster = () => {
+    const spot = (game as any).tunnelSpot
+    p.body.x = spot.x + 0.7
+    p.body.z = spot.z
+    p.zone = p.cell
+  }
+  game.clock.skipTo(23 * 60)
+  run(game, 0.5)
+  atPoster()
+  for (const id of ['toothbrush', 'toothpaste', 'bedsheet'] as const) p.inventory.remove(id)
+  check('tunnel: you need something to dig with', prompt(game, 'need something to dig with'))
+  p.inventory.add('spoon')
+  game.cellmate!.trust = 0.1
+  prompt(game, 'Dig under the loose tile')
+  check('tunnel: a cellmate who does not trust you will not have it', !(game as any).digging && log.some((l) => l.includes('will grass on a tunnel')))
+  game.cellmate!.trust = 0.6
+  check('tunnel: dig under the loose tile at night', prompt(game, 'Dig under the loose tile') && !!(game as any).digging)
+  run(game, 40, () => {
+    atPoster()
+    for (const g of game.guards) g.ko = 1
+    return false
+  })
+  check('tunnel: slow going with a spoon, and a pocketful of rubble a metre', game.tunnel.metres > 2 && game.tunnel.metres < 3 && p.inventory.count('rubble') === 2, `${game.tunnel.metres.toFixed(2)} m, ${p.inventory.count('rubble')} rubble`)
+  for (const g of game.guards) g.ko = 0
+  // Morning: into the yard to get rid of it.
+  ;(game as any).digging = null
+  game.clock.skipTo(13 * 60)
+  run(game, 0.3)
+  const yard = game.grid.rooms.get('yard')!.rects[1]
+  put(game, yard.x0 + 3, yard.y0 + 3)
+  run(game, 0.1)
+  check('tunnel: shake the rubble out in the yard', prompt(game, 'Shake the rubble') && !p.inventory.has('rubble'))
+  const saved = JSON.parse(JSON.stringify(game.toSave()))
+  check('tunnel: progress is kept in a save', saved.tunnel.metres === game.tunnel.metres)
+  // A shakedown can find it.
+  ;(game as any).rng = () => 0
+  game.events.today = 'shakedown'
+  game.events.at = game.clock.minuteOfDay + 1
+  game.events.fired = false
+  run(game, 2)
+  check('tunnel: a shakedown can find the hole', game.tunnel.metres === 0 && log.some((l) => l.includes('found the hole under the loose tile')))
+}
+{
+  const { game, log } = fresh()
+  const p = game.player
+  game.clock.skipTo(23 * 60)
+  run(game, 0.5)
+  const spot = (game as any).tunnelSpot
+  p.body.x = spot.x + 0.7
+  p.body.z = spot.z
+  p.inventory.add('screwdriver')
+  game.cellmate!.trust = 0.6
+  game.tunnel.metres = 12
+  prompt(game, 'Dig under the loose tile')
+  // An officer stood right outside.
+  const g = game.guards.find((gg) => gg.block === 'A')!
+  const caught = run(game, 10, () => {
+    g.stop()
+    g.body.x = p.body.x + 9
+    g.body.z = p.body.z
+    return game.memory.used.tunnel > 0
+  })
+  check('tunnel: an officer close by hears the scraping', caught && game.tunnel.metres === 0, log.slice(-2).join(' | '))
+}
+{
+  const { game, log } = fresh()
+  const p = game.player
+  game.clock.skipTo(23 * 60)
+  run(game, 0.5)
+  const spot = (game as any).tunnelSpot
+  p.body.x = spot.x + 0.7
+  p.body.z = spot.z
+  game.tunnel.metres = 30
+  check('tunnel: thirty metres, and you crawl out', prompt(game, 'Crawl out through the tunnel') && game.over && game.ending?.id === 'tunnel' && log.some((l) => l.startsWith('[end] true Like a mole')))
+}
+
 // ---- Saving and carrying on ----
 {
   const { game: a } = fresh()

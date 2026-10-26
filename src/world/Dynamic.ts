@@ -295,6 +295,28 @@ export class Dynamic {
     this.bunkNote.position.set(x, 0.76 + Math.sin(this.time * 2) * 0.01, z)
   }
 
+  private tunnelHole: Mesh | null = null
+
+  /** The hole under the loose tile by your bunk, open while you dig. */
+  setTunnelHole(x: number, z: number, visible: boolean): void {
+    if (!this.tunnelHole) {
+      this.tunnelHole = new Mesh(
+        mergePainted([
+          box(0.78, 0.02, 0.78, { x: 0, y: 0, z: 0 }, HEX.brickShade),
+          box(0.6, 0.025, 0.6, { x: 0, y: 0, z: 0 }, HEX.ink),
+          // The tile, lifted out and leant against the bunk.
+          box(0.6, 0.6, 0.05, { x: -0.55, y: 0, z: 0.1, ry: 1.2 }, HEX.floorCell),
+          ball(0.12, { x: 0.5, y: 0.02, z: 0.35 }, HEX.brickShade, 1.3, 0.5, 1),
+        ]),
+        toon(0xffffff, { tinted: true }),
+      )
+      this.tunnelHole.layers.enable(SOLID_LAYER)
+      this.group.add(this.tunnelHole)
+    }
+    this.tunnelHole.visible = visible
+    this.tunnelHole.position.set(x, 0.01, z)
+  }
+
   spawnItem(id: ItemId, x: number, z: number, zone: string): LooseItem {
     const mesh = new Mesh(itemGeometry(id), toon(0xffffff, { tinted: true, emissive: 0.2 }))
     mesh.layers.enable(SOLID_LAYER)

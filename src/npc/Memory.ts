@@ -14,7 +14,7 @@
  */
 import { GANGS, GANG_IDS, type GangId, type GangState } from './Gangs'
 
-export type Method = 'key' | 'toothpaste' | 'sick' | 'riot' | 'vent' | 'wall' | 'gate' | 'guardDisguise' | 'visitorDisguise' | 'laundry' | 'lure' | 'safe'
+export type Method = 'key' | 'toothpaste' | 'sick' | 'riot' | 'vent' | 'wall' | 'gate' | 'guardDisguise' | 'visitorDisguise' | 'laundry' | 'lure' | 'safe' | 'tunnel'
 
 export const METHOD_NAMES: Record<Method, string> = {
   key: 'Stolen or forged key',
@@ -29,6 +29,7 @@ export const METHOD_NAMES: Record<Method, string> = {
   laundry: 'In the laundry van',
   lure: 'An officer lured into your cell',
   safe: "The Governor's safe",
+  tunnel: 'A tunnel under the floor',
 }
 
 export const ATTEMPTS_PER_ROUND = 4
@@ -42,7 +43,7 @@ export interface Lesson {
 export class PrisonMemory {
   round = 1
   attemptsUsed = 0
-  readonly used: Record<Method, number> = { key: 0, toothpaste: 0, sick: 0, riot: 0, vent: 0, wall: 0, gate: 0, guardDisguise: 0, visitorDisguise: 0, laundry: 0, lure: 0, safe: 0 }
+  readonly used: Record<Method, number> = { key: 0, toothpaste: 0, sick: 0, riot: 0, vent: 0, wall: 0, gate: 0, guardDisguise: 0, visitorDisguise: 0, laundry: 0, lure: 0, safe: 0, tunnel: 0 }
   readonly hotspots: { x: number; z: number; weight: number }[] = []
   /** Calls flagged by the wiretap; each makes the next listener stricter. */
   phoneFlags = 0
@@ -181,6 +182,16 @@ export class PrisonMemory {
     return 1 + this.used[kind === 'guard' ? 'guardDisguise' : 'visitorDisguise'] * 0.8
   }
 
+  /** Chance a cell search finds a tunnel under the floor. */
+  get tunnelFindChance(): number {
+    return Math.min(0.9, 0.25 + this.used.tunnel * 0.45)
+  }
+
+  /** Twice found, and the walls are concrete. */
+  get tunnelBlocked(): boolean {
+    return this.used.tunnel >= 2
+  }
+
   /** Once an officer has been drugged, none of them eats what a prisoner offers. */
   get foodRefused(): boolean {
     return this.used.lure >= 1
@@ -229,6 +240,8 @@ function lessonFor(method: Method, times: number): string {
       return times === 1 ? 'Officers now count heads at shift change. And moustaches.' : 'Staff must show a warrant card at the gate. Mr Crumpet has lost his twice already.'
     case 'visitorDisguise':
       return times === 1 ? 'Visitors are counted in and out, and stubble earns a second look.' : 'Every visitor is now asked their own birthday on the way out. Most get it right.'
+    case 'tunnel':
+      return times === 1 ? 'Officers lift the floor tiles now, and tap every one on a cell search.' : 'They have poured concrete under every cell floor. Nobody is digging out of Grim-on-the-Moor again.'
     case 'safe':
       return times === 1 ? 'The Governor has changed the combination, and an officer looks into his office on every round.' : 'The Governor changes the combination every week and keeps it in his head. And the officers check his office hourly.'
     case 'lure':

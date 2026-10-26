@@ -6,6 +6,7 @@ import { ITEMS, INVENTORY_SLOTS, type ItemId, RECIPES, vouchers } from '../game/
 import { itemIcon } from './itemIcons'
 import { CONTROLS } from './Tour'
 import { ENDINGS, type Run, duration, readRecords } from '../game/Records'
+import { TUNNEL_LENGTH } from '../game/Game'
 import { recordsHtml, showRecords } from './RecordsView'
 import { EVENT_INFO, isVisitingDay } from '../game/Events'
 import { isTouch } from './Touch'
@@ -325,6 +326,13 @@ export class Ui implements UiPort {
           ${tick(g.heist.knowB, 'Second half', g.heist.knowB ? `${g.safeCode.slice(2)}: the private plate on his Jag, from ${escape(g.keith.name)}.` : "Who sees the Governor's car every day?")}
           ${tick(inv.has('stethoscope'), 'Or a stethoscope', 'Healthcare keeps one. Crack the safe by ear instead: thirty seconds of clicks.')}
           ${tick(g.heist.opened, 'Safe opened', g.heist.opened ? 'The master key opens every door, but snaps after five turns. The Jag is parked just outside the staff door in the changing room.' : 'A master key, the keys to his Jag, petty cash, and your file to shred.')}
+        </ul>
+        <h4>The long way: a tunnel</h4>
+        <ul class="checks">
+          ${tick(g.tunnel.metres > 0, `Under the loose tile: ${g.tunnel.metres.toFixed(1)} of ${TUNNEL_LENGTH} metres`, g.memory.tunnelBlocked ? 'Concrete under every cell floor now. This way is closed.' : 'Dig at night after lights out, with a spoon (slow), a flattened spoon or a screwdriver (quickest). Officers on the landing can hear it.')}
+          ${tick(!inv.has('rubble'), 'No rubble in your pockets', inv.has('rubble') ? `${inv.count('rubble')} lots of rubble on you: shake them out in the yard by day (R), out of sight.` : 'Every metre is a pocketful of rubble to get rid of in the yard.')}
+          ${tick(!g.cellmate || g.cellmate.trust >= 0.4, `${escape(g.cellmate?.name ?? 'Your cellmate')} on side`, 'They sleep three feet from the hole. If they do not trust you, they will not stand for it.')}
+          ${tick(g.tunnel.metres >= TUNNEL_LENGTH, 'Through to the allotments', 'Thirty metres and you come up beyond the wall, no car needed.')}
         </ul>
         <h4>Or one of the silly ways</h4>
         <ul class="checks">
