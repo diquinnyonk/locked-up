@@ -140,7 +140,7 @@ from the far end of the landing. The chatty ones stop for ages and are easy to
 pickpocket. The sticklers pat you down on the spot, the soft touch sends you
 back with a warning once a day, one has a bad knee, one is the fastest in the
 prison and never gives up, and one never forgets a face, so a disguise does
-not last long near him.
+not last long near her.
 
 ## The Governor in person
 
@@ -165,7 +165,9 @@ Every day has weather as well as an event. Rain covers your footsteps in the
 yard and cuts how far officers outside can see; fog on the moor halves it;
 snow muffles your steps and turns the yard white. Rain and snow fall only
 outdoors. In December the prison has a tree, paper chains and the chaplain's
-panto in visits (try `?season=christmas` any time of year).
+panto on December Saturdays: six officers go to watch it in the chapel from
+6 till 8, and the landings are thin (try `?season=christmas` any time of
+year for the decorations).
 
 ## Daily challenge
 
