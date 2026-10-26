@@ -10,6 +10,7 @@ import { describeDaily, prettyDate } from '../game/Daily'
 import { FEUDS } from '../game/Feuds'
 import { TRAITS } from '../npc/names'
 import { type Volumes, readVolumes } from '../audio/Soundscape'
+import { PAD_HELP } from '../core/Pad'
 import { ENDINGS, type Run, duration, readRecords } from '../game/Records'
 import { TUNNEL_LENGTH } from '../game/Game'
 import { recordsHtml, showRecords } from './RecordsView'
@@ -538,7 +539,8 @@ export class Ui implements UiPort {
   private renderHelp(body: HTMLElement): void {
     const touch = isTouch()
     const rows = CONTROLS.map((c) => `<li><span class="keys">${touch ? `<b>${escape(c.touch)}</b>` : c.keys.map((k) => `<kbd>${k}</kbd>`).join('')}</span><span>${escape(c.what)}</span></li>`).join('')
-    body.innerHTML = `<p class="hint">Anything you can do right where you are shows at the bottom of the screen with its ${touch ? 'button' : 'key'}.</p><ul class="controls-list">${rows}</ul>`
+    const pad = PAD_HELP.map(([b, what]) => `<li><span class="keys"><kbd>${escape(b)}</kbd></span><span>${escape(what)}</span></li>`).join('')
+    body.innerHTML = `<p class="hint">Anything you can do right where you are shows at the bottom of the screen with its ${touch ? 'button' : 'key'}.</p><ul class="controls-list">${rows}</ul><h3>With a controller</h3><ul class="controls-list">${pad}</ul>`
     // Sound: three sliders, remembered on this device.
     const vol = readVolumes()
     const sound = document.createElement('div')

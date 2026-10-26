@@ -2,6 +2,7 @@ import { Color, Vector3 } from 'three'
 import { HEX, SUN_DIRECTION, color } from './art/palette'
 import { setToonSunDirection, setWorldTint } from './art/toonMaterial'
 import { Engine } from './core/Engine'
+import { Pad } from './core/Pad'
 import { Game } from './game/Game'
 import type { Mode } from './npc/Memory'
 import { CelPipeline } from './render/CelPipeline'
@@ -228,7 +229,19 @@ let orbit = 0
 let snap = false
 let talkCam = false
 
+// A game controller: it walks you in play and drives whatever menu is up.
+const pad = new Pad(game.input)
+const SURNAMES = ['Barraclough', 'Higgins', 'Pickles', 'Shufflebottom', 'Entwistle', 'Ramsbottom', 'Clegg', 'Haworth']
+pad.onFirstUse = () => {
+  // Nobody types a name with a thumb stick.
+  if (!started && !nameInput.value) nameInput.value = SURNAMES[Math.floor(Math.random() * SURNAMES.length)]
+  ui.toast('Controller ready. Stick or d-pad to move round menus, A to press, B to go back.', 'good')
+}
+const overlayUp = () =>
+  [...document.querySelectorAll<HTMLElement>('#tour, #story:not([hidden]), #records:not([hidden]), #end.show')].some((el) => el.getBoundingClientRect().width > 0)
+
 engine.onUpdate((delta) => {
+  pad.poll(delta, !started || ui.panelOpen || ui.paused || game.over || overlayUp())
   // Keys that work whatever is going on.
   if (started) {
     if (game.input.take('pause')) {

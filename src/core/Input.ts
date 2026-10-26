@@ -43,6 +43,9 @@ export class Input {
   /** The on-screen thumb stick, when there is one. */
   touchMove: { x: number; z: number } | null = null
   touchRun = false
+  /** A game controller's left stick and run trigger (see Pad). */
+  padMove: { x: number; z: number } | null = null
+  padRun = false
 
   constructor() {
     window.addEventListener('keydown', (e) => {
@@ -63,6 +66,7 @@ export class Input {
     if (this.forced) return this.forced
     if (!this.enabled) return { x: 0, z: 0 }
     if (this.touchMove && (this.touchMove.x || this.touchMove.z)) return this.touchMove
+    if (this.padMove) return this.padMove
     let x = 0
     let z = 0
     if (this.held.has('KeyW') || this.held.has('ArrowUp')) z -= 1
@@ -74,7 +78,7 @@ export class Input {
   }
 
   get running(): boolean {
-    return this.enabled && (this.touchRun || this.held.has('ShiftLeft') || this.held.has('ShiftRight'))
+    return this.enabled && (this.touchRun || this.padRun || this.held.has('ShiftLeft') || this.held.has('ShiftRight'))
   }
 
   /** Consumes a queued press. */
