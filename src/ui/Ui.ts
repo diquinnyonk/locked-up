@@ -233,6 +233,22 @@ export class Ui implements UiPort {
     else if (tab === 'post') this.renderPost(body)
     else if (tab === 'help') this.renderHelp(body)
     else this.renderNotes(body)
+    // Saving: automatic, and a button for peace of mind.
+    const bar = document.createElement('div')
+    bar.className = 'savebar'
+    const note = document.createElement('span')
+    note.textContent = this.savedAt ? `Saved on this device: ${this.savedAt}. It saves by itself whenever things are quiet.` : 'It saves by itself on this device whenever things are quiet.'
+    const save = document.createElement('button')
+    save.type = 'button'
+    save.className = 'ghost'
+    save.textContent = 'Save now'
+    save.onclick = () => {
+      const ok = this.onSave?.() ?? false
+      this.toast(ok ? 'Saved.' : 'Not now: you cannot save while out of bounds, in a chase, in a riot or mid-conversation.', ok ? 'good' : 'bad')
+      if (ok) note.textContent = `Saved on this device: ${this.savedAt}. It saves by itself whenever things are quiet.`
+    }
+    bar.append(note, save)
+    body.append(bar)
   }
 
   private renderMain(body: HTMLElement): void {
@@ -435,6 +451,11 @@ export class Ui implements UiPort {
     }
     body.append(again)
   }
+
+  /** Set by the game: saves now if it can, and says whether it did. */
+  onSave: (() => boolean) | null = null
+  /** When the game was last saved, as the clock read then ("Day 3, 14:20"). */
+  savedAt = ''
 
   /** Set by the game: runs the tour of the screen. */
   onTour: (() => void) | null = null

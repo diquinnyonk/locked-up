@@ -12,6 +12,7 @@ import { playIntro } from './ui/Intro'
 import { playTour, tourSeen } from './ui/Tour'
 import { Tile } from './world/Grid'
 import { People } from './render/People'
+import { type SaveFile, clearSave, readSave, writeSave } from './game/Save'
 
 /**
  * Locked Up. A UK prison break, drawn in Windward's cel style: banded toon
@@ -30,6 +31,9 @@ setToonSunDirection(sun)
 const ui = new Ui()
 const sfx = new Sfx()
 const voice = new Voice()
+// A saved game rebuilds the same prison from its seed.
+const saved = readSave()
+Game.seedForNext = saved?.seed ?? null
 const game = new Game(engine.scene, ui, 'Prisoner')
 // Rigged, animated characters in place of the jointed figures. If anything
 // about them fails to build, the jointed crowd simply stays.
@@ -43,9 +47,24 @@ let started = false
 
 const form = document.getElementById('name-form') as HTMLFormElement
 const nameInput = document.getElementById('name') as HTMLInputElement
-nameInput.focus()
+if (saved) {
+  const s = saved.summary
+  document.getElementById('carry-on')!.hidden = false
+  document.getElementById('or-new')!.hidden = false
+  document.getElementById('carry-name')!.textContent = s.name
+  document.getElementById('carry-detail')!.textContent = `Day ${s.day}, ${s.time}. ${s.attemptsLeft} of 4 attempts left, round ${s.round} of 2. ${s.hard ? 'Hard' : 'Normal'}.`
+  const carry = document.getElementById('carry-btn') as HTMLButtonElement
+  carry.onclick = () => {
+    sfx.unlock()
+    document.getElementById('start')!.classList.add('gone')
+    begin(saved)
+  }
+  carry.focus()
+} else nameInput.focus()
 form.addEventListener('submit', (e) => {
   e.preventDefault()
+  // A new sentence replaces the old save.
+  clearSave()
   const name = nameInput.value.trim().replace(/\s+/g, ' ').slice(0, 18) || 'Prisoner'
   game.player.name = name
   game.hard = (form.querySelector('input[name="mode"]:checked') as HTMLInputElement | null)?.value === 'hard'
@@ -53,17 +72,21 @@ form.addEventListener('submit', (e) => {
   sfx.unlock()
   document.getElementById('start')!.classList.add('gone')
   // How you ended up here. Skippable, and only once per sentence.
-  playIntro(name, begin)
+  playIntro(name, () => begin(null))
 })
 
-function begin(): void {
-  game.clock.minutes = 8 * 60 - 20
+function begin(save: SaveFile | null): void {
+  if (save) game.fromSave(save.state)
+  else {
+    game.clock.minutes = 8 * 60 - 20
+    game.startSentence()
+  }
   game.input.enabled = true
   game.input.clear()
   started = true
   snap = true
-  game.startSentence()
   ui.attach(game)
+  ui.onSave = () => save_()
   ui.onClose = () => {
     game.endConversation()
     voice.stop()
@@ -75,10 +98,30 @@ function begin(): void {
   document.getElementById('mapbtn')!.onclick = () => ui.toggleMap()
   document.getElementById('minimap')!.onclick = () => ui.toggleMap()
   ui.onTour = () => tour(() => {})
+  if (save) {
+    ui.savedAt = `day ${save.summary.day}, ${save.summary.time}`
+    ui.card(`Welcome back, ${game.player.name}`, `Day ${save.summary.day}, ${save.summary.time}. Right where you left off: your pockets, your stash, your jobs, and everything the prison has learned about you.`, 8)
+    return
+  }
   // The first time, a walk round the screen before anything else.
   if (tourSeen()) welcome()
   else tour(welcome)
 }
+
+/** Saves if things are quiet enough, and remembers when. */
+function save_(): boolean {
+  if (!started || game.over || !writeSave(game)) return false
+  const m = game.clock.minuteOfDay
+  ui.savedAt = `day ${game.clock.day}, ${String(Math.floor(m / 60)).padStart(2, '0')}:${String(Math.floor(m % 60)).padStart(2, '0')}`
+  return true
+}
+let saveTimer = 20
+let ended = false
+// Leaving the page (closing the tab, switching away on a phone): save if we can.
+addEventListener('pagehide', () => save_())
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') save_()
+})
 
 /** The tour, with the prison holding its breath until it is done. */
 function tour(after: () => void): void {
@@ -133,6 +176,20 @@ engine.onUpdate((delta) => {
   }
 
   if (!ui.paused) game.update(started ? delta : delta * 0.5)
+
+  // Autosave every twenty seconds when things are quiet; a finished
+  // sentence leaves nothing to carry on.
+  if (started && !game.over) {
+    saveTimer -= delta
+    if (saveTimer <= 0) {
+      saveTimer = 20
+      save_()
+    }
+  }
+  if (game.over && !ended) {
+    ended = true
+    clearSave()
+  }
 
   // Light: day, dusk, night; the vents are dark.
   const dark = game.clock.darkness

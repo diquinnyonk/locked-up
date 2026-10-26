@@ -265,6 +265,51 @@ export class Missions {
 
   constructor(private readonly game: Game) {}
 
+  // ---- Saving ----
+
+  /** A person, as their place in the game's lists. */
+  private ref(who: Prisoner | Guard | null): { guard: number } | { prisoner: number } | null {
+    if (!who) return null
+    const g = this.game.guards.indexOf(who as Guard)
+    return g >= 0 ? { guard: g } : { prisoner: this.game.prisoners.indexOf(who as Prisoner) }
+  }
+
+  private unref(r: { guard: number } | { prisoner: number } | null): Prisoner | Guard | null {
+    if (!r) return null
+    return 'guard' in r ? (this.game.guards[r.guard] ?? null) : (this.game.prisoners[r.prisoner] ?? null)
+  }
+
+  toSave() {
+    return {
+      active: this.active.map((m) => ({ tpl: m.tpl.id, giver: this.ref(m.giver)!, giverName: m.giverName, gang: m.gang, target: this.ref(m.target), targetCell: m.targetCell, done: m.done, expires: m.expires, until: m.until, brief: m.brief })),
+      officerOffers: [...this.officerOffers].map(([g, t]) => [this.game.guards.indexOf(g), t.id] as [number, string]),
+      memberOffers: [...this.memberOffers].map(([p, t]) => [this.game.prisoners.indexOf(p), t.id] as [number, string]),
+      bossProgress: { ...this.bossProgress },
+      finished: [...this.finished],
+      completedCount: this.completedCount,
+    }
+  }
+
+  fromSave(s: ReturnType<Missions['toSave']>): void {
+    const all = [...GANG_IDS.flatMap((g) => BOSS_JOBS[g]), ...ERRANDS, ...OFFICER_JOBS]
+    const tpl = (id: string) => all.find((t) => t.id === id)
+    this.active.length = 0
+    for (const m of s.active) {
+      const t = tpl(m.tpl)
+      const giver = this.unref(m.giver)
+      if (!t || !giver) continue
+      this.active.push({ ...m, tpl: t, giver, target: this.unref(m.target) as Prisoner | null })
+    }
+    this.officerOffers.clear()
+    for (const [i, id] of s.officerOffers) if (this.game.guards[i] && tpl(id)) this.officerOffers.set(this.game.guards[i], tpl(id)!)
+    this.memberOffers.clear()
+    for (const [i, id] of s.memberOffers) if (this.game.prisoners[i] && tpl(id)) this.memberOffers.set(this.game.prisoners[i], tpl(id)!)
+    Object.assign(this.bossProgress, s.bossProgress)
+    this.finished.clear()
+    for (const id of s.finished) this.finished.add(id)
+    this.completedCount = s.completedCount
+  }
+
   /** A fresh day: new officers want things, new errands appear. */
   newDay(): void {
     const g = this.game

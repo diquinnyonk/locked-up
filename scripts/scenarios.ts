@@ -827,6 +827,41 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   check('disguise: walks out with the day shift', game.over && log.some((l) => l.startsWith('[end] true Clocked off')), log.slice(-1)[0])
 }
 
+// ---- Saving and carrying on ----
+{
+  const { game: a } = fresh()
+  a.clock.skipTo(2 * 1440 + 13 * 60)
+  run(a, 0.5)
+  a.player.inventory.add('spoon')
+  a.player.inventory.add('sleepingPills')
+  ;(a as any).stash.push('razor')
+  a.memory.fail('vent', 40, 40)
+  a.prisoners[5].trust = 0.83
+  a.guards[2].wary = 0.7
+  a.contactNights = 2
+  a.keith.bribedDay = 3
+  a.grates.find((g) => g.id === 'your cell')!.open = true
+  a.grid.cells.get(a.player.cell)!.door.jammed = true
+  a.post.letters.forEach((l) => (l.read = true))
+  check('save: allowed when things are quiet', a.canSave)
+  const json = JSON.parse(JSON.stringify(a.toSave()))
+  Game.seedForNext = a.seed
+  const { game: b } = fresh()
+  Game.seedForNext = null
+  b.fromSave(json)
+  check('save: the same prison comes back', b.prisoners.every((p, i) => p.name === a.prisoners[i].name && p.temperament === a.prisoners[i].temperament && p.gang === a.prisoners[i].gang && p.body.skin === a.prisoners[i].body.skin))
+  check('save: the clock, your pockets and your stash', b.clock.minutes === a.clock.minutes && b.player.inventory.has('sleepingPills') && b.player.inventory.has('spoon') && (b as any).stash.includes('razor'))
+  check('save: what the prison learned', b.memory.used.vent === 1 && b.memory.attemptsLeft === a.memory.attemptsLeft && b.memory.lessons.length === 1)
+  check('save: who trusts you, and who is wary', b.prisoners[5].trust === 0.83 && b.guards[2].wary === 0.7)
+  check('save: grilles, locks, the car and Keith', b.grates.find((g) => g.id === 'your cell')!.open && b.grid.cells.get(b.player.cell)!.door.jammed && b.contactNights === 2 && b.keith.bribedDay === 3)
+  check('save: post and jobs', b.post.letters.length === a.post.letters.length && b.post.letters.every((l) => l.read) && b.missions.active.length === a.missions.active.length)
+  run(b, 2)
+  check('save: and it carries on running', !b.over && b.clock.minutes > a.clock.minutes)
+  put(a, 64, 23)
+  run(a, 0.2)
+  check('save: never while out of bounds', !a.canSave, `${a.player.zone} illegal ${a.player.illegal}`)
+}
+
 // ---- The staff wing: the Governor's office and the changing room ----
 {
   const { game } = fresh()

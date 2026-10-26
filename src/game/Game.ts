@@ -56,7 +56,11 @@ export class Game implements World {
   readonly grid = new Grid()
   readonly clock = new Clock()
   readonly memory = new PrisonMemory()
-  readonly rng = mulberry32(Date.now() & 0xffff)
+  /** Set before building a game to rebuild a saved prison exactly. */
+  static seedForNext: number | null = null
+  /** What the prison was rolled from: the same seed, the same eighty faces. */
+  readonly seed = Game.seedForNext ?? (Date.now() & 0xffff)
+  readonly rng = mulberry32(this.seed)
   readonly input = new Input()
   readonly post = new Post(this.rng)
   readonly fixtures: Fixtures
@@ -2126,6 +2130,118 @@ export class Game implements World {
   // ---- Post and the notes on your bunk ----
 
   /** Day one's post, handed over once you have a name. */
+  // ------------------------------------------------------------------
+  // Saving (see Save.ts)
+
+  /** Only when things are quiet: never mid-escape, mid-chase or mid-chat. */
+  get canSave(): boolean {
+    const p = this.player
+    return (
+      !this.over && p.illegal === 0 && !p.attempt && !p.inVent && !p.inBasket && !p.escortedBy && !this.talkingTo &&
+      !this.riot.active && !this.sickCall && !this.lure && !this.drugged && !this.climb && !this.alarm.active &&
+      !this.business && !this.guards.some((g) => g.chasing)
+    )
+  }
+
+  toSave() {
+    const p = this.player
+    return {
+      name: p.name,
+      hard: this.hard,
+      minutes: this.clock.minutes,
+      player: {
+        x: p.body.x, z: p.body.z, zone: p.zone, health: p.health,
+        items: p.inventory.items.map((i) => ({ ...i })),
+        disguise: p.disguise, disguiseBlown: p.disguiseBlown, sneaking: p.sneaking,
+      },
+      stash: [...this.stash],
+      memory: JSON.parse(JSON.stringify(this.memory)) as Record<string, unknown>,
+      contactNights: this.contactNights,
+      signalTonight: this.signalTonight,
+      flagUp: this.flagUp,
+      carArrivesAt: this.carArrivesAt,
+      keith: { bribedDay: this.keith.bribedDay, name: this.keith.name },
+      chaplain: { stage: this.chaplain.stage, alibi: this.chaplain.alibi },
+      guards: this.guards.map((g) => ({ wary: g.wary, hasKeys: g.hasKeys, uniformTaken: g.uniformTaken })),
+      prisoners: this.prisoners.map((pr) => ({ trust: pr.trust, grudge: pr.grudge, reportsMade: pr.reportsMade })),
+      stolenFrom: this.stolenFrom ? this.guards.indexOf(this.stolenFrom) : -1,
+      disguisedAs: this.disguisedAs,
+      items: this.dynamic.items.map((i) => ({ id: i.id, x: i.x, z: i.z, zone: i.zone })),
+      grates: this.grates.map((g) => ({ id: g.id, open: g.open, sealed: g.sealed })),
+      jammed: this.grid.doors.flatMap((d, i) => (d.jammed ? [i] : [])),
+      messes: [...this.messes],
+      toiletIncidents: this.toiletIncidents,
+      missions: this.missions.toSave(),
+      post: this.post.toSave(),
+      log: [...this.log],
+    }
+  }
+
+  /** Puts a saved game back on top of a freshly built prison from the same seed. */
+  fromSave(s: ReturnType<Game['toSave']>): void {
+    const p = this.player
+    p.name = s.name
+    this.hard = s.hard
+    this.clock.minutes = s.minutes
+    this.lastPeriod = this.clock.period
+    this.lastMinute = this.clock.minuteOfDay
+    this.placePlayer(s.player.x, s.player.z)
+    p.zone = s.player.zone
+    p.health = s.player.health
+    p.inventory.items.splice(0, p.inventory.items.length, ...s.player.items)
+    p.disguise = s.player.disguise
+    p.disguiseBlown = s.player.disguiseBlown
+    p.sneaking = s.player.sneaking
+    this.applyLook()
+    this.stash.splice(0, this.stash.length, ...s.stash)
+    Object.assign(this.memory, s.memory)
+    this.contactNights = s.contactNights
+    this.signalTonight = s.signalTonight
+    this.flagUp = s.flagUp
+    this.carArrivesAt = s.carArrivesAt
+    this.keith.bribedDay = s.keith.bribedDay
+    this.keith.name = s.keith.name
+    this.chaplain.stage = s.chaplain.stage
+    this.chaplain.alibi = s.chaplain.alibi
+    s.guards.forEach((o, i) => {
+      const g = this.guards[i]
+      if (!g) return
+      g.wary = o.wary
+      g.hasKeys = o.hasKeys
+      if (o.uniformTaken) this.dressGuard(g, false)
+    })
+    s.prisoners.forEach((o, i) => {
+      const pr = this.prisoners[i]
+      if (!pr) return
+      pr.trust = o.trust
+      pr.grudge = o.grudge
+      pr.reportsMade = o.reportsMade
+    })
+    this.stolenFrom = this.guards[s.stolenFrom] ?? null
+    this.disguisedAs = s.disguisedAs
+    for (const item of [...this.dynamic.items]) this.dynamic.removeItem(item)
+    for (const i of s.items) this.dynamic.spawnItem(i.id, i.x, i.z, i.zone)
+    for (const o of s.grates) {
+      const g = this.grates.find((gr) => gr.id === o.id)
+      if (g) Object.assign(g, { open: o.open, sealed: o.sealed })
+    }
+    for (const i of s.jammed) if (this.grid.doors[i]) this.grid.doors[i].jammed = true
+    this.messes.clear()
+    for (const [k, v] of s.messes) {
+      this.messes.set(k, v)
+      const seat = this.grid.seats.find((st) => st.toilet === k)
+      if (!seat) continue
+      if (v.floor) this.dynamic.dropFloorMess(`${k}:floor`, seat.x + Math.sin(seat.yaw) * 0.45, seat.z + Math.cos(seat.yaw) * 0.45, 0.02)
+      else this.dynamic.setToiletMess(k, seat.x, seat.z, true)
+    }
+    this.toiletIncidents = s.toiletIncidents
+    this.missions.fromSave(s.missions)
+    this.post.fromSave(s.post)
+    this.log.splice(0, this.log.length, ...s.log)
+    const cell = this.grid.cells.get(p.cell)!
+    this.dynamic.setBunkNote(cell.bunks[0].x + 0.1, cell.bunks[0].z + 0.4, !!this.post.waiting)
+  }
+
   startSentence(): void {
     this.deliverPost()
   }

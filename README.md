@@ -31,6 +31,21 @@ rolls and a festive bake), which in Grim-on-the-Moor, under the Pastry Protectio
 of 1987, is worse than murder. Everyone inside knows your name. Prisoners and
 officers call you the Greggs Bandit.
 
+## Saving
+
+The game saves itself in the browser's localStorage (`src/game/Save.ts`): every
+twenty seconds whenever things are quiet, and when you leave the page. It
+never saves mid-escape, mid-chase, in a riot or mid-conversation, so a save
+always loads into a calm moment. The Notebook has a **Save now** button and
+says when it last saved. On the title screen, **Carry on** picks up where you
+left off; starting a new sentence replaces the save, and so does reaching an
+ending.
+
+A save keeps the seed the prison was rolled from, so the same prisoners come
+back with the same faces, tempers and firms, plus the clock, your pockets and
+stash, what the prison has learned, trust and grudges, jobs, post, loose
+items, open grilles and jammed locks. Saves stay on that device and browser.
+
 ## Your first day: the tour
 
 The first time you play, the game stops before day one for a walk round the

@@ -152,6 +152,54 @@ kbd {
   margin-bottom: 1.6rem;
   max-width: 34em;
 }
+#carry-on {
+  background: var(--ink);
+  color: var(--paper);
+  padding: 1rem 1.1rem 1.1rem;
+  display: grid;
+  gap: 0.45rem;
+  margin-bottom: 1rem;
+}
+#carry-on[hidden],
+#or-new[hidden] {
+  display: none;
+}
+#carry-on h2 {
+  font: 800 1.6rem / 1 var(--display);
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+#carry-on p {
+  line-height: 1.45;
+}
+#carry-on button {
+  justify-self: start;
+  margin-top: 0.3rem;
+  font: 800 1.35rem var(--display);
+  text-transform: uppercase;
+  padding: 0.7rem 1.3rem;
+}
+#or-new {
+  color: var(--quiet);
+  margin-bottom: 1rem;
+  line-height: 1.45;
+}
+#panel .savebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid var(--paper-3);
+  font-size: var(--step-small);
+  color: var(--quiet);
+}
+#panel .savebar button {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.9rem;
+}
 #name-form {
   display: grid;
   gap: 0.6rem;

@@ -185,6 +185,19 @@ export class Post {
 
   constructor(private readonly rng: () => number) {}
 
+  toSave() {
+    return { letters: this.letters, notes: this.notes, waiting: this.waiting, nextLetter: this.nextLetter, nextNote: this.nextNote, lastNoteDay: this.lastNoteDay }
+  }
+
+  fromSave(s: ReturnType<Post['toSave']>): void {
+    this.letters.splice(0, this.letters.length, ...s.letters)
+    this.notes.splice(0, this.notes.length, ...s.notes)
+    this.waiting = s.waiting
+    this.nextLetter = s.nextLetter
+    this.nextNote = s.nextNote
+    this.lastNoteDay = s.lastNoteDay
+  }
+
   /** Morning post. Returns what arrived. */
   deliver(day: number, name: string): Letter[] {
     const count = day === 1 ? 1 : this.rng() < 0.35 ? 2 : 1
