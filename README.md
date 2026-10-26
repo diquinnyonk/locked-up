@@ -12,17 +12,23 @@ npm install
 npm run dev        # play
 npm test           # headless checks of every escape route
 npm run sim        # headless day of the regime, printed by period
+npm run heard      # how often each recordable line is heard, for the studio
 ```
 
 Type your name on the title screen, pick a difficulty, and you are booked in to
 HMP Grim-on-the-Moor, cell A8, with one cellmate.
 
+- **Story**: six attempts a round instead of four, the sight guide, and
+  officers a little slower to notice you.
 - **Normal**: every officer's sight is drawn on the floor. The wide fan is how
   far they see ahead, cut off by walls and shut doors, and it shrinks while you
   sneak. The small ring behind them is how close you can creep before they
   notice you anyway. It turns red as they get suspicious.
 - **Hard**: no sight guide, no officers on the map, and they spot you a quarter
   faster.
+- **Hardcore**: Hard, with one attempt and no saving.
+
+Or play **today's daily challenge** (see below).
 
 ## How you got here
 
@@ -121,6 +127,64 @@ but **Download save** in the Notebook keeps one as a `.json` file, and **Load a
 save file** (in the Notebook, or on the title screen) brings one back, on this
 device or another. Loading checks the file is a Locked Up save from this
 version, then restarts the page to rebuild that prison.
+
+## The officers
+
+All sixteen officers have a way about them (`src/npc/names.ts`), and the
+Notebook's Officers page tells you who is who once you have met them. Mr
+Higginbottom is too old to run. Ms Bottomley takes her breaks at the canteen
+desk with a brew from 10 to 11 and 3 to 4, whatever is happening on her
+landing. One has a sweet tooth that a packet of custard creams will buy, once.
+The night-shift napper dozes at her post. The nosy one hears a dropped spoon
+from the far end of the landing. The chatty ones stop for ages and are easy to
+pickpocket. The sticklers pat you down on the spot, the soft touch sends you
+back with a warning once a day, one has a bad knee, one is the fastest in the
+prison and never gives up, and one never forgets a face, so a disguise does
+not last long near him.
+
+## The Governor in person
+
+Rupert Pettigrew is at his desk on weekday mornings and afternoons, out
+polishing his Jag in the car park at lunch, walking an inspector round on
+inspection days and never in at weekends. When his office is empty is when
+the safe is worth a try. If he sees you somewhere you should not be, he
+shouts for the officers. You can also just say hello.
+
+## Firms at war
+
+The Firm and the Crows, and the Lions and the Northern Lot, build up bad
+blood day by day (`src/game/Feuds.ts`). When it boils over they go at each
+other in the yard at exercise, four a side, and every officer in the prison
+runs that way: a good moment to be somewhere else. Tell a boss their rivals
+are planning something to start it today, or pay three Greggs vouchers for a
+three-day truce that both firms remember kindly.
+
+## Weather and seasons
+
+Every day has weather as well as an event. Rain covers your footsteps in the
+yard and cuts how far officers outside can see; fog on the moor halves it;
+snow muffles your steps and turns the yard white. Rain and snow fall only
+outdoors. In December the prison has a tree, paper chains and the chaplain's
+panto in visits (try `?season=christmas` any time of year).
+
+## Daily challenge
+
+Every date has its own prison, the same for everyone that day: the seed
+comes from the date (`src/game/Daily.ts`), and so does the goal, to escape
+by day three to six, never caught or with one slip allowed. Start it from
+the title screen. The HUD and Notebook show the goal, the end screen says
+whether you made it, and your records keep each day's best try. Starting a
+daily replaces the saved game, and the title screen says so.
+
+## Achievements
+
+Seventeen of them, kept with your records (`src/game/Achievements.ts`). Ten
+are earned along the way: tick off your first day, sit with your nan, meet
+the Governor, put an officer to sleep with a sausage roll, knock one out,
+take a uniform, crack the safe, stir a feud, settle one, and start a riot.
+Seven come when a sentence ends: any escape, a clean sheet, out by day two,
+an escape on Hardcore, a daily challenge beaten, every way out, and every
+ending. Each one shows once, in gold, and the records screen lists them all.
 
 ## Endings and records
 
@@ -588,6 +652,14 @@ segregation indefinitely or, if a firm hates you enough, they get to you first.
 | `M` | Big map, with the ducts, labels and your job targets |
 | `Esc` | Pause |
 
+Any standard game controller works too (`src/core/Pad.ts`): left stick to
+walk, `RT` to run, `LT` to sneak, `A` to use, `X` for the other thing, `B`
+to fight, `Y` for pockets, `RB` for the Notebook, `LB` or View for the map,
+Start to pause, and the d-pad for sick, sleep, soap and kicking off.
+Whenever a menu or card is up the pad drives it instead: stick or d-pad
+between buttons, `A` to press, `B` to go back, shoulders to flip Notebook
+tabs.
+
 ## Layout of the code
 
 ```
@@ -625,7 +697,11 @@ their own from that list instead (`src/audio/cast.ts`), and a recording only
 plays in the mouth of the character it belongs to. An officer's job is
 offered by the officer whose job it is, and an errand by its owner, so the
 brief is in their voice. The studio lists the lines by character, with a
-picker to do one voice at a time.
+picker to do one voice at a time, or **most heard first**: `npm run heard`
+plays a few headless sentences as an ordinary player and counts how often
+each line comes up (`dialogue/heard.json`), so the first takes recorded are
+the ones players hear most. Whoever is speaking moves their mouth while
+their line is up.
 
 ## Credits
 
