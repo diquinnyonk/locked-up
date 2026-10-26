@@ -304,6 +304,7 @@ export class Ui implements UiPort {
       <section class="mission">
         <h3 class="title">Escape HMP Grim-on-the-Moor</h3>
         <p>Everyone in here knows your name, ${escape(p.name)}: the one who robbed the Greggs. Attempts left this round: <b>${m.attemptsLeft} of ${ATTEMPTS_PER_ROUND}</b> (round ${m.round} of ${ROUNDS}).</p>
+        ${g.goals.shown && !g.goals.finished ? `<h4>First day</h4><ul class="checks">${GOALS.map((go) => tick(g.goals.done.has(go.id), go.text, go.hint)).join('')}</ul>` : ''}
         <p class="today"><b>${g.clock.weekdayName}: ${escape(EVENT_INFO[g.events.today].title)}.</b> ${escape(EVENT_INFO[g.events.today].blurb)}${isVisitingDay(g.clock.weekday) ? ' Visiting this afternoon, 14:30 to 15:45.' : ''}</p>
         <h4>Out of your cell at night</h4>
         <ul class="checks">

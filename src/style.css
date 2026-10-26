@@ -1367,11 +1367,21 @@ body.talking #card {
   background: var(--danger);
   color: var(--paper);
 }
+/* Phones: the pockets are one strip along the bottom, and everything else
+   (the buttons, the prompts, the room name) sits above it, so nothing
+   overlaps. --strip is the height of that strip. */
+body.touch {
+  --strip: calc((min(560px, 100vw - 24px) - 28px) / 8 + 12px);
+}
 body.touch #inventory {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  width: min(300px, calc(50vw - 16px));
-  left: 12px;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  width: min(560px, calc(100vw - 24px));
+  left: max(12px, env(safe-area-inset-left, 0px));
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
   transform: none;
+}
+body.touch #touchbuttons {
+  bottom: calc(var(--strip) + 14px + env(safe-area-inset-bottom, 0px));
 }
 body.touch .slot .label,
 body.touch .slot .tag {
@@ -1387,10 +1397,10 @@ body.touch .slot {
   aspect-ratio: 1;
 }
 body.touch #zone {
-  bottom: calc(12px + min(150px, 25vw) + 16px);
+  bottom: calc(var(--strip) + 14px + env(safe-area-inset-bottom, 0px));
 }
 body.touch #prompts {
-  bottom: calc(12px + min(150px, 25vw) + 52px);
+  bottom: calc(var(--strip) + 48px + env(safe-area-inset-bottom, 0px));
   left: max(12px, env(safe-area-inset-left, 0px));
   transform: none;
   align-items: flex-start;
@@ -1404,7 +1414,14 @@ body.bigmap #touchpad,
 body.bigmap #prompts {
   display: none;
 }
-body.touch #jobs,
+/* On a phone the job cards would cover the landing; only the first-day
+   goals stay, small, under your details. */
+body.touch #jobs .job:not(.goals) {
+  display: none;
+}
+body.touch #jobs {
+  width: min(210px, 52vw);
+}
 body.touch #menubtn,
 body.touch:not(.bigmap) #mapbtn {
   display: none;
@@ -1621,3 +1638,32 @@ body.panel-open #prompts {
 #jobs .goals li::before { content: ''; position: absolute; left: 0; top: 0.3em; width: 0.7em; height: 0.7em; border: 1.5px solid var(--ink); }
 #jobs .goals li.done { color: var(--quiet); text-decoration: line-through; }
 #jobs .goals li.done::before { background: var(--good); border-color: var(--good); }
+
+/* Phones on their side: little height, plenty of width. A slimmer strip of
+   pockets on the left, the buttons in the bottom right beside it, and the
+   goals left to the Notebook. */
+@media (max-height: 500px) {
+  body.touch {
+    --strip: calc((min(380px, 100vw - 24px) - 28px) / 8 + 12px);
+  }
+  body.touch #inventory {
+    width: min(380px, calc(100vw - 24px));
+  }
+  #touchbuttons button {
+    height: 34px;
+  }
+  #touchbuttons button.wide {
+    height: 40px;
+  }
+  body.touch #jobs {
+    display: none;
+  }
+}
+@media (max-height: 500px) and (min-width: 640px) {
+  body.touch #touchbuttons {
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+  body.touch #prompts {
+    bottom: calc(var(--strip) + 16px + env(safe-area-inset-bottom, 0px));
+  }
+}
