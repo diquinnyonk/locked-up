@@ -1721,5 +1721,25 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   check('win: reach the car outside with contact made', won && log.some((l) => l.startsWith('[end] true')), log.slice(-1)[0])
 }
 
+// ---- Achievements ----
+{
+  const store = new Map<string, string>()
+  ;(globalThis as any).localStorage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => store.set(k, v), removeItem: (k: string) => store.delete(k) }
+  const { readRecords } = await import('../src/game/Records')
+  const { achieveAtEnd } = await import('../src/game/Achievements')
+  const { game, log } = fresh()
+  game.achieve('nan')
+  game.achieve('nan')
+  const toasts = log.filter((l) => l.startsWith('Achievement:'))
+  check('achievements: earned once, toasted once', toasts.length === 1 && !!readRecords().achievements?.nan, toasts.join(' | '))
+  const again = fresh()
+  again.game.achieve('nan')
+  check('achievements: a new sentence does not re-announce one already earned', !again.log.some((l) => l.startsWith('Achievement:')))
+  const ids = achieveAtEnd({ won: true, fails: 0, day: 2, mode: 'hardcore', dailyMet: false })
+  check('achievements: a clean, early, hardcore escape earns all three', ['out', 'clean', 'early', 'hardcore'].every((i) => ids.includes(i as any)) && !ids.includes('daily'), ids.join(','))
+  check('achievements: and not twice', achieveAtEnd({ won: true, fails: 0, day: 2, mode: 'hardcore', dailyMet: false }).length === 0)
+  delete (globalThis as any).localStorage
+}
+
 console.log(failures ? `\n${failures} failing` : '\nall passing')
 process.exit(failures ? 1 : 0)

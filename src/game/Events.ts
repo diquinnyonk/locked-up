@@ -213,6 +213,7 @@ export class Events {
   sitWithNan(): void {
     const g = this.game
     this.nanSeen = true
+    g.achieve('nan')
     let given = 0
     for (let i = 0; i < 3; i++) if (g.player.inventory.add('voucher')) given++
     for (let i = given; i < 3; i++) g.dynamic.spawnItem('voucher', g.player.body.x + 0.5, g.player.body.z + 0.4 * i, g.player.zone)

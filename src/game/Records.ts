@@ -47,6 +47,8 @@ export interface DailyResult {
 
 export interface Records {
   version: 1
+  /** Achievements by id: when each was first earned. */
+  achievements?: Record<string, string>
   /** Daily challenges by date: the best try. */
   daily?: Record<string, DailyResult>
   endings: Partial<Record<EndingId, EndingRecord>>
@@ -73,7 +75,7 @@ export function readRecords(): Records {
   }
 }
 
-function write(r: Records): void {
+export function writeRecords(r: Records): void {
   try {
     localStorage.setItem(KEY, JSON.stringify(r))
   } catch {
@@ -85,7 +87,7 @@ function write(r: Records): void {
 export function noteStarted(): void {
   const r = readRecords()
   r.started++
-  write(r)
+  writeRecords(r)
 }
 
 /** A sentence over: file it, and say whether this ending is a new find. */
@@ -107,7 +109,7 @@ export function recordEnding(id: EndingId, run: Run): { isNew: boolean; found: n
     if (run.fails < had.fewestFails.fails) (had.fewestFails = run), (best = true)
     if (run.day < had.earliest.day) (had.earliest = run), (best = true)
   }
-  write(r)
+  writeRecords(r)
   return { isNew: !had, found: Object.keys(r.endings).length, best }
 }
 
@@ -118,7 +120,7 @@ export function recordDaily(date: string, r: Omit<DailyResult, 'tries'>): { best
   const had = daily[date]
   const better = !had || (r.met && !had.met) || (r.met === had.met && (r.day < had.day || (r.day === had.day && r.seconds < had.seconds)))
   daily[date] = better ? { ...r, tries: (had?.tries ?? 0) + 1 } : { ...had, tries: had.tries + 1 }
-  write(all)
+  writeRecords(all)
   return { best: better }
 }
 
@@ -161,6 +163,10 @@ export function mergeRecords(incoming: unknown): boolean {
     const mine = (r.daily ??= {})[date]
     if (!mine || (theirs.met && !mine.met) || (theirs.met === mine.met && theirs.day < mine.day)) r.daily[date] = { ...theirs, tries: Math.max(theirs.tries, mine?.tries ?? 0) }
   }
-  write(r)
+  for (const [id, when] of Object.entries(inc.achievements ?? {})) {
+    const mine = (r.achievements ??= {})[id]
+    if (!mine || when < mine) r.achievements[id] = when
+  }
+  writeRecords(r)
   return true
 }

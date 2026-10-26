@@ -557,6 +557,49 @@ body.bigmap #mapbtn {
 .toast.fade {
   opacity: 0;
 }
+.toast.achievement {
+  border: 2px solid var(--accent);
+}
+.toast.achievement::before {
+  background: var(--accent);
+}
+.toast.achievement small {
+  display: block;
+  color: var(--accent);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.toast.achievement b {
+  margin-right: 0.3em;
+}
+.achievements {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 6px;
+}
+.achievements li {
+  padding: 0.5rem 0.7rem;
+  border: 1px solid color-mix(in srgb, var(--paper) 25%, transparent);
+  font-size: 0.85rem;
+  line-height: 1.35;
+}
+.achievements li b {
+  display: block;
+}
+.achievements li.got {
+  border-color: var(--accent);
+}
+.achievements li.got b::before {
+  content: '★ ';
+  color: var(--accent);
+}
+.achievements li:not(.got) {
+  opacity: 0.6;
+}
 
 #prompts {
   position: absolute;

@@ -23,10 +23,13 @@ import { screenCall } from './Phone'
 import { Missions } from './Missions'
 import { type BunkNote, type Letter, Post } from './Post'
 import { LINES } from './Lines'
+import { type AchievementId, unlock } from './Achievements'
 
 /** What the game needs from the interface. Implemented in ui/Ui.ts. */
 export interface UiPort {
   toast(text: string, tone?: 'good' | 'bad' | 'neutral'): void
+  /** A badge earned; falls back to a toast. */
+  achievement?(title: string, text: string): void
   talk(title: string, line: string, options: { label: string; enabled: boolean; run: () => void }[], voice?: string): void
   phone(onSend: (message: string) => string): void
   card(title: string, body: string, seconds?: number): void
@@ -342,6 +345,19 @@ export class Game implements World {
 
   toast(text: string, tone: 'good' | 'bad' | 'neutral' = 'neutral'): void {
     this.ui.toast(text, tone)
+  }
+
+  /** Earned this sentence, so a browser with no storage only says it once. */
+  private readonly achieved = new Set<AchievementId>()
+
+  achieve(id: AchievementId): void {
+    if (this.achieved.has(id)) return
+    this.achieved.add(id)
+    const a = unlock(id)
+    if (!a) return
+    if (this.ui.achievement) this.ui.achievement(a.title, a.text)
+    else this.toast(`Achievement: ${a.title}`, 'good')
+    this.sounds.push({ sound: 'good', volume: 0.6 })
   }
 
   emit(noise: Omit<Noise, 'age'>): void {
@@ -1798,6 +1814,7 @@ export class Game implements World {
         g.ko = 30
         g.hp = 10
         g.wary = 1
+        this.achieve('knockout')
         g.chasing = false
         this.toast(`${g.name} goes down${weapon.id ? ` (${ITEMS[weapon.id].name})` : ''}. Grab the keys (R) before anyone sees.`, 'good')
       } else {
@@ -1884,6 +1901,7 @@ export class Game implements World {
         const g = d.guard
         this.drugged = null
         g.say('*yawns* I\'ll just... rest my eyes... for a...', 2.5)
+        this.achieve('sausage')
         g.ko = 150
         g.hp = 10
         g.chasing = false
@@ -2012,7 +2030,10 @@ export class Game implements World {
   /** A first-day goal done. */
   goal(id: GoalId): void {
     if (!this.goals.shown) return
-    if (this.goals.tick(id)) this.toast('First day: done. You know your way around. Now find your way out.', 'good')
+    if (this.goals.tick(id)) {
+      this.toast('First day: done. You know your way around. Now find your way out.', 'good')
+      this.achieve('settled')
+    }
   }
 
   // ---- The tunnel under the loose tile ----
@@ -2215,6 +2236,7 @@ export class Game implements World {
     const p = this.player
     const inv = p.inventory
     this.heist.opened = true
+    this.achieve('safe')
     this.dodgyTimer = 5
     this.sounds.push({ sound: 'good', volume: 0.8 })
     const give = (id: ItemId) => {
@@ -2282,6 +2304,7 @@ export class Game implements World {
       this.riotOpenTimer = 30
       this.methodHint = 'riot'
       this.toast('The landing goes up: doors banging, a mattress on fire. The officers are coming in to pull out ringleaders...', 'good')
+      this.achieve('riot')
       return
     }
     // By day: your backers start swinging at whoever is nearest.
@@ -2301,6 +2324,7 @@ export class Game implements World {
     }
     this.lastFightByPlayer = 20
     this.toast('"Kick off!" Your lot pile in.', 'good')
+    this.achieve('riot')
   }
 
   private trySleep(): void {
@@ -2486,7 +2510,10 @@ export class Game implements World {
       options.push({
         label: `"${rival.name} are planning something, you know."`,
         enabled: feud.brawlAt < 0,
-        run: () => this.ui.talk(pr.name, this.feuds.stir(gang), []),
+        run: () => {
+          this.ui.talk(pr.name, this.feuds.stir(gang), [])
+          this.achieve('stir')
+        },
       })
       options.push({
         label: truce ? `A truce with ${rival.name} holds` : `Broker a truce with ${rival.name} (3 Greggs vouchers)`,
@@ -2494,6 +2521,7 @@ export class Game implements World {
         run: () => {
           for (let i = 0; i < 3; i++) inv.remove('voucher')
           this.feuds.truce(gang)
+          this.achieve('peace')
           this.ui.talk(pr.name, `Three days. Not a minute more. And tell ${rival.name} it was their idea.`, [])
           this.toast(`A truce between ${def.name} and ${rival.name} for three days. Both think a bit better of you.`, 'good')
         },
@@ -2879,6 +2907,7 @@ export class Game implements World {
     }
     this.player.inventory.add('guardUniform')
     this.disguisedAs = g.name
+    this.achieve('dressed')
     this.dressGuard(g, false)
     this.dodgyTimer = 4
     this.toast(`You strip ${g.name} to his vest and a pair of pink boxers. Dignity: confiscated. Wear the uniform from your pockets (Tab).`, 'good')
@@ -3274,6 +3303,7 @@ export class Game implements World {
   private talkToGovernor(): void {
     const gv = this.governor
     this.converse(gv.body)
+    this.achieve('governor')
     const lines =
       this.memory.round > 1
         ? ["Back again. I admire persistence. I also admire concrete, and I have ordered a great deal of it.", 'You are making my prison better every time you fail. I do appreciate it.']

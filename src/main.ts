@@ -14,6 +14,7 @@ import { playIntro } from './ui/Intro'
 import { playTour, tourSeen } from './ui/Tour'
 import { Tile } from './world/Grid'
 import { People } from './render/People'
+import { ACHIEVEMENTS, achieveAtEnd } from './game/Achievements'
 import { noteStarted, readRecords, recordDaily, recordEnding } from './game/Records'
 import { dailyFor, dailyMet, describeDaily, prettyDate, todayKey } from './game/Daily'
 import { showRecords } from './ui/RecordsView'
@@ -266,10 +267,15 @@ engine.onUpdate((delta) => {
     if (game.ending) {
       const run = { name: game.player.name, seconds: game.playSeconds, fails: game.memory.totalFailures, day: game.clock.day, hard: game.hard, mode: game.mode }
       ui.endRecord(recordEnding(game.ending.id, run), run)
+      let met = false
       if (game.daily) {
-        const met = dailyMet(game.daily, game.ending.won, run.day, run.fails)
+        met = dailyMet(game.daily, game.ending.won, run.day, run.fails)
         const { best } = recordDaily(game.daily.date, { met, day: run.day, fails: run.fails, seconds: run.seconds })
         ui.endDaily(met, best, describeDaily(game.daily))
+      }
+      for (const id of achieveAtEnd({ won: game.ending.won, fails: run.fails, day: run.day, mode: game.mode, dailyMet: met })) {
+        const a = ACHIEVEMENTS.find((x) => x.id === id)!
+        ui.achievement(a.title, a.text)
       }
     }
   }

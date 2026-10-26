@@ -1,3 +1,4 @@
+import { ACHIEVEMENTS } from '../game/Achievements'
 import { ENDINGS, type Records, duration, readRecords } from '../game/Records'
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!)
@@ -34,6 +35,7 @@ export function recordsHtml(r: Records): string {
   return `<div class="records">
     <p class="found"><b>${found} of ${ENDINGS.length}</b> endings found.</p>
     <ul class="endings">${cards}</ul>
+    ${achievementsHtml(r)}
     ${dailyHtml(r)}
     <h3>Totals</h3>
     <dl class="totals">${totals.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>
@@ -66,6 +68,14 @@ export function showRecords(): void {
     if (e.target === el) close()
   }
   ;(el.querySelector('.close') as HTMLButtonElement).focus()
+}
+
+function achievementsHtml(r: Records): string {
+  const got = r.achievements ?? {}
+  const n = ACHIEVEMENTS.filter((a) => got[a.id]).length
+  return `<h3>Achievements</h3><p class="found"><b>${n} of ${ACHIEVEMENTS.length}</b> earned.</p><ul class="achievements">${ACHIEVEMENTS.map(
+    (a) => `<li class="${got[a.id] ? 'got' : ''}"><b>${esc(a.title)}</b>${esc(a.text)}</li>`,
+  ).join('')}</ul>`
 }
 
 function dailyHtml(r: Records): string {

@@ -73,6 +73,18 @@ export class Ui implements UiPort {
     setTimeout(() => el.remove(), 5000)
   }
 
+  /** An achievement: a toast of its own, with a little rosette. */
+  achievement(title: string, text: string): void {
+    const el = document.createElement('div')
+    el.className = 'toast achievement'
+    el.setAttribute('role', 'status')
+    el.innerHTML = `<small>Achievement</small><b>${escape(title)}</b> ${escape(text)}`
+    this.toasts.prepend(el)
+    while (this.toasts.children.length > 4) this.toasts.lastElementChild?.remove()
+    setTimeout(() => el.classList.add('fade'), 5200)
+    setTimeout(() => el.remove(), 6000)
+  }
+
   /**
    * A conversation. With a `speaker` it is shown as a subtitle sheet along
    * the bottom of the screen while the camera cuts to over your shoulder;
