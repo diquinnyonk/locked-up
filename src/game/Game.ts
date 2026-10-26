@@ -16,6 +16,7 @@ import { type DayEvent, Events, type Weather, isVisitingDay, weatherSteps } from
 import type { EndingId } from './Records'
 import { type GoalId, Goals } from './Goals'
 import { Feuds } from './Feuds'
+import type { DailyGoal } from './Daily'
 import { Doors } from './Doors'
 import { ITEMS, Inventory, type ItemId, RECIPES, type Recipe, SPAWNS, vouchers } from './Items'
 import { screenCall } from './Phone'
@@ -2644,6 +2645,7 @@ export class Game implements World {
       heist: { ...this.heist },
       tunnel: { ...this.tunnel },
       goals: this.goals.toSave(),
+      daily: this.daily,
       mate: { ...this.mate },
       override: this.clock.override,
       post: this.post.toSave(),
@@ -2716,6 +2718,7 @@ export class Game implements World {
     if (s.heist) Object.assign(this.heist, s.heist)
     if (s.tunnel) Object.assign(this.tunnel, s.tunnel)
     this.goals.fromSave(s.goals)
+    this.daily = s.daily ?? null
     if (s.mate) Object.assign(this.mate, s.mate)
     this.clock.override = s.override ?? null
     this.post.fromSave(s.post)
@@ -2790,6 +2793,9 @@ export class Game implements World {
 
   /** December: snow, a tree in the canteen, the panto on Saturdays. Set by the page. */
   season: 'none' | 'christmas' = 'none'
+
+  /** The daily challenge, when that is what this is. */
+  daily: DailyGoal | null = null
 
   private toggleDisguise(kind: 'guard' | 'visitor'): void {
     const p = this.player

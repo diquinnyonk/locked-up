@@ -14,7 +14,8 @@ import { playIntro } from './ui/Intro'
 import { playTour, tourSeen } from './ui/Tour'
 import { Tile } from './world/Grid'
 import { People } from './render/People'
-import { noteStarted, recordEnding } from './game/Records'
+import { noteStarted, readRecords, recordDaily, recordEnding } from './game/Records'
+import { dailyFor, dailyMet, describeDaily, prettyDate, todayKey } from './game/Daily'
 import { showRecords } from './ui/RecordsView'
 import { type SaveFile, clearSave, downloadSave, pickSaveFile, readSave, writeSave } from './game/Save'
 
@@ -35,9 +36,12 @@ setToonSunDirection(sun)
 const ui = new Ui()
 const sfx = new Sfx()
 const voice = new Voice()
-// A saved game rebuilds the same prison from its seed.
-const saved = readSave()
-Game.seedForNext = saved?.seed ?? null
+// A saved game rebuilds the same prison from its seed; the daily challenge
+// builds today's prison, the same one for everyone.
+const params = new URLSearchParams(location.search)
+const daily = params.has('daily') ? dailyFor(todayKey()) : null
+const saved = daily ? null : readSave()
+Game.seedForNext = daily?.seed ?? saved?.seed ?? null
 const game = new Game(engine.scene, ui, 'Prisoner')
 // December, or ?season=christmas: snow, a tree, the panto.
 game.season = new Date().getMonth() === 11 || new URLSearchParams(location.search).get('season') === 'christmas' ? 'christmas' : 'none'
@@ -76,10 +80,33 @@ document.getElementById('load-file')!.onclick = () =>
     else location.reload()
   })
 document.getElementById('title-records')!.onclick = () => showRecords()
+// Today's challenge: what it is, your best so far, and the way in.
+{
+  const today = dailyFor(todayKey())
+  const best = readRecords().daily?.[today.date]
+  document.getElementById('daily-text')!.textContent = `${prettyDate(today.date)}: the same prison for everyone today. ${describeDaily(today)}${saved ? ' Starting it replaces your saved game.' : ''}`
+  document.getElementById('daily-best')!.textContent = best ? `${best.met ? 'Done' : 'Not yet done'}: ${best.tries} tr${best.tries === 1 ? 'y' : 'ies'}, best day ${best.day}, ${best.fails} failed attempt${best.fails === 1 ? '' : 's'}.` : ''
+  document.getElementById('daily-btn')!.onclick = () => {
+    params.set('daily', '1')
+    location.search = params.toString()
+  }
+  document.getElementById('daily-back')!.onclick = () => {
+    params.delete('daily')
+    location.search = params.toString()
+  }
+  if (daily) {
+    document.body.classList.add('daily')
+    nameInput.placeholder = 'Your name for the daily challenge'
+  }
+}
 form.addEventListener('submit', (e) => {
   e.preventDefault()
   // A new sentence replaces the old save.
   clearSave()
+  if (daily) {
+    game.daily = daily
+    game.mode = 'normal'
+  }
   const name = nameInput.value.trim().replace(/\s+/g, ' ').slice(0, 18) || 'Prisoner'
   game.player.name = name
   game.mode = ((form.querySelector('input[name="mode"]:checked') as HTMLInputElement | null)?.value ?? 'normal') as Mode
@@ -239,6 +266,11 @@ engine.onUpdate((delta) => {
     if (game.ending) {
       const run = { name: game.player.name, seconds: game.playSeconds, fails: game.memory.totalFailures, day: game.clock.day, hard: game.hard, mode: game.mode }
       ui.endRecord(recordEnding(game.ending.id, run), run)
+      if (game.daily) {
+        const met = dailyMet(game.daily, game.ending.won, run.day, run.fails)
+        const { best } = recordDaily(game.daily.date, { met, day: run.day, fails: run.fails, seconds: run.seconds })
+        ui.endDaily(met, best, describeDaily(game.daily))
+      }
     }
   }
 

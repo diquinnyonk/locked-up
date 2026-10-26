@@ -34,6 +34,7 @@ export function recordsHtml(r: Records): string {
   return `<div class="records">
     <p class="found"><b>${found} of ${ENDINGS.length}</b> endings found.</p>
     <ul class="endings">${cards}</ul>
+    ${dailyHtml(r)}
     <h3>Totals</h3>
     <dl class="totals">${totals.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>
   </div>`
@@ -65,4 +66,13 @@ export function showRecords(): void {
     if (e.target === el) close()
   }
   ;(el.querySelector('.close') as HTMLButtonElement).focus()
+}
+
+function dailyHtml(r: Records): string {
+  const days = Object.entries(r.daily ?? {}).sort(([a], [b]) => b.localeCompare(a)).slice(0, 7)
+  if (!days.length) return ''
+  const done = Object.values(r.daily ?? {}).filter((d) => d.met).length
+  return `<h3>Daily challenges</h3><p class="found"><b>${done}</b> done.</p><dl class="totals">${days
+    .map(([date, d]) => `<dt>${esc(date)}</dt><dd>${d.met ? 'Done' : 'Not yet'}, day ${d.day}, ${d.tries} tr${d.tries === 1 ? 'y' : 'ies'}</dd>`)
+    .join('')}</dl>`
 }

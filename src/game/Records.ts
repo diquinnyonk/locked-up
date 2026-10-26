@@ -37,8 +37,18 @@ export interface EndingRecord {
   earliest: Run
 }
 
+export interface DailyResult {
+  met: boolean
+  day: number
+  fails: number
+  seconds: number
+  tries: number
+}
+
 export interface Records {
   version: 1
+  /** Daily challenges by date: the best try. */
+  daily?: Record<string, DailyResult>
   endings: Partial<Record<EndingId, EndingRecord>>
   started: number
   finished: number
@@ -101,6 +111,17 @@ export function recordEnding(id: EndingId, run: Run): { isNew: boolean; found: n
   return { isNew: !had, found: Object.keys(r.endings).length, best }
 }
 
+/** A daily challenge run over: keep the best of the day's tries. */
+export function recordDaily(date: string, r: Omit<DailyResult, 'tries'>): { best: boolean } {
+  const all = readRecords()
+  const daily = (all.daily ??= {})
+  const had = daily[date]
+  const better = !had || (r.met && !had.met) || (r.met === had.met && (r.day < had.day || (r.day === had.day && r.seconds < had.seconds)))
+  daily[date] = better ? { ...r, tries: (had?.tries ?? 0) + 1 } : { ...had, tries: had.tries + 1 }
+  write(all)
+  return { best: better }
+}
+
 /** "12m 05s", "1h 03m". */
 export function duration(seconds: number): string {
   const s = Math.round(seconds)
@@ -135,6 +156,10 @@ export function mergeRecords(incoming: unknown): boolean {
     if (theirs.fastest.seconds < mine.fastest.seconds) mine.fastest = theirs.fastest
     if (theirs.fewestFails.fails < mine.fewestFails.fails) mine.fewestFails = theirs.fewestFails
     if (theirs.earliest.day < mine.earliest.day) mine.earliest = theirs.earliest
+  }
+  for (const [date, theirs] of Object.entries(inc.daily ?? {})) {
+    const mine = (r.daily ??= {})[date]
+    if (!mine || (theirs.met && !mine.met) || (theirs.met === mine.met && theirs.day < mine.day)) r.daily[date] = { ...theirs, tries: Math.max(theirs.tries, mine?.tries ?? 0) }
   }
   write(r)
   return true

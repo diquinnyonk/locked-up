@@ -1414,6 +1414,31 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   check('christmas: six officers go and watch it in the chapel', game.guards.filter((g) => g.panto).length === 6 && there, game.guards.filter((g) => g.panto).map((g) => g.zone).join(','))
 }
 
+// ---- Daily challenge ----
+{
+  const { dailyFor, dailyMet } = await import('../src/game/Daily')
+  const a = dailyFor('2026-10-27')
+  const b = dailyFor('2026-10-27')
+  const c = dailyFor('2026-10-28')
+  check('daily: the same challenge for everyone on a date', a.seed === b.seed && a.byDay === b.byDay && (a.seed !== c.seed || a.byDay !== c.byDay))
+  check('daily: a sensible goal', a.byDay >= 3 && a.byDay <= 6 && (a.maxFails === 0 || a.maxFails === 1))
+  check('daily: met only by escaping in time and clean enough', dailyMet(a, true, a.byDay, a.maxFails) && !dailyMet(a, true, a.byDay + 1, 0) && !dailyMet(a, false, 1, 0) && !dailyMet(a, true, 1, a.maxFails + 1))
+  Game.seedForNext = a.seed
+  const { game: g1 } = fresh()
+  const { game: g2 } = fresh()
+  Game.seedForNext = null
+  check('daily: today\'s prison is the same prison', g1.prisoners.every((p, i) => p.temperament === g2.prisoners[i].temperament && p.gang === g2.prisoners[i].gang))
+  const store = new Map<string, string>()
+  ;(globalThis as any).localStorage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => store.set(k, v), removeItem: (k: string) => store.delete(k) }
+  const { recordDaily, readRecords } = await import('../src/game/Records')
+  recordDaily(a.date, { met: false, day: 2, fails: 1, seconds: 500 })
+  recordDaily(a.date, { met: true, day: 4, fails: 0, seconds: 900 })
+  recordDaily(a.date, { met: false, day: 1, fails: 0, seconds: 100 })
+  const r = readRecords().daily![a.date]
+  check('daily: the best try of the day is kept', r.met && r.day === 4 && r.tries === 3)
+  delete (globalThis as any).localStorage
+}
+
 // ---- Saving and carrying on ----
 {
   const { game: a } = fresh()

@@ -6,6 +6,7 @@ import { ITEMS, INVENTORY_SLOTS, type ItemId, RECIPES, vouchers } from '../game/
 import { itemIcon } from './itemIcons'
 import { CONTROLS } from './Tour'
 import { GOALS } from '../game/Goals'
+import { describeDaily, prettyDate } from '../game/Daily'
 import { FEUDS } from '../game/Feuds'
 import { TRAITS } from '../npc/names'
 import { type Volumes, readVolumes } from '../audio/Soundscape'
@@ -171,6 +172,16 @@ export class Ui implements UiPort {
     ;(el.querySelector('#endings-btn') as HTMLButtonElement).onclick = () => showRecords()
   }
 
+  /** The daily challenge, done or not. */
+  endDaily(met: boolean, best: boolean, goal: string): void {
+    const el = document.getElementById('endrecord')
+    if (!el) return
+    const p = document.createElement('p')
+    p.className = 'newfind'
+    p.textContent = met ? `Daily challenge done! ${goal}${best ? ' Your best today.' : ''}` : `Daily challenge not met: ${goal} Try again: the prison is the same all day.`
+    el.prepend(p)
+  }
+
   /** After the ending is filed: a new find, a personal best. */
   endRecord(result: { isNew: boolean; found: number; best: boolean }, run: Run): void {
     const el = document.getElementById('endrecord')
@@ -310,6 +321,7 @@ export class Ui implements UiPort {
         <h3 class="title">Escape HMP Grim-on-the-Moor</h3>
         <p>Everyone in here knows your name, ${escape(p.name)}: the one who robbed the Greggs. Attempts left this round: <b>${m.attemptsLeft} of ${m.attemptsPerRound}</b> (round ${m.round} of ${m.rounds}).</p>
         ${g.goals.shown && !g.goals.finished ? `<h4>First day</h4><ul class="checks">${GOALS.map((go) => tick(g.goals.done.has(go.id), go.text, go.hint)).join('')}</ul>` : ''}
+        ${g.daily ? `<p class="today"><b>Daily challenge, ${escape(prettyDate(g.daily.date))}.</b> ${escape(describeDaily(g.daily))}</p>` : ''}
         <p class="today"><b>${g.clock.weekdayName}: ${escape(EVENT_INFO[g.events.today].title)}.</b> ${escape(EVENT_INFO[g.events.today].blurb)}${isVisitingDay(g.clock.weekday) ? ' Visiting this afternoon, 14:30 to 15:45.' : ''}${g.weather !== 'clear' ? ` ${escape(WEATHER_INFO[g.weather])}` : ''}</p>
         <h4>Out of your cell at night</h4>
         <ul class="checks">
@@ -670,7 +682,10 @@ export class Ui implements UiPort {
     const goals = g.goals.shown && !g.goals.finished
       ? `<div class="job goals"><b>First day</b><ul>${GOALS.map((go) => `<li class="${g.goals.done.has(go.id) ? 'done' : ''}" title="${escape(go.hint)}">${escape(go.text)}</li>`).join('')}</ul><small>${g.goals.done.size} of ${GOALS.length}</small></div>`
       : ''
+    const d = g.daily
+    const dailyCard = d ? `<div class="job daily"><b>Daily challenge</b>Escape by day ${d.byDay}${d.maxFails ? ', one slip allowed' : ', never caught'}.<br><small>Day ${g.clock.day}, ${g.memory.totalFailures} failed so far</small></div>` : ''
     const jobs =
+      dailyCard +
       goals +
       (revJob ? `<div class="job${revJob.done ? ' done' : ''}"><b>The Missing Hymn Books</b>${escape(revJob.line)}<br><small>for ${escape(g.chaplain.name)}</small></div>` : '') +
       g.missions.active

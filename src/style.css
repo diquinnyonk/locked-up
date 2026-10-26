@@ -1692,3 +1692,23 @@ body.panel-open #prompts {
   /* Above the world, below everything you read. */
   z-index: 0;
 }
+
+/* The daily challenge on the title screen */
+#daily-card {
+  background: var(--paper-2);
+  border-left: 5px solid var(--accent);
+  padding: 0.8rem 1rem 0.9rem;
+  display: grid;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+#daily-card h2 { font: 800 1.3rem / 1 var(--display); text-transform: uppercase; }
+#daily-card p { line-height: 1.45; }
+#daily-card .best { color: var(--quiet); font-size: var(--step-small); }
+#daily-card .best:empty { display: none; }
+#daily-card button { justify-self: start; }
+body.daily #carry-on, body.daily #or-new, body.daily #difficulty { display: none; }
+body.daily #daily-btn { display: none; }
+body:not(.daily) #daily-back { display: none; }
+#daily-back { justify-self: start; }
+#jobs .daily b { color: var(--ink); }
