@@ -427,7 +427,8 @@ function buildGuardTree(world: World): Node<Guard> {
     traced('book in the new arrivals, or watch the panto', (g) => {
       const base = g.panto ? PANTO : RECEPTION
       const spot = { x: base.x + (g.block.charCodeAt(0) % 2) * 1.6 + (g.panto ? (g.duty.length % 3) * 1.4 : 0), z: base.z + (g.panto ? (g.duty.charCodeAt(0) % 2) * 1.2 : 0) }
-      const s = g.goToWorld(spot.x, spot.z, WALK, 0.6)
+      // A brisk walk to the show: nobody wants a seat behind the pillar.
+      const s = g.goToWorld(spot.x, spot.z, g.panto ? WALK * 1.7 : WALK, 0.6)
       g.body.pose = s === 'running' ? 'walk' : 'stand'
       if (s !== 'running') g.lookYaw = Math.PI
       return 'running'

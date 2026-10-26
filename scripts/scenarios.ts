@@ -1407,11 +1407,11 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   while (game.clock.weekday !== 5) game.clock.minutes += 1440
   game.clock.skipTo(6 * 60 + 25)
   run(game, 0.2)
-  game.clock.skipTo(18 * 60 + 5)
+  game.clock.skipTo(17 * 60 + 5)
   game.events.today = 'panto'
   game.events.fired = false
-  const there = run(game, 180, () => game.guards.filter((g) => g.panto && g.zone === 'chapel').length >= 4)
-  check('christmas: six officers go and watch it in the chapel', game.guards.filter((g) => g.panto).length === 6 && there, game.guards.filter((g) => g.panto).map((g) => g.zone).join(','))
+  const there = run(game, 70, () => game.guards.filter((g) => g.panto && g.zone === 'chapel').length >= 4)
+  check('christmas: six officers go and watch it in the chapel, seated by curtain up', game.guards.filter((g) => g.panto).length === 6 && there && game.clock.minuteOfDay < 18 * 60 + 30, `${game.clock.text} ${game.guards.filter((g) => g.panto).map((g) => g.zone).join(',')}`)
 }
 
 // ---- Daily challenge ----
@@ -1763,8 +1763,12 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   check('play: both rehearsals attended', play.attended.every(Boolean), JSON.stringify(play.attended))
   nextDay(game)
   check('play: opening night', play.stage === 'opening', play.stage)
-  atChapel(game, 18 * 60 + 30, 1)
-  check('play: officers in the audience', game.guards.filter((gu) => gu.panto).length >= 4)
+  check('play: and no lockdown or drill gets in its way', game.events.today === 'quiet', game.events.today)
+  // Tea in your cell; the audience heads over.
+  home(game)
+  game.clock.skipTo(17 * 60 + 5)
+  const seated = run(game, 70, () => game.guards.filter((gu) => gu.panto && gu.zone === 'chapel').length >= 4)
+  check('play: officers in the audience by the sack scene', seated && game.clock.minuteOfDay < 19 * 60, `${game.clock.text} ${game.guards.filter((gu) => gu.panto).map((gu) => `${gu.name}:${gu.zone}:${gu.thought}`).join(' | ')} :: ${game.guards.filter((gu) => !gu.panto).length} others`)
   game.clock.skipTo(19 * 60 + 5)
   put(game, 12, 45)
   const cue = prompt(game, 'Your cue')

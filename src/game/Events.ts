@@ -83,7 +83,8 @@ export class Events {
     const wr = g.rng()
     this.weather = day <= 1 ? 'clear' : wr < 0.55 ? 'clear' : wr < 0.8 ? (g.season === 'christmas' ? 'snow' : 'rain') : 'fog'
     if (this.weather !== 'clear') g.toast(WEATHER_INFO[this.weather], 'neutral')
-    if (day <= 1) {
+    // Day one, and the Governor's opening night (he has had a word), are quiet.
+    if (day <= 1 || g.play?.isOpeningNight(day)) {
       this.today = 'quiet'
       return
     }
@@ -124,12 +125,13 @@ export class Events {
     const m = g.clock.minuteOfDay
     if (g.clock.locked && !g.clock.override) return
     if (this.today === 'intake' && m >= 11 * 60 + 30) for (const gu of g.guards) gu.reception = false
-    // Panto night: six officers in the chapel from six till eight.
+    // Panto night: six officers in the chapel from six till eight. They
+    // leave their posts during tea, to be in their seats for curtain up.
     if (this.today === 'panto') {
-      const on = m >= 18 * 60 && m < 20 * 60
+      const on = m >= 17 * 60 + 15 && m < 20 * 60
       const watching = g.guards.filter((gu) => gu.duty !== 'landing' || gu.block !== g.player.block).slice(0, 6)
       for (const gu of g.guards) gu.panto = on && watching.includes(gu)
-      if (on && !this.fired) {
+      if (on && m >= 18 * 60 && !this.fired) {
         this.fired = true
         g.toast("Oh no it isn't! The panto has started in the chapel, and six officers are in the front row.", 'good')
       }

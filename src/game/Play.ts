@@ -79,6 +79,11 @@ export class Play {
     return rehearsalDay && m >= REHEARSE_FROM && m < REHEARSE_TO
   }
 
+  /** Whether `day` is opening night: nothing else is allowed to happen. */
+  isOpeningNight(day: number): boolean {
+    return this.announced && (this.stage === 'cast' || this.stage === 'opening') && day - this.startDay === OPENING
+  }
+
   /** The cue: get in the sack. */
   get cue(): boolean {
     const m = this.game.clock.minuteOfDay
@@ -145,10 +150,11 @@ export class Play {
     }
     // Opening night: six officers in the audience, and your cue.
     if (d === OPENING && (this.stage === 'opening' || this.stage === 'done')) {
-      const on = m >= SHOW_FROM && m < SHOW_TO && !g.clock.locked
+      // The audience leaves its posts during tea, to be seated for curtain up.
+      const on = m >= SHOW_FROM - 45 && m < SHOW_TO && !g.clock.locked
       const watching = g.guards.filter((gu) => gu.duty !== 'landing' || gu.block !== g.player.block).slice(0, 6)
       for (const gu of g.guards) gu.panto = on && watching.includes(gu)
-      if (on) this.once('curtain', "Curtain up! Six officers are in the front pews for the Governor's play, and the landings are thin.", 'good')
+      if (on && m >= SHOW_FROM) this.once('curtain', "Curtain up! Six officers are in the front pews for the Governor's play, and the landings are thin.", 'good')
       if (this.cue) this.once('cue', here ? 'Act Two. Faria is dying. That is you. Your cue: into the sack by the props crate.' : 'Act Two has started in the chapel, and the Abbé Faria is nowhere to be seen. Your cue!', here ? 'good' : 'bad')
       if (this.stage === 'opening' && m >= CUE_TO) {
         this.stage = 'failed'
