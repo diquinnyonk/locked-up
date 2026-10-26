@@ -7,8 +7,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Rokkitt:wght@600;800&family=Literata:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
-    <script type="module" crossorigin src="./assets/index-SR_N8yay.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-BToZHFfW.css">
+    <script type="module" crossorigin src="./assets/index-zkvGsLU6.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-BeZWu-nl.css">
   </head>
   <body>
     <canvas id="viewport"></canvas>
@@ -17,6 +17,12 @@
       <div class="sheet">
         <h1>Locked Up</h1>
         <p class="lede">HMP Grim-on-the-Moor, Category B. Four wings, eighty prisoners, and sixteen officers who learn from every mistake you make. Four attempts to get out, then four more, then it is over.</p>
+        <section id="carry-on" hidden>
+          <h2 id="carry-name"></h2>
+          <p id="carry-detail"></p>
+          <button type="button" id="carry-btn">Carry on</button>
+        </section>
+        <p id="or-new" hidden>Or start a new sentence below. Starting again replaces your saved game.</p>
         <form id="name-form" autocomplete="off">
           <label for="name">Your name, for the record</label>
           <input id="name" maxlength="18" placeholder="Surname will do" required />
