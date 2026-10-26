@@ -136,6 +136,8 @@ export class Game implements World {
   readonly events = new Events(this)
   /** First-day goals on the HUD. */
   readonly goals = new Goals()
+  /** Your cellmate's story: warned they are a grass, paid off, the gift, a tip-off due. */
+  readonly mate = { warned: false, paidOff: false, gift: false, tipOff: false, tipOffs: 0 }
   private vouchersSeen = -1
   readonly visitors: { body: Body; seat: { x: number; z: number }; gone: boolean }[] = []
   /** The player's own clothes, for when the disguise comes off. */
@@ -537,34 +539,36 @@ export class Game implements World {
     this.input.enabled = false
     this.ending = { id: how === 'escape' ? 'escape' : how, won }
     const name = this.player.name
+    const mateLine = this.mateEpilogue(won)
+    const end = (w: boolean, title: string, text: string) => this.ui.end(w, title, text + mateLine)
     const tally = `Day ${this.clock.day}. ${this.memory.totalFailures} failed attempt${this.memory.totalFailures === 1 ? '' : 's'}.`
     if (won && how === 'tunnel') {
-      this.ui.end(true, 'Like a mole', `${name} pushes up through the soil of the allotments beyond the wall, covered in clay, under a full moon. Somebody's prize marrows break the fall.\n${tally}\nAt morning roll call an officer lifts a loose floor tile in your cell and says a word the Bugle cannot print.`)
+      end(true, 'Like a mole', `${name} pushes up through the soil of the allotments beyond the wall, covered in clay, under a full moon. Somebody's prize marrows break the fall.\n${tally}\nAt morning roll call an officer lifts a loose floor tile in your cell and says a word the Bugle cannot print.`)
     } else if (won && how === 'jag') {
-      this.ui.end(true, "The Governor's Jag", `${name} slides into the cream leather seats of the Governor's Jaguar, adjusts the mirror, and drives out of the staff car park with a little wave at the gatehouse. The gatehouse waves back.\n${tally}\nThe Governor reports it stolen at nine the next morning. From the bus.`)
+      end(true, "The Governor's Jag", `${name} slides into the cream leather seats of the Governor's Jaguar, adjusts the mirror, and drives out of the staff car park with a little wave at the gatehouse. The gatehouse waves back.\n${tally}\nThe Governor reports it stolen at nine the next morning. From the bus.`)
     } else if (won && how === 'staffDoor') {
       const who = this.disguisedAs ?? 'an officer'
-      this.ui.end(true, 'Off shift early', `${name} unlocks the staff door with ${who}'s keys, smelling faintly of Brut, and strolls across the staff car park like they own the place.\n${tally}\nHours later ${who} wakes up in a cell in a vest and pink boxers, with sausage roll crumbs down the front.`)
+      end(true, 'Off shift early', `${name} unlocks the staff door with ${who}'s keys, smelling faintly of Brut, and strolls across the staff car park like they own the place.\n${tally}\nHours later ${who} wakes up in a cell in a vest and pink boxers, with sausage roll crumbs down the front.`)
     } else if (won && how === 'guardDisguise') {
-      this.ui.end(true, 'Clocked off', `${name} walks out with the day shift, nods at the gatehouse and gets a lift to the station with Mrs Battenberg, who talks about her cats for forty minutes and never once looks at your face.\n${tally}\nThe count at nine comes up one short and one uniform missing. Nobody can work out which is more embarrassing.`)
+      end(true, 'Clocked off', `${name} walks out with the day shift, nods at the gatehouse and gets a lift to the station with Mrs Battenberg, who talks about her cats for forty minutes and never once looks at your face.\n${tally}\nThe count at nine comes up one short and one uniform missing. Nobody can work out which is more embarrassing.`)
     } else if (won && how === 'visitorDisguise') {
-      this.ui.end(true, 'Gone with the visitors', `${name} shuffles out in a floral frock and catches the number 47 with Big Dave's nan, who offers you a Werther's Original and says you have lovely cheekbones.\n${tally}\nThe chaplain has asked for his wig back.`)
+      end(true, 'Gone with the visitors', `${name} shuffles out in a floral frock and catches the number 47 with Big Dave's nan, who offers you a Werther's Original and says you have lovely cheekbones.\n${tally}\nThe chaplain has asked for his wig back.`)
     } else if (won && how === 'laundry') {
-      this.ui.end(true, 'Spin cycle', `The van rumbles out of the bay. Forty minutes later ${name} tumbles out of a basket at a laundrette in Wolverhampton, smelling of Persil and freedom.\n${tally}\nThe laundry contract has been "reviewed".`)
+      end(true, 'Spin cycle', `The van rumbles out of the bay. Forty minutes later ${name} tumbles out of a basket at a laundrette in Wolverhampton, smelling of Persil and freedom.\n${tally}\nThe laundry contract has been "reviewed".`)
     } else if (won) {
-      this.ui.end(
+      end(
         true,
         'Free',
         `${name} drops into the back seat and the car pulls away with its lights off.\nDay ${this.clock.day}. ${this.memory.totalFailures} failed attempt${this.memory.totalFailures === 1 ? '' : 's'}.\nBy the time the count comes up one short, you are on the M6.`,
       )
     } else if (how === 'gang') {
-      this.ui.end(
+      end(
         false,
         `${GANGS[gang].name} got you`,
         `Eight attempts, eight failures, and every one of them brought the screws down on the wing.\n${GANGS[gang].name} caught ${name} in the showers with nobody watching. ${this.gangLeader(gang)?.name ?? 'Their boss'} did not even look up from his tea.\nThey never found out who did it.`,
       )
     } else {
-      this.ui.end(
+      end(
         false,
         'Segregation. Indefinitely.',
         `Eight attempts. The governor has had enough.\n${name} is moved to the segregation unit on a closed regime: twenty-three hours a day behind the door, and an officer outside it.\nNobody is getting out of here.`,
@@ -772,6 +776,7 @@ export class Game implements World {
       this.lastPeriod = period
       if (previous) this.toast(`${this.clock.text}  ${this.clock.label}`, 'neutral')
       if (period === 'unlock') {
+        this.mateMorning()
         this.deliverPost()
         for (const g of this.guards) if (g.uniformTaken) this.dressGuard(g, true)
         this.restock(false)
@@ -804,6 +809,7 @@ export class Game implements World {
   }
 
   private lightsOut(): void {
+    this.mateNight()
     for (const d of this.grid.doors) if (d.kind === 'cell') d.locked = !d.jammed
     this.lockChecks.length = 0
     if (this.memory.lockCheckChance > 0) for (const d of this.grid.doors) if (d.kind === 'cell') this.lockChecks.push(d)
@@ -1858,6 +1864,106 @@ export class Game implements World {
     }
   }
 
+  // ---- Your cellmate ----
+
+  /** Some cellmates are grasses: the prison decides when it is built. */
+  get cellmateGrass(): boolean {
+    return mulberry32(this.seed * 13 + 5)() < 0.4
+  }
+
+  /** A grass still talking: not paid off, and not won over. */
+  private get mateTalking(): boolean {
+    const m = this.cellmate
+    return !!m && this.cellmateGrass && !this.mate.paidOff && m.trust < 0.6
+  }
+
+  /** On side, and awake: coughs when footsteps come while you dig. */
+  private get mateLookout(): boolean {
+    const m = this.cellmate
+    return !!m && !this.cellmateGrass && m.trust >= 0.6 && m.ko <= 0
+  }
+
+  /** Lights out: a grass with something to tell decides whether to. */
+  private mateNight(): void {
+    const p = this.player
+    const hiding = this.stash.length > 0 || this.tunnel.metres > 0 || p.inventory.items.some((i) => ITEMS[i.id].contraband)
+    if (this.mateTalking && hiding && this.rng() < 0.5) this.mate.tipOff = true
+  }
+
+  /** Unlock: officers come straight to your cell, and a friend slips you a note. */
+  private mateMorning(): void {
+    const m = this.cellmate
+    if (!m) return
+    if (this.mate.tipOff) {
+      this.mate.tipOff = false
+      this.mate.tipOffs++
+      this.toast('Two officers come straight to your cell at unlock. Somebody tipped them off.', 'bad')
+      if (this.stash.length && this.rng() < 0.6) {
+        this.stash.length = 0
+        this.toast('They go straight to the loose brick. Your stash is gone.', 'bad')
+      }
+      if (this.tunnel.metres > 0 && this.rng() < 0.6) this.tunnelFound()
+      const g = this.guards.filter((gg) => gg.ko <= 0 && gg.block === this.player.block).sort((a, b) => a.distanceTo(this.player.body.x, this.player.body.z) - b.distanceTo(this.player.body.x, this.player.body.z))[0]
+      if (g) g.searchTarget = true
+    }
+    if (this.cellmateGrass && !this.mate.warned && (this.clock.day >= 3 || this.mate.tipOffs > 0)) {
+      this.mate.warned = true
+      this.toast(`A note pushed under your door: "${m.name} is a grass. Watch your stash. A friend."`, 'bad')
+    }
+  }
+
+  private mateOptions(m: Prisoner): { label: string; enabled: boolean; run: () => void }[] {
+    const inv = this.player.inventory
+    const out: { label: string; enabled: boolean; run: () => void }[] = []
+    if (this.mate.warned && !this.mate.paidOff) {
+      out.push({
+        label: '"Have you been grassing on me?"',
+        enabled: true,
+        run: () => {
+          if (m.trust >= 0.6) {
+            this.mate.paidOff = true
+            this.ui.talk(m.name, 'Used to. They squeezed me: extra visits, a telly maybe. Not any more. You have been good to me.', [])
+            return
+          }
+          this.ui.talk(m.name, 'Alright, alright. They squeeze me: extra visits, a telly maybe. Make it worth my while and my memory goes very bad.', [
+            {
+              label: 'Pay for their silence (2 Greggs vouchers)',
+              enabled: inv.count('voucher') >= 2,
+              run: () => {
+                inv.remove('voucher')
+                inv.remove('voucher')
+                this.mate.paidOff = true
+                m.trust = Math.max(m.trust, 0.65)
+                this.ui.talk(m.name, "Saw nothing. Heard nothing. Can't even remember your name. What's your name?", [])
+              },
+            },
+          ])
+        },
+      })
+    }
+    if (!this.cellmateGrass && !this.mate.gift && m.trust >= 0.7) {
+      out.push({
+        label: '"You alright?"',
+        enabled: true,
+        run: () => {
+          this.mate.gift = true
+          if (!inv.add('flatSpoon')) this.dynamic.spawnItem('flatSpoon', this.player.body.x + 0.5, this.player.body.z, this.player.zone)
+          this.ui.talk(m.name, "Found this in the shower drain. For whatever you're doing at night. I never saw a thing. And I'll cough if anyone comes.", [])
+        },
+      })
+    }
+    return out
+  }
+
+  /** The last word on your cellmate, for the end screen. */
+  private mateEpilogue(won: boolean): string {
+    const m = this.cellmate
+    if (!m) return ''
+    if (this.cellmateGrass && !this.mate.paidOff) return `\n${m.name} was moved to an enhanced wing the next day, with a telly. Funny, that.`
+    if (m.trust >= 0.7) return won ? `\n${m.name} told the morning count you were on the toilet, and bought you an extra hour.` : `\n${m.name} saved you a biscuit every day.`
+    return ''
+  }
+
   /** A first-day goal done. */
   goal(id: GoalId): void {
     if (!this.goals.shown) return
@@ -1959,11 +2065,12 @@ export class Game implements World {
     const close = this.guards.some((g) => g.ko <= 0 && Math.hypot(g.x - p.body.x, g.z - p.body.z) < 16)
     if (close && d.warned <= 0) {
       d.warned = 1
-      this.toast('Footsteps on the landing. Step away from the hole until they pass.', 'bad')
+      this.toast(this.mateLookout ? `${this.cellmate!.name} coughs. Footsteps on the landing: step away from the hole until they pass.` : 'Footsteps on the landing. Step away from the hole until they pass.', 'bad')
     } else if (!close) d.warned = 0
     if (near.length) d.heard += delta
     else d.heard = Math.max(0, d.heard - delta * 0.5)
-    if (d.heard > 4) {
+    // A cellmate on side covers the scraping with a coughing fit.
+    if (d.heard > (this.mateLookout ? 6 : 4)) {
       const g = near[0]
       g.say(pick2(this.rng, ['What is that scraping? ...Right. Lights on. Stand AWAY from that floor.', "Are you DIGGING? In MY landing? With a SPOON?"]), 3)
       this.methodHint = 'tunnel'
@@ -2332,6 +2439,7 @@ export class Game implements World {
     options.unshift(...this.missions.options(pr))
     options.push({ label: 'Ask what they have heard', enabled: true, run: () => this.ui.talk(pr.name, this.gossip(pr), []) })
     if (pr.isCellmate) options.push({ label: 'Ask about the cell', enabled: true, run: () => this.ui.talk(pr.name, cellmateTip(this.memory.round), []) })
+    if (pr.isCellmate) options.push(...this.mateOptions(pr))
     const greeting =
       pr.grudge > 0.5
         ? pick2(this.rng, ['What do YOU want?', 'Oh, it is you. Marvellous. Smashing. Go away.'])
@@ -2457,6 +2565,7 @@ export class Game implements World {
       heist: { ...this.heist },
       tunnel: { ...this.tunnel },
       goals: this.goals.toSave(),
+      mate: { ...this.mate },
       override: this.clock.override,
       post: this.post.toSave(),
       log: [...this.log],
@@ -2527,6 +2636,7 @@ export class Game implements World {
     if (s.heist) Object.assign(this.heist, s.heist)
     if (s.tunnel) Object.assign(this.tunnel, s.tunnel)
     this.goals.fromSave(s.goals)
+    if (s.mate) Object.assign(this.mate, s.mate)
     this.clock.override = s.override ?? null
     this.post.fromSave(s.post)
     this.log.splice(0, this.log.length, ...s.log)

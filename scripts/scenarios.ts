@@ -1200,6 +1200,50 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   check('goals: kept in a save', JSON.parse(JSON.stringify(game.toSave())).goals.done.length === 6)
 }
 
+// ---- Your cellmate: a grass, or on side ----
+{
+  const withMate = (grass: boolean) => {
+    for (let seed = 1; seed < 400; seed++) {
+      Game.seedForNext = seed
+      const f = fresh()
+      Game.seedForNext = null
+      if (f.game.cellmateGrass === grass) return f
+    }
+    throw new Error('no seed')
+  }
+  {
+    const { game, log } = withMate(true)
+    const mate = game.cellmate!
+    ;(game as any).stash.push('razor')
+    ;(game as any).rng = () => 0.1
+    ;(game as any).mateNight()
+    ;(game as any).mateMorning()
+    check('cellmate: a grass tips off the officers about your stash', game.stash.length === 0 && log.some((l) => l.includes('Somebody tipped them off')) && game.mate.warned)
+    check('cellmate: and a friend warns you', log.some((l) => l.includes(`${mate.name} is a grass`)))
+    game.player.inventory.add('voucher')
+    ;(game as any).talkTo(mate)
+    lastTalk!.options.find((o) => o.label.includes('grassing'))!.run()
+    lastTalk!.options.find((o) => o.label.includes('Pay for their silence'))!.run()
+    game.endConversation()
+    ;(game as any).stash.push('lighter')
+    ;(game as any).mateNight()
+    ;(game as any).mateMorning()
+    check('cellmate: paid off, they keep quiet', game.mate.paidOff && game.stash.length === 1)
+  }
+  {
+    const { game } = withMate(false)
+    const mate = game.cellmate!
+    mate.trust = 0.75
+    ;(game as any).talkTo(mate)
+    const gift = lastTalk!.options.find((o) => o.label.includes('You alright'))
+    gift?.run()
+    game.endConversation()
+    check('cellmate: on side, they slip you a flattened spoon', !!gift && game.player.inventory.has('flatSpoon') && game.mate.gift)
+    check('cellmate: and keep lookout while you dig', (game as any).mateLookout === true)
+    check('cellmate: and get a last word at the end', (game as any).mateEpilogue(true).includes(mate.name))
+  }
+}
+
 // ---- Saving and carrying on ----
 {
   const { game: a } = fresh()
