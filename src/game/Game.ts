@@ -1505,14 +1505,21 @@ export class Game implements World {
       else add('R', 'Concentrating...', () => {})
     }
     // The newer routes, and whatever secret is on this sentence.
+    // These are fixed spots and particular people, so they win over a chat
+    // with whoever is standing nearby, or something lying on the floor.
+    const claim = (key: string, label: string, run: () => void) => {
+      const i = out.findIndex((o) => o.key === key && (o.label.startsWith('Talk to') || o.label.startsWith('Pick up')))
+      if (i >= 0) out.splice(i, 1)
+      add(key, label, run)
+    }
     if (!this.seated) {
-      this.routes.prompts(add, near)
-      this.secret?.prompts(add, near)
       const gu = this.guest
-      if (gu.body.visible && this.secret?.talkGuest && near(gu.body.x, gu.body.z, 2.0)) add('E', `Talk to ${gu.name}`, () => {
+      if (gu.body.visible && this.secret?.talkGuest && near(gu.body.x, gu.body.z, 2.0)) claim('E', `Talk to ${gu.name}`, () => {
         this.converse(gu.body)
         this.secret!.talkGuest!()
       })
+      this.secret?.prompts(claim, near)
+      this.routes.prompts(claim, near)
     }
     // Any bench, chair, pew, sofa or bunk edge. Lowest of all.
     if (this.seated) add('E', this.business?.done ? 'Stand up (without flushing)' : 'Stand up', () => this.standUp())

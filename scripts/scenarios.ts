@@ -66,6 +66,13 @@ function put(game: Game, tx: number, ty: number): void {
   game.player.zone = game.grid.zoneAtWorld(c.x, c.z)
 }
 
+/** No lockdown, drill or shakedown today: for tests about something else. */
+function calm(game: Game): void {
+  game.events.today = 'quiet'
+  game.events.at = -1
+  game.clock.override = null
+}
+
 // ---- Phone ----
 check('phone: innocent call passes', screenCall('Tell Nan I love her and the dog is fine', 0).ok)
 check('phone: "tonight" is flagged', screenCall('see you tonight bro', 0).flagged === 'tonight')
@@ -1787,6 +1794,279 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   nextDay(miss.game)
   nextDay(miss.game)
   check('play: miss a rehearsal and you are recast', miss.game.play!.stage === 'failed' && miss.log.some((l) => l.includes('recast')), miss.game.play!.stage)
+}
+
+// ---- The newer routes ----
+{
+  const { BINS, FIRE_ENGINE } = await import('../src/game/Routes')
+  const begin = () => {
+    const f = fresh()
+    f.game.clock.minutes = 8 * 60 - 20
+    f.game.startSentence()
+    calm(f.game)
+    return f
+  }
+  const stand = (game: Game, x: number, z: number) => {
+    game.player.body.x = x
+    game.player.body.z = z
+    game.player.zone = game.grid.zoneAtWorld(x, z)
+  }
+  const lucky = (game: Game, yes: boolean) => ((game as any).rng = () => (yes ? 0 : 0.99))
+  const toWeekday = (game: Game, wd: number) => {
+    while (game.clock.weekday !== wd) game.clock.minutes += 1440
+  }
+
+  // Bin day.
+  {
+    const { game } = begin()
+    toWeekday(game, 3)
+    game.clock.skipTo(9 * 60)
+    run(game, 0.2)
+    calm(game)
+    stand(game, BINS.x, BINS.z + 1.2)
+    check('bins: climb into a wheelie bin on Thursday', prompt(game, 'wheelie bin') && game.player.inBasket && game.routes.hiding === 'bins')
+    lucky(game, true)
+    game.clock.skipTo(10 * 60 + 31)
+    run(game, 0.5)
+    check('bins: the lorry takes you away', game.over && game.ending?.id === 'bins', game.ending?.id)
+  }
+  {
+    const { game } = begin()
+    toWeekday(game, 3)
+    game.clock.skipTo(9 * 60)
+    run(game, 0.2)
+    calm(game)
+    stand(game, BINS.x, BINS.z + 1.2)
+    prompt(game, 'wheelie bin')
+    lucky(game, false)
+    game.clock.skipTo(10 * 60 + 31)
+    run(game, 0.5)
+    check('bins: rumbled, it counts and they learn', !game.over && game.memory.used.bins === 1 && game.memory.lessons.some((l) => l.method === 'bins'))
+  }
+  // Hospital run.
+  {
+    const { game } = begin()
+    const g = game as any
+    game.clock.skipTo(23 * 60)
+    run(game, 0.2)
+    calm(game)
+    stand(game, 26 * 2 + 1, 24 * 2 + 1)
+    g.sickCall = { cell: game.player.cell, responders: [game.guards[0]], stage: 'treating', timer: 30 }
+    lucky(game, true)
+    prompt(game, 'appendix')
+    check('hospital: no good without knowing your symptoms', !game.over)
+    game.routes.knowsAppendix = true
+    prompt(game, 'appendix')
+    check('hospital: a textbook appendix gets you to a real hospital', game.over && game.ending?.id === 'hospital', game.ending?.id)
+  }
+  // Court date.
+  {
+    const { game } = begin()
+    game.clock.skipTo(15 * 60)
+    stand(game, 60.5 * 2 + 1, 50.5 * 2 + 1)
+    prompt(game, 'library')
+    lastTalk?.options.find((o) => o.label.includes('solicitor'))?.run()
+    check('court: write to your solicitor for a hearing', game.routes.courtDay === game.clock.day + 2)
+    game.routes.courtDay = game.clock.day + 1
+    game.player.inventory.add('cuffKey')
+    game.endConversation()
+    const cell = game.grid.cells.get(game.player.cell)!
+    stand(game, cell.bunks[1].x, cell.bunks[1].z)
+    game.clock.skipTo(6 * 60 + 25)
+    run(game, 6)
+    calm(game)
+    game.clock.skipTo(8 * 60 + 31)
+    run(game, 0.3)
+    const slip = lastTalk?.options.find((o) => o.label.includes('Slip the cuffs'))
+    lucky(game, true)
+    slip?.run()
+    check('court: slip the cuffs at the services', !!slip && game.over && game.ending?.id === 'court', game.ending?.id)
+  }
+  // Forged papers.
+  {
+    const { game } = begin()
+    game.clock.skipTo(15 * 60)
+    const inv = game.player.inventory
+    inv.add('releaseForm')
+    inv.add('stamp')
+    const g = game as any
+    const recipe = g.constructor.name && (await import('../src/game/Items')).RECIPES.find((r: any) => r.makes === 'releasePapers')
+    check('papers: a form and the stamp make release papers', !!recipe && recipe.needs.includes('releaseForm') && recipe.tools.includes('stamp'))
+    inv.remove('releaseForm')
+    inv.add('releasePapers')
+    game.heist.knowA = true
+    const gate = game.fixtures.visitorsGate
+    stand(game, gate.x, gate.z - 2)
+    lucky(game, true)
+    check('papers: hand them in at the discharge desk', prompt(game, 'release papers') && game.over && game.ending?.id === 'papers', game.ending?.id)
+  }
+  // The fire engine.
+  {
+    const { game } = begin()
+    game.clock.skipTo(10 * 60)
+    run(game, 0.2)
+    calm(game)
+    game.events.today = 'fireDrill'
+    game.events.at = 10 * 60 + 2
+    game.events.fired = false
+    stand(game, FIRE_ENGINE.x + 2.5, FIRE_ENGINE.z)
+    run(game, 6)
+    stand(game, FIRE_ENGINE.x + 2.5, FIRE_ENGINE.z)
+    check('fire engine: in the yard during a drill', game.routes.engineHere)
+    check('fire engine: hide in a hose locker', prompt(game, 'hose locker') && game.player.inBasket)
+    lucky(game, true)
+    run(game, 20, () => game.over)
+    check('fire engine: and out of the gate with it', game.over && game.ending?.id === 'fireEngine', `${game.ending?.id} ${game.clock.text}`)
+  }
+  // The glider.
+  {
+    const { game } = begin()
+    game.clock.skipTo(13 * 60)
+    run(game, 0.2)
+    calm(game)
+    game.player.inventory.add('glider')
+    put(game, 40, 57)
+    game.events.weather = 'clear'
+    prompt(game, 'glider')
+    check('glider: not without a gale', !game.over && game.player.inventory.has('glider'))
+    game.events.weather = 'wind'
+    lucky(game, true)
+    check('glider: into the gale and away', prompt(game, 'Launch the bedsheet glider') && game.over && game.ending?.id === 'glider', game.ending?.id)
+  }
+}
+
+// ---- The other secrets ----
+{
+  const { makeSecret } = await import('../src/game/secrets')
+  const begin = (id: 'bakeoff' | 'celebrity' | 'royal' | 'greylady') => {
+    const f = fresh()
+    f.game.clock.minutes = 8 * 60 - 20
+    f.game.startSentence()
+    calm(f.game)
+    f.game.secret = makeSecret(id, f.game)
+    f.game.clock.skipTo(11 * 60 + 35)
+    run(f.game, 0.5)
+    return f
+  }
+  const stand = (game: Game, x: number, z: number) => {
+    game.player.body.x = x
+    game.player.body.z = z
+    game.player.zone = game.grid.zoneAtWorld(x, z)
+  }
+  const nextDay = (game: Game) => {
+    game.endConversation()
+    const cell = game.grid.cells.get(game.player.cell)!
+    stand(game, cell.bunks[1].x, cell.bunks[1].z)
+    game.clock.skipTo(6 * 60 + 25)
+    run(game, 6)
+    calm(game)
+  }
+  const meetGuest = (game: Game, minute: number) => {
+    game.clock.skipTo(minute)
+    run(game, 0.2)
+    calm(game)
+    const b = game.guest.body
+    stand(game, b.x + 1.2, b.z)
+    run(game, 0.1)
+    return b.visible && prompt(game, `Talk to ${game.guest.name}`)
+  }
+
+  // The Bake Off.
+  {
+    const { game, log } = begin('bakeoff')
+    const s = game.secret as any
+    check('bake off: the notice goes up', s.announced && log.some((l) => l.includes('Bake Off')))
+    const inv = game.player.inventory
+    const bakes: [string, number][] = [['sausageRoll', 1], ['blueDrink', 1], ['voucher', 3]]
+    for (const [item, n] of bakes) {
+      nextDay(game)
+      for (let i = 0; i < n; i++) inv.add(item as any)
+      meetGuest(game, 15 * 60)
+      lastTalk?.options.find((o) => o.label.includes('Present'))?.run()
+    }
+    check('bake off: win all three rounds', s.won === 3, String(s.won))
+    nextDay(game)
+    game.clock.skipTo(16 * 60 + 10)
+    run(game, 0.2)
+    calm(game)
+    stand(game, 42.6 * 2 + 1, 27.8 * 2 + 1 + 1.2)
+    check('bake off: out in a camera flight case', prompt(game, 'flight case') && game.ending?.id === 'bakeoff', game.ending?.id)
+  }
+  {
+    const { game, log } = begin('bakeoff')
+    nextDay(game)
+    nextDay(game)
+    check('bake off: miss a round and you are out', game.secret!.status === null && log.some((l) => l.includes('Big Dave won the Bake Off')))
+  }
+
+  // The celebrity inmate.
+  {
+    const { game } = begin('celebrity')
+    const inv = game.player.inventory
+    for (const item of ['biscuits', 'blueDrink', 'magazine'] as const) {
+      inv.add(item)
+      meetGuest(game, 15 * 60)
+      lastTalk?.options.find((o) => o.label.includes('Hand it over'))?.run()
+      nextDay(game)
+    }
+    check('celebrity: three favours win Gavin over', (game.secret as any).favours === 3, `${(game.secret as any).favours} ${game.guest.body.visible} ${game.prompts.map((p) => p.label).join('/')}`)
+    while ((game.secret as any).dayN < 5) nextDay(game)
+    game.clock.skipTo(15 * 60 + 5)
+    run(game, 0.2)
+    calm(game)
+    const b = game.guest.body
+    stand(game, b.x, b.z + 1.2)
+    check('celebrity: walk out as Gavin Crumble', b.visible && prompt(game, 'Swap coats') && game.ending?.id === 'celebrity', game.ending?.id)
+  }
+
+  // The royal visit.
+  {
+    const { game } = begin('royal')
+    const g = game as any
+    const rev = game.chaplain.body
+    g.talkToChaplain()
+    lastTalk?.options.find((o) => o.label.includes('guard of honour'))?.run()
+    check('royal: volunteer for the guard of honour', (game.secret as any).volunteered, rev ? '' : '')
+    for (let i = 0; i < 3; i++) nextDay(game)
+    game.clock.skipTo(10 * 60 + 30)
+    run(game, 0.2)
+    calm(game)
+    stand(game, 66 * 2 + 1, 45.4 * 2 + 1)
+    run(game, 0.3)
+    check('royal: allowed in the gym in the middle of work', game.player.illegal === 0, String(game.player.illegal))
+    game.clock.skipTo(11 * 60 + 20)
+    run(game, 0.2)
+    calm(game)
+    check('royal: the Duke is here', game.guest.body.visible && game.governor.at === 'event')
+    ;(game as any).rng = () => 0
+    stand(game, 67.6 * 2 + 1 - 1.2, 45.4 * 2 + 1)
+    check('royal: out in the floral arrangement', prompt(game, 'floral arrangement') && game.ending?.id === 'royal', game.ending?.id)
+  }
+
+  // The Grey Lady.
+  {
+    const { game } = begin('greylady')
+    const s = game.secret as any
+    game.clock.skipTo(15 * 60)
+    stand(game, 60.5 * 2 + 1, 50.5 * 2 + 1)
+    prompt(game, 'library')
+    lastTalk?.options.find((o) => o.label.includes('A History'))?.run()
+    check('grey lady: the history of the prison', s.stage === 'read', `${s.stage} ${game.player.zone} ${game.prompts.map((p) => p.label).join('/')} :: ${lastTalk?.title} ${lastTalk?.options.map((o) => o.label).join('/')}`)
+    ;(game as any).talkToChaplain()
+    check('grey lady: the Reverend and the dead organ pipe', s.stage === 'organ', s.stage)
+    game.endConversation()
+    stand(game, 11 * 2 + 1 + 1.2, 42.3 * 2 + 1 + 1.0)
+    check('grey lady: the crypt key in the organ', prompt(game, 'dead pipe') && game.player.inventory.has('cryptKey'))
+    stand(game, 11.6 * 2 + 1 + 1, 44 * 2 + 1)
+    prompt(game, 'flagstone')
+    check('grey lady: not by day', !game.over)
+    game.clock.skipTo(23 * 60)
+    run(game, 0.2)
+    calm(game)
+    stand(game, 11.6 * 2 + 1 + 1, 44 * 2 + 1)
+    check('grey lady: she waits by the altar at night', game.guest.body.visible)
+    check('grey lady: down into the crypt at night', prompt(game, 'Unlock the crypt') && game.ending?.id === 'greylady', game.ending?.id)
+  }
 }
 
 // ---- The secret's roll ----

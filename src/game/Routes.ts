@@ -220,7 +220,7 @@ export class Routes {
     const p = g.player
     const inv = p.inventory
     const m = this.m
-    if (p.zone === 'library' && !g.clock.locked) add('E', 'The library: books, computer and printer', () => this.library())
+    if (p.zone === 'library' && !g.clock.locked) add('R', 'The library: books, computer and printer', () => this.library())
     // Bins.
     if (p.zone === 'hub' && near(BINS.x, BINS.z, 1.9)) {
       const open = this.binDay && g.clock.period === 'work' && m < LORRY - 5
