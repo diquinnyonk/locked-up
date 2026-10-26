@@ -691,6 +691,7 @@ export class Game implements World {
       // Keep the floating markers out of the close-up.
       this.dynamic.marker.visible = false
       this.dynamic.setBeacons([])
+      for (const b of this.bodies) b.talking = b === n
       this.crowd.update(this.bodies, delta)
       return
     }
@@ -769,6 +770,9 @@ export class Game implements World {
     const beacons: { x: number; z: number; hex: number }[] = this.keith.body.visible ? [{ x: this.keith.body.x, z: this.keith.body.z, hex: HEX.stainedBlue }] : []
     if (!this.hard) for (const t of this.jobTargets()) beacons.push({ x: t.x, z: t.z, hex: HEX.gateYellow })
     this.dynamic.setBeacons(beacons)
+    // Anyone with a speech bubble up is moving their mouth.
+    for (const b of this.bodies) b.talking = false
+    for (const bb of this.bubbles) bb.body.talking = true
     this.crowd.update(this.bodies, delta)
   }
 

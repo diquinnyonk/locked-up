@@ -79,6 +79,8 @@ export interface Body {
   build: number
   visible: boolean
   stride: number
+  /** Saying something right now: the mouth moves. */
+  talking?: boolean
 }
 
 export function makeBody(style: Partial<Body>): Body {

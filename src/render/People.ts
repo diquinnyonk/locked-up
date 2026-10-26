@@ -294,6 +294,31 @@ function shivGeometry(): BufferGeometry {
   return onBone(mergeGeometries([paint(grip.toNonIndexed(), HEX.plastic), paint(blade.toNonIndexed(), HEX.metal)]), 'handslot.r')
 }
 
+/**
+ * Where the mouth goes on each head, in bind space: under the nose, on the
+ * surface of the face (found from the head's own vertices, so a beard puts
+ * it a little further forward).
+ */
+const mouthSpots = new Map<string, Vector3>()
+function mouthSpot(head: string): Vector3 {
+  let spot = mouthSpots.get(head)
+  if (spot) return spot
+  const y = headMidY - (headTop - headMidY) * 0.5
+  const pos = PARTS.get(`head.${head}`)!.getAttribute('position')
+  let z = -Infinity
+  for (let i = 0; i < pos.count; i++) {
+    if (Math.abs(pos.getX(i)) < headW * 0.12 && Math.abs(pos.getY(i) - y) < headW * 0.08) z = Math.max(z, pos.getZ(i))
+  }
+  spot = new Vector3(0, y, (Number.isFinite(z) ? z : headFront) - headW * 0.015)
+  mouthSpots.set(head, spot)
+  return spot
+}
+const MOUTH = (() => {
+  const g = new SphereGeometry(headW * 0.062, 12, 8)
+  g.scale(1.5, 1, 0.45)
+  return paint(g.toNonIndexed(), 0x2a1614)
+})()
+
 const ACCESSORY = {
   shiv: shivGeometry(),
   cap: capGeometry(),
@@ -352,6 +377,9 @@ export class Person {
    *  go back before it runs again. */
   private readonly posed = new Map<Bone, Quaternion>()
   private look = ''
+  /** A little dark mouth on the face, open and shut while they talk. */
+  private readonly mouth: Mesh
+  private mouthTime = Math.random() * 10
 
   constructor() {
     const rig = new Object3D()
@@ -388,6 +416,15 @@ export class Person {
       skirt: extra(ACCESSORY.skirt, 'hips'),
       tache: extra(ACCESSORY.tache, 'head'),
     }
+    // The mouth hangs off a pivot that undoes the head bone's bind pose, so
+    // it can be placed and squashed in plain bind-space units.
+    const pivot = new Object3D()
+    pivot.matrixAutoUpdate = false
+    pivot.matrix.copy(IBM[BONE_INDEX.get(boneName('head'))!])
+    this.bones[BONE_INDEX.get(boneName('head'))!].add(pivot)
+    this.mouth = new Mesh(MOUTH, toon(0xffffff, { tinted: true }))
+    this.mouth.layers.enable(SOLID_LAYER)
+    pivot.add(this.mouth)
     // Their own materials: these two change colour per person.
     const own = () => createToonMaterial({ albedo: new Color(1, 1, 1), shadeTint: color(HEX.shade), rimColour: color(HEX.paper), rimStrength: 0.18 })
     this.extras.skirt.material = own()
@@ -401,6 +438,7 @@ export class Person {
     if (look !== this.look) {
       this.mesh.geometry = lookGeometry(head, body)
       this.look = look
+      this.mouth.position.copy(mouthSpot(head))
     }
     const roles = this.material.uniforms.uRoles.value as Color[]
     const hair = b.hair ?? shadeHex(b.skin, 0.92)
@@ -447,6 +485,7 @@ export class Person {
     this.root.visible = b.visible
     this.extras.shiv.visible = b.shiv
     if (!b.visible) return
+    this.talk(b, delta)
     b.poseTime += delta
     b.stride += b.speed * delta * 3.2
     const s = (BODY_HEIGHT / MODEL_HEIGHT) * b.height
@@ -509,6 +548,19 @@ export class Person {
     this.mixer.update(this.owed)
     this.owed = 0
     if (crawl) this.crawl(b)
+  }
+
+  /** Shut, a thin line; talking, it opens and closes in uneven bursts with
+   *  little pauses between words. */
+  private talk(b: Body, delta: number): void {
+    let open = 0.18
+    if (b.talking && b.pose !== 'sleep' && b.pose !== 'down') {
+      this.mouthTime += delta
+      const t = this.mouthTime
+      const words = Math.sin(t * 2.3) + Math.sin(t * 3.7 + 1.3) * 0.6 > -0.7
+      if (words) open = 0.3 + 0.7 * Math.abs(Math.sin(t * 11)) * (0.6 + 0.4 * Math.sin(t * 5.3))
+    }
+    this.mouth.scale.set(1 - open * 0.25, open, 1)
   }
 
   /** Turns a bone about one of the character's own axes (model space:
