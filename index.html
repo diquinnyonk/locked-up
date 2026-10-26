@@ -7,11 +7,12 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Rokkitt:wght@600;800&family=Literata:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
-    <script type="module" crossorigin src="./assets/index-DUkmidPQ.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-BO50IExY.css">
+    <script type="module" crossorigin src="./assets/index-zZIFhaG3.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-DTSs4MJo.css">
   </head>
   <body>
     <canvas id="viewport"></canvas>
+    <div id="fog" aria-hidden="true"></div>
 
     <div id="start">
       <div class="sheet">
@@ -23,6 +24,13 @@
           <button type="button" id="carry-btn">Carry on</button>
         </section>
         <p id="or-new" hidden>Or start a new sentence below. Starting again replaces your saved game.</p>
+        <section id="daily-card">
+          <h2>Daily challenge</h2>
+          <p id="daily-text"></p>
+          <p id="daily-best" class="best"></p>
+          <button type="button" id="daily-btn">Play today's challenge</button>
+          <button type="button" class="ghost" id="daily-back">Back to a normal sentence</button>
+        </section>
         <button type="button" class="ghost" id="load-file">Load a save file</button>
         <button type="button" class="ghost" id="title-records">Endings and records</button>
         <p id="load-note" role="status"></p>
@@ -31,8 +39,10 @@
           <input id="name" maxlength="18" placeholder="Surname will do" required />
           <fieldset id="difficulty">
             <legend>How hard</legend>
+            <label><input type="radio" name="mode" value="story" /><span><b>Story</b>: six attempts a round, officers' sight drawn, and they are slower to notice</span></label>
             <label><input type="radio" name="mode" value="normal" checked /><span><b>Normal</b>: officers' sight drawn on the floor</span></label>
             <label><input type="radio" name="mode" value="hard" /><span><b>Hard</b>: no sight guide, officers off the map, and they spot you faster</span></label>
+            <label><input type="radio" name="mode" value="hardcore" /><span><b>Hardcore</b>: Hard, one attempt, and no saving</span></label>
           </fieldset>
           <button type="submit">Begin your sentence</button>
         </form>
