@@ -13,6 +13,7 @@ import { BLOCKS, type BlockId, type Door, EAST_WALL, type Grate, Grid, PLAYER_CE
 import { moveCircle } from '../world/Nav'
 import { Clock, RESTRICTED, allowedZones } from './Clock'
 import { type DayEvent, Events, isVisitingDay } from './Events'
+import type { EndingId } from './Records'
 import { Doors } from './Doors'
 import { ITEMS, Inventory, type ItemId, RECIPES, type Recipe, SPAWNS, vouchers } from './Items'
 import { screenCall } from './Phone'
@@ -112,6 +113,10 @@ export class Game implements World {
   private punished = false
   private stolenFrom: Guard | null = null
   over = false
+  /** How it ended, once it has: for the endings record. */
+  ending: { id: EndingId; won: boolean } | null = null
+  /** Real seconds played this sentence (kept by the page, saved with the game). */
+  playSeconds = 0
   sleeping = false
   /** The outside world. */
   contactNights = 0
@@ -517,6 +522,7 @@ export class Game implements World {
   private finish(won: boolean, how: 'escape' | 'gang' | 'solitary' | 'guardDisguise' | 'visitorDisguise' | 'laundry' | 'staffDoor' | 'jag', gang: GangId = 'firm'): void {
     this.over = true
     this.input.enabled = false
+    this.ending = { id: how === 'escape' ? 'escape' : how, won }
     const name = this.player.name
     const tally = `Day ${this.clock.day}. ${this.memory.totalFailures} failed attempt${this.memory.totalFailures === 1 ? '' : 's'}.`
     if (won && how === 'jag') {
@@ -2291,6 +2297,7 @@ export class Game implements World {
       override: this.clock.override,
       post: this.post.toSave(),
       log: [...this.log],
+      playSeconds: this.playSeconds,
     }
   }
 
@@ -2358,6 +2365,7 @@ export class Game implements World {
     this.clock.override = s.override ?? null
     this.post.fromSave(s.post)
     this.log.splice(0, this.log.length, ...s.log)
+    this.playSeconds = s.playSeconds ?? 0
     const cell = this.grid.cells.get(p.cell)!
     this.dynamic.setBunkNote(cell.bunks[0].x + 0.1, cell.bunks[0].z + 0.4, !!this.post.waiting)
   }

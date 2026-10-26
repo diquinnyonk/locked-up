@@ -12,6 +12,8 @@ import { playIntro } from './ui/Intro'
 import { playTour, tourSeen } from './ui/Tour'
 import { Tile } from './world/Grid'
 import { People } from './render/People'
+import { noteStarted, recordEnding } from './game/Records'
+import { showRecords } from './ui/RecordsView'
 import { type SaveFile, clearSave, downloadSave, pickSaveFile, readSave, writeSave } from './game/Save'
 
 /**
@@ -68,6 +70,7 @@ document.getElementById('load-file')!.onclick = () =>
     if (typeof result === 'string') document.getElementById('load-note')!.textContent = result
     else location.reload()
   })
+document.getElementById('title-records')!.onclick = () => showRecords()
 form.addEventListener('submit', (e) => {
   e.preventDefault()
   // A new sentence replaces the old save.
@@ -85,6 +88,7 @@ form.addEventListener('submit', (e) => {
 function begin(save: SaveFile | null): void {
   if (save) game.fromSave(save.state)
   else {
+    noteStarted()
     game.clock.minutes = 8 * 60 - 20
     game.startSentence()
   }
@@ -139,6 +143,7 @@ function save_(): boolean {
   return true
 }
 let saveTimer = 20
+let lastTick = performance.now()
 /** A save file has just been loaded: never overwrite it on the way out. */
 let importing = false
 let ended = false
@@ -211,9 +216,19 @@ engine.onUpdate((delta) => {
       save_()
     }
   }
+  // Real time played, by the wall clock (frames are capped on slow
+  // devices); a gap of over a second is the tab asleep, not play.
+  const now = performance.now()
+  if (started && !game.over && !ui.paused) game.playSeconds += Math.min(1, (now - lastTick) / 1000)
+  lastTick = now
   if (game.over && !ended) {
     ended = true
     clearSave()
+    // File the ending, and say on the end screen if it was a new one.
+    if (game.ending) {
+      const run = { name: game.player.name, seconds: game.playSeconds, fails: game.memory.totalFailures, day: game.clock.day, hard: game.hard }
+      ui.endRecord(recordEnding(game.ending.id, run), run)
+    }
   }
 
   // Light: day, dusk, night; the vents are dark.

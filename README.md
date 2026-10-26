@@ -100,6 +100,20 @@ save file** (in the Notebook, or on the title screen) brings one back, on this
 device or another. Loading checks the file is a Locked Up save from this
 version, then restarts the page to rebuild that prison.
 
+## Endings and records
+
+There are eight endings: six escapes and two defeats. Every one you reach is
+filed in this browser's localStorage (`src/game/Records.ts`), apart from the
+saved game, so finishing or starting again never wipes it. For each ending it
+keeps how many times you have reached it, when you first did, and three bests
+of their own: the fastest run in real time, the earliest day, and the fewest
+failed attempts. It also keeps totals: sentences started and finished,
+escapes, defeats, failed attempts, days served and time inside.
+
+The end screen says when an ending is a new find or a personal best. **Endings
+and records** is on the end screen, on the title screen, and in the Notebook
+(the Endings page). Endings you have not found show only a hint.
+
 ## Your first day: the tour
 
 The first time you play, the game stops before day one for a walk round the

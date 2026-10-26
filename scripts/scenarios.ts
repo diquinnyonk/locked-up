@@ -1058,6 +1058,31 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   void g0
 }
 
+// ---- Endings and records ----
+{
+  const store = new Map<string, string>()
+  ;(globalThis as any).localStorage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => store.set(k, v), removeItem: (k: string) => store.delete(k) }
+  const { readRecords, recordEnding, noteStarted } = await import('../src/game/Records')
+  noteStarted()
+  const mk = (seconds: number, fails: number, day: number) => ({ name: 'Tester', seconds, fails, day, hard: false })
+  const first = recordEnding('laundry', mk(900, 2, 3))
+  check('records: a first ending is a new find', first.isNew && first.found === 1)
+  const again = recordEnding('laundry', mk(1200, 1, 4))
+  check('records: the same ending again is not, but a cleaner run is a best', !again.isNew && again.best)
+  recordEnding('solitary', mk(3000, 8, 9))
+  const r = readRecords()
+  check('records: bests are kept one by one', r.endings.laundry!.fastest.seconds === 900 && r.endings.laundry!.fewestFails.fails === 1 && r.endings.laundry!.earliest.day === 3 && r.endings.laundry!.count === 2)
+  check('records: totals add up', r.started === 1 && r.finished === 3 && r.wins === 2 && r.losses === 1 && r.attempts === 11)
+  const { game } = fresh()
+  game.player.inventory.add('jagKeys')
+  game.player.body.x = game.fixtures.jag.x + 1
+  game.player.body.z = game.fixtures.jag.z
+  game.player.zone = 'outside'
+  run(game, 0.3)
+  check('records: a finished game says which ending it was', game.over && game.ending?.id === 'jag' && game.ending.won)
+  delete (globalThis as any).localStorage
+}
+
 // ---- Saving and carrying on ----
 {
   const { game: a } = fresh()

@@ -5,6 +5,8 @@ import type { Game, UiPort } from '../game/Game'
 import { ITEMS, INVENTORY_SLOTS, type ItemId, RECIPES, vouchers } from '../game/Items'
 import { itemIcon } from './itemIcons'
 import { CONTROLS } from './Tour'
+import { ENDINGS, type Run, duration, readRecords } from '../game/Records'
+import { recordsHtml, showRecords } from './RecordsView'
 import { EVENT_INFO, isVisitingDay } from '../game/Events'
 import { isTouch } from './Touch'
 import { castLine, voiceFor } from '../audio/cast'
@@ -18,7 +20,7 @@ import { type BunkNote, type Letter, governorsLetter } from '../game/Post'
  * The interface, in DOM. Flat ink panels on paper, hard edges, no gradients:
  * the same graphic language as the cel world underneath it.
  */
-export type MenuTab = 'main' | 'jobs' | 'pockets' | 'post' | 'notes' | 'help'
+export type MenuTab = 'main' | 'jobs' | 'pockets' | 'post' | 'notes' | 'endings' | 'help'
 
 const $ = <T extends HTMLElement>(sel: string) => document.querySelector(sel) as T
 
@@ -154,9 +156,24 @@ export class Ui implements UiPort {
           <span class="stamp">From the Governor</span>
           <p>${escape(reveal).replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p>
         </article>
-        <button id="again">Serve another sentence</button>
+        <div id="endrecord"></div>
+        <div class="endbuttons">
+          <button id="again">Serve another sentence</button>
+          <button id="endings-btn" class="ghost">Endings and records</button>
+        </div>
       </div>`
     ;(el.querySelector('#again') as HTMLButtonElement).onclick = () => location.reload()
+    ;(el.querySelector('#endings-btn') as HTMLButtonElement).onclick = () => showRecords()
+  }
+
+  /** After the ending is filed: a new find, a personal best. */
+  endRecord(result: { isNew: boolean; found: number; best: boolean }, run: Run): void {
+    const el = document.getElementById('endrecord')
+    if (!el) return
+    const stats = `${duration(run.seconds)} played, day ${run.day}, ${run.fails} failed attempt${run.fails === 1 ? '' : 's'}.`
+    el.innerHTML = result.isNew
+      ? `<p class="newfind">New ending found: ${result.found} of ${ENDINGS.length}. ${stats}</p>`
+      : `<p class="newfind">${result.best ? 'A personal best for this ending. ' : ''}${stats} ${result.found} of ${ENDINGS.length} endings found.</p>`
   }
 
   closePanels(): void {
@@ -216,6 +233,7 @@ export class Ui implements UiPort {
       ['pockets', 'Pockets'],
       ['post', g.post.unread ? `Post (${g.post.unread})` : 'Post'],
       ['notes', 'Notes'],
+      ['endings', 'Endings'],
       ['help', 'How to play'],
     ]
     for (const [id, label] of names) {
@@ -233,6 +251,7 @@ export class Ui implements UiPort {
     else if (tab === 'pockets') this.renderPockets(body)
     else if (tab === 'post') this.renderPost(body)
     else if (tab === 'help') this.renderHelp(body)
+    else if (tab === 'endings') body.innerHTML = recordsHtml(readRecords())
     else this.renderNotes(body)
     // Saving: automatic, and a button for peace of mind.
     const bar = document.createElement('div')
