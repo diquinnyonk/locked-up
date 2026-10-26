@@ -2,7 +2,7 @@ import { type Object3D, type Scene } from 'three'
 import { HEX } from '../art/palette'
 import { Input } from '../core/Input'
 import { type Body, Crowd, makeBody } from '../render/Crowd'
-import { Guard, type GuardRole } from '../npc/Guard'
+import { Guard, type GuardRole, NEW_FACE_DAYS } from '../npc/Guard'
 import { ATTEMPTS_PER_ROUND, METHOD_NAMES, type Method, PrisonMemory } from '../npc/Memory'
 import { Prisoner } from '../npc/Prisoner'
 import { GANGS, GANG_IDS, type GangId, gangOfWing } from '../npc/Gangs'
@@ -12,6 +12,7 @@ import { CONE_FRONT_RAYS, CONE_RAYS, Dynamic, type LooseItem } from '../world/Dy
 import { BLOCKS, type BlockId, type Door, EAST_WALL, type Grate, Grid, PLAYER_CELL, TILE, Tile, blockOfZone, tileCentre, worldToTile } from '../world/Grid'
 import { moveCircle } from '../world/Nav'
 import { Clock, RESTRICTED, allowedZones } from './Clock'
+import { type DayEvent, Events, isVisitingDay } from './Events'
 import { Doors } from './Doors'
 import { ITEMS, Inventory, type ItemId, RECIPES, type Recipe, SPAWNS, vouchers } from './Items'
 import { screenCall } from './Phone'
@@ -118,6 +119,8 @@ export class Game implements World {
   private dodgyTimer = 0
   readonly log: string[] = []
   readonly missions: Missions
+  /** What kind of day it is: a shakedown, a lockdown, a Greggs delivery... */
+  readonly events = new Events(this)
   readonly visitors: { body: Body; seat: { x: number; z: number }; gone: boolean }[] = []
   /** The player's own clothes, for when the disguise comes off. */
   private readonly ownLook = { top: HEX.player, trousers: HEX.prisonGreyDark, hair: HEX.hairBrown as number | null }
@@ -618,7 +621,9 @@ export class Game implements World {
     this.clock.speed = this.sleeping ? 25 : 1
     if (this.sleeping && (this.clock.period !== 'lightsOut' || this.riot.active || this.player.zone !== this.player.cell)) this.stopSleeping()
     this.clock.update(delta)
+    this.events.tick()
     this.regime()
+    this.events.update()
 
     this.doors.beginFrame()
     this.updatePlayer(delta)
@@ -741,6 +746,7 @@ export class Game implements World {
         for (const g of this.guards) if (g.uniformTaken) this.dressGuard(g, true)
         this.restock(false)
         this.missions.newDay()
+        this.events.newDay()
         if (this.contactNights > 0) this.contactNights--
         this.signalTonight = false
         this.flagUp = false
@@ -1999,9 +2005,11 @@ export class Game implements World {
       },
     })
     for (const item of pr.sells) {
+      // Pills only for people the fixer knows: a voucher or two as a gift first.
+      const wary = item === 'sleepingPills' && pr.trust < PILLS_TRUST
       options.push({
-        label: `Buy ${ITEMS[item].name} (2 Greggs vouchers)`,
-        enabled: inv.count('voucher') >= 2 && !inv.full,
+        label: wary ? `Buy ${ITEMS[item].name} (they do not know you well enough yet)` : `Buy ${ITEMS[item].name} (2 Greggs vouchers)`,
+        enabled: !wary && inv.count('voucher') >= 2 && !inv.full,
         run: () => {
           inv.remove('voucher')
           inv.remove('voucher')
@@ -2172,6 +2180,8 @@ export class Game implements World {
       messes: [...this.messes],
       toiletIncidents: this.toiletIncidents,
       missions: this.missions.toSave(),
+      events: this.events.toSave(),
+      override: this.clock.override,
       post: this.post.toSave(),
       log: [...this.log],
     }
@@ -2236,6 +2246,8 @@ export class Game implements World {
     }
     this.toiletIncidents = s.toiletIncidents
     this.missions.fromSave(s.missions)
+    this.events.fromSave(s.events)
+    this.clock.override = s.override ?? null
     this.post.fromSave(s.post)
     this.log.splice(0, this.log.length, ...s.log)
     const cell = this.grid.cells.get(p.cell)!
@@ -2291,10 +2303,14 @@ export class Game implements World {
 
   // ---- Silly ways out ----
 
-  /** Visiting runs from half two to quarter to four. */
+  /** Visiting runs from half two to quarter to four, on visiting days. */
   get visitingTime(): boolean {
     const m = this.clock.minuteOfDay
-    return m >= 14 * 60 + 30 && m < 15 * 60 + 45
+    return isVisitingDay(this.clock.weekday) && m >= 14 * 60 + 30 && m < 15 * 60 + 45
+  }
+
+  get todayEvent(): DayEvent {
+    return this.events.today
   }
 
   private toggleDisguise(kind: 'guard' | 'visitor'): void {
@@ -2421,10 +2437,21 @@ export class Game implements World {
         })
       } else add('E', 'Staff door: officers only', () => this.toast('Only staff leave this way. You would need to look like one, and have keys or wait for shift change.', 'neutral'))
     }
+    if (p.zone === 'chapel' && near(f.costumeBox, 1.8)) {
+      if (this.chaplain.stage === 'done' && !(p.inventory.has('wig') && p.inventory.has('dress')) && !p.inventory.has('visitorDisguise')) {
+        add('E', 'Rummage in the panto box (the Reverend lent you the key)', () => {
+          const inv = p.inventory
+          for (const id of ['wig', 'dress'] as ItemId[]) if (!inv.has(id) && !inv.add(id)) this.dynamic.spawnItem(id, b.x + 0.5, b.z, p.zone)
+          this.toast('A panto wig, a floral frock and a smell of 2009. Put them together in your pockets (Tab) for a visitor disguise.', 'good')
+        })
+      } else if (this.chaplain.stage !== 'done') add('E', 'The panto box (padlocked)', () => this.toast('The panto box is padlocked, and the Reverend wears the key on a string round his neck. Do him a favour and he might lend it.', 'neutral'))
+    }
+    if (p.zone === 'visits' && this.events.nanHere) add('E', 'Sit with your nan', () => this.events.sitWithNan())
     if (p.zone === 'visits' && near(f.visitorsGate, 4)) {
       if (p.disguise === 'visitor' && !p.disguiseBlown) {
-        const out = m >= 15 * 60 + 25 && m < 15 * 60 + 45
-        add('E', out ? 'Shuffle out with the visitors' : "Visitors' gate (visitors leave at 15:30)", () => {
+        const visitDay = isVisitingDay(this.clock.weekday)
+        const out = visitDay && m >= 15 * 60 + 25 && m < 15 * 60 + 45
+        add('E', out ? 'Shuffle out with the visitors' : visitDay ? "Visitors' gate (visitors leave at 15:30)" : "Visitors' gate (no visits today: Tuesdays, Thursdays and weekends)", () => {
           if (out) this.sillyExit('visitorDisguise')
         })
       }
@@ -2540,7 +2567,9 @@ export class Game implements World {
     p.attempt = method
     // The laundry only ever works if the X-ray man is looking at his phone.
     const xrayFooled = method !== 'laundry' || this.keith.bribedDay === this.clock.day
-    if (xrayFooled && this.rng() < this.memory.sillyExitChance(method)) {
+    // A brand new face fools nobody for long: worse odds in your first days.
+    const fresh = method !== 'laundry' && this.clock.day <= NEW_FACE_DAYS ? 0.5 : 1
+    if (xrayFooled && this.rng() < this.memory.sillyExitChance(method) * fresh) {
       this.sounds.push({ sound: 'good', volume: 1 })
       this.finish(true, method)
       return
@@ -2717,6 +2746,7 @@ export class Game implements World {
               for (let i = 0; i < 3; i++) inv.remove('hymnBook')
               r.stage = 'done'
               r.alibi = true
+              this.toast('The Reverend presses a little brass key into your hand: "For the panto box. Wardrobe needs a volunteer."', 'good')
               let paid = 0
               for (let i = 0; i < 3; i++) if (inv.add('voucher')) paid++
               for (let i = paid; i < 3; i++) this.dynamic.spawnItem('voucher', p.body.x + 0.6, p.body.z + 0.4 * i, p.zone)
@@ -2921,6 +2951,8 @@ export class Game implements World {
 
 const WALL_TOP = 2.75
 /** How far apart two people stand to talk. */
+/** How much a fixer must trust you before selling sleeping pills. */
+const PILLS_TRUST = 0.4
 const TALK_GAP = 1.9
 
 function cellmateTip(round: number): string {

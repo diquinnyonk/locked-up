@@ -827,6 +827,169 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   check('disguise: walks out with the day shift', game.over && log.some((l) => l.startsWith('[end] true Clocked off')), log.slice(-1)[0])
 }
 
+// ---- Slower starts: the panto box, the pills, visiting days ----
+{
+  const { game, log } = fresh()
+  const inv = game.player.inventory
+  const box = game.fixtures.costumeBox
+  game.player.body.x = box.x
+  game.player.body.z = box.z
+  game.player.zone = 'chapel'
+  check('rebalance: the panto box is padlocked at first', prompt(game, 'padlocked') && !inv.has('wig'))
+  game.chaplain.stage = 'done'
+  check('rebalance: the Reverend lends you the key once you have helped him', prompt(game, 'Rummage in the panto box') && inv.has('wig') && inv.has('dress'), log.slice(-1)[0])
+  check('rebalance: no visits on a Monday', game.clock.weekdayName === 'Monday' && (game.clock.skipTo(15 * 60), !game.visitingTime))
+  game.clock.minutes += 1440
+  check('rebalance: visitors come on a Tuesday', game.clock.weekdayName === 'Tuesday' && game.visitingTime)
+  const fixer = game.prisoners.find((pr) => pr.sells.includes('sleepingPills'))!
+  fixer.trust = 0.1
+  inv.remove('wig')
+  inv.remove('dress')
+  inv.add('voucher')
+  inv.add('voucher')
+  ;(game as any).talkTo(fixer)
+  const pills = () => lastTalk!.options.find((o) => o.label.includes('Sleeping pills'))!
+  check('rebalance: a fixer will not sell pills to a stranger', !pills().enabled && pills().label.includes('know you'))
+  game.endConversation()
+  fixer.trust = 0.5
+  ;(game as any).talkTo(fixer)
+  check('rebalance: but will to someone they trust', pills().enabled)
+  game.endConversation()
+}
+
+// ---- A different day every day ----
+{
+  const { game, log } = fresh()
+  const ev = game.events
+  const seen = new Set<string>()
+  let repeats = 0
+  let last = ''
+  for (let d = 0; d < 40; d++) {
+    game.clock.minutes += 1440
+    ev.newDay()
+    seen.add(ev.today)
+    if (ev.today === last && ev.today !== 'quiet') repeats++
+    last = ev.today
+  }
+  check('events: plenty of different days', seen.size >= 6, [...seen].join(' '))
+  check('events: never the same kind of day twice running', repeats === 0)
+  check('events: family visits only on visiting days', (() => {
+    for (let d = 0; d < 30; d++) {
+      game.clock.minutes += 1440
+      ev.newDay()
+      if (ev.today === 'family' && ![1, 3, 5, 6].includes(game.clock.weekday)) return false
+    }
+    return true
+  })())
+}
+{
+  const { game, log } = fresh()
+  const ev = game.events
+  // Shakedown: the stash is turned over.
+  game.clock.minutes += 1440
+  game.clock.skipTo(10 * 60)
+  run(game, 0.2)
+  ev.today = 'shakedown'
+  ev.at = game.clock.minuteOfDay + 2
+  ev.fired = false
+  ;(game as any).stash.push('razor', 'lighter')
+  ;(game as any).rng = () => 0
+  run(game, 3)
+  check('events: a shakedown finds your stash', game.stash.length === 0 && log.some((l) => l.startsWith('Shakedown')), log.slice(-2).join(' | '))
+}
+{
+  const { game, log } = fresh()
+  const ev = game.events
+  game.clock.minutes += 1440
+  game.clock.skipTo(13 * 60)
+  run(game, 0.2)
+  ev.today = 'lockdown'
+  ev.at = game.clock.minuteOfDay + 1
+  ev.fired = false
+  const cell = game.grid.cells.get(game.player.cell)!
+  game.player.body.x = cell.bunks[1].x
+  game.player.body.z = cell.bunks[1].z
+  run(game, 2)
+  check('events: a lockdown sends everyone back to their cells', game.clock.period === 'bangUp' && game.clock.label.startsWith('Lockdown'))
+  run(game, 14)
+  check('events: then the doors are locked', game.clock.period === 'lightsOut' && cell.door.locked, `${game.clock.period} ${cell.door.locked}`)
+  const lifted = run(game, 90, () => !game.clock.override && game.clock.period !== 'lightsOut')
+  check('events: and the lockdown lifts, doors open again', lifted && !cell.door.locked && log.some((l) => l.includes('lockdown is lifted')), game.clock.text)
+}
+{
+  const { game } = fresh()
+  const ev = game.events
+  game.clock.minutes += 1440
+  game.clock.skipTo(10 * 60)
+  run(game, 0.2)
+  ev.today = 'fireDrill'
+  ev.at = game.clock.minuteOfDay + 1
+  ev.fired = false
+  run(game, 2)
+  check('events: the fire alarm sends everyone to the yard', game.clock.period === 'yard' && game.clock.label.startsWith('Fire drill'))
+  const over = run(game, 20, () => game.clock.period === 'work')
+  check('events: and after half an hour, back to work', over)
+}
+{
+  const { game, log } = fresh()
+  const ev = game.events
+  game.clock.minutes += 1440
+  game.clock.skipTo(6 * 60 + 25)
+  run(game, 0.2)
+  ;(game as any).rng = () => 0.999
+  const guards = () => game.guards.filter((g) => g.reception)
+  for (let i = 0; i < 40 && ev.today !== 'intake'; i++) {
+    ev.today = 'quiet'
+    ;(game as any).rng = (() => { const r = Math.random; return () => r() })()
+    ev.newDay()
+  }
+  check('events: new intake takes two officers off the landings', ev.today === 'intake' && guards().length === 2)
+  game.clock.skipTo(8 * 60)
+  const atBay = run(game, 150, () => guards().every((g) => g.zone === 'bay'))
+  check('events: to reception in the loading bay', atBay, guards().map((g) => g.zone).join(','))
+  game.clock.skipTo(11 * 60 + 31)
+  run(game, 0.5)
+  check('events: back to work at lunch', guards().length === 0)
+}
+{
+  const { game, log } = fresh()
+  const ev = game.events
+  game.clock.minutes += 1440
+  game.clock.skipTo(11 * 60 + 20)
+  run(game, 0.2)
+  ev.today = 'greggs'
+  ev.fired = false
+  const before = game.dynamic.items.filter((i) => i.id === 'sausageRoll').length
+  run(game, 6)
+  check('events: the Greggs van brings sausage rolls at lunch', game.dynamic.items.filter((i) => i.id === 'sausageRoll').length >= before + 4)
+}
+{
+  const { game } = fresh()
+  const ev = game.events
+  game.clock.minutes += 1440
+  game.clock.skipTo(14 * 60 + 40)
+  run(game, 0.2)
+  ev.today = 'family'
+  ev.nanSeen = false
+  const gate = game.fixtures.visitorsGate
+  game.player.body.x = gate.x
+  game.player.body.z = gate.z - 6
+  game.player.zone = 'visits'
+  const had = game.player.inventory.count('voucher')
+  check('events: your nan visits on a Tuesday', prompt(game, 'Sit with your nan') && game.player.inventory.count('voucher') === had + 3)
+  ev.today = 'inspection'
+  const g = game.guards[0]
+  g.searchTarget = true
+  run(game, 1)
+  check('events: no pat-downs on inspection day', !g.searchTarget)
+  const json = JSON.parse(JSON.stringify(game.toSave()))
+  Game.seedForNext = game.seed
+  const { game: b } = fresh()
+  Game.seedForNext = null
+  b.fromSave(json)
+  check('events: today is kept in a save', b.events.today === 'inspection' && b.events.nanSeen)
+}
+
 // ---- Saving and carrying on ----
 {
   const { game: a } = fresh()
@@ -954,6 +1117,7 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   game.craft(recipe)
   game.useItem(game.player.inventory.items.findIndex((i) => i.id === 'visitorDisguise'))
   check('visitor: frock and wig on', game.player.disguise === 'visitor' && game.player.body.skirt !== null && game.player.body.longHair)
+  game.clock.minutes += 1440 // Tuesday: a visiting day
   game.clock.skipTo(15 * 60 + 31)
   run(game, 0.5)
   const gate = game.fixtures.visitorsGate

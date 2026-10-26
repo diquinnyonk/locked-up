@@ -1,3 +1,4 @@
+import type { DayEvent } from '../game/Events'
 import type { Clock } from '../game/Clock'
 import type { Inventory } from '../game/Items'
 import type { Body } from '../render/Crowd'
@@ -86,6 +87,8 @@ export interface World {
   riot: Riot
   sickCall: SickCall | null
   lure: Lure | null
+  /** What kind of day it is (see game/Events.ts). */
+  readonly todayEvent: DayEvent
   alarm: { active: boolean; timer: number; x: number; z: number }
   /** Cells the night officer still has to try. */
   lockChecks: Door[]

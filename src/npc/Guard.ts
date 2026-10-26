@@ -2,6 +2,7 @@ import { HEX } from '../art/palette'
 import { type Body, makeBody } from '../render/Crowd'
 import { type BlockId, type Door, TILE, blockOfZone, tileCentre, worldToTile } from '../world/Grid'
 import { OFFICER_NAMES, voiceSlug } from './names'
+import { RECEPTION } from '../game/Events'
 import { Agent } from './Agent'
 import { type Node, type Status, bt, traced } from './BehaviourTree'
 import type { World } from './World'
@@ -34,6 +35,8 @@ export type GuardRole = 'gate' | 'landing' | 'escort' | 'central'
 const NAMES = OFFICER_NAMES
 
 const WALK = 2.6
+/** For your first days every officer has your face fresh in their mind. */
+export const NEW_FACE_DAYS = 2
 const RUN = 5.2
 
 export class Guard extends Agent {
@@ -55,6 +58,8 @@ export class Guard extends Agent {
   hp = 10
   /** Helping at a riot. */
   busy = false
+  /** New intake: stuck in reception in the loading bay until lunch. */
+  reception = false
   /** Had you in sight this frame. */
   seesPlayer = false
   /** Owes you one from a job: looks the other way the next time. */
@@ -124,7 +129,7 @@ export class Guard extends Agent {
     // A disguise holds at a distance. Up close, for long enough, it does not.
     if (p.disguise && !p.disguiseBlown && sees && this.distanceTo(p.body.x, p.body.z) < 3.6) {
       const base = p.disguise === 'guard' ? 0.4 : 0.3
-      this.recognise += delta * base * w.memory.disguiseRecognition(p.disguise) * (1 + this.wary) * (w.hard ? 1.25 : 1) * (p.running ? 1.8 : 1)
+      this.recognise += delta * base * w.memory.disguiseRecognition(p.disguise) * (1 + this.wary) * (w.hard ? 1.25 : 1) * (p.running ? 1.8 : 1) * (w.clock.day <= NEW_FACE_DAYS ? 2.5 : 1)
       if (this.recognise >= 1) {
         p.disguiseBlown = true
         this.suspicion = 1
@@ -178,7 +183,7 @@ export class Guard extends Agent {
   visionRange(): number {
     const night = this.world.clock.darkness
     const base = 15 - night * 7
-    return base * this.world.memory.visionScale * (this.busy ? 0.6 : 1)
+    return base * this.world.memory.visionScale * (this.busy ? 0.6 : 1) * (this.world.todayEvent === 'inspection' ? 1.15 : 1)
   }
 
   canSeePlayer(): boolean {
@@ -370,6 +375,18 @@ function buildGuardTree(world: World): Node<Guard> {
     traced('attend sick call', (g) => attendSick(world, g)),
   )
 
+  const reception = bt.sequence<Guard>(
+    'reception',
+    bt.when('new intake', (g) => g.reception && !world.clock.locked),
+    traced('book in the new arrivals', (g) => {
+      const spot = { x: RECEPTION.x + (g.block.charCodeAt(0) % 2) * 1.6, z: RECEPTION.z }
+      const s = g.goToWorld(spot.x, spot.z, WALK, 0.6)
+      g.body.pose = s === 'running' ? 'walk' : 'stand'
+      if (s !== 'running') g.lookYaw = Math.PI
+      return 'running'
+    }),
+  )
+
   const lured = bt.sequence<Guard>(
     'lured',
     bt.when('called to a cell', (g) => world.lure?.guard === g),
@@ -378,7 +395,11 @@ function buildGuardTree(world: World): Node<Guard> {
 
   const search = bt.sequence<Guard>(
     'search',
-    bt.when('reported', (g) => g.searchTarget),
+    bt.when('reported', (g) => {
+      // Inspection day: nobody gets patted down in front of the Inspector.
+      if (world.todayEvent === 'inspection') g.searchTarget = false
+      return g.searchTarget
+    }),
     traced('pat down', (g) => {
       if (p.inVent) {
         g.searchTarget = false
@@ -533,7 +554,7 @@ function buildGuardTree(world: World): Node<Guard> {
     return patrol(world, g, () => world.grid.randomTileIn(zone, world.rng), 5)
   })
 
-  return bt.select<Guard>('officer', knockedOut, chase, riot, notice, sickCall, lured, search, investigate, lockCheck, bangUp, ventListen, duty)
+  return bt.select<Guard>('officer', knockedOut, chase, riot, notice, reception, sickCall, lured, search, investigate, lockCheck, bangUp, ventListen, duty)
 
   function xy(tx: number, ty: number): [number, number] {
     return [(tx + 0.5) * TILE, (ty + 0.5) * TILE]

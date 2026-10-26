@@ -5,6 +5,7 @@ import type { Game, UiPort } from '../game/Game'
 import { ITEMS, INVENTORY_SLOTS, type ItemId, RECIPES, vouchers } from '../game/Items'
 import { itemIcon } from './itemIcons'
 import { CONTROLS } from './Tour'
+import { EVENT_INFO, isVisitingDay } from '../game/Events'
 import { isTouch } from './Touch'
 import { castLine, voiceFor } from '../audio/cast'
 import { keyFor } from '../audio/lineKeys'
@@ -281,6 +282,7 @@ export class Ui implements UiPort {
       <section class="mission">
         <h3 class="title">Escape HMP Grim-on-the-Moor</h3>
         <p>Everyone in here knows your name, ${escape(p.name)}: the one who robbed the Greggs. Attempts left this round: <b>${m.attemptsLeft} of ${ATTEMPTS_PER_ROUND}</b> (round ${m.round} of ${ROUNDS}).</p>
+        <p class="today"><b>${g.clock.weekdayName}: ${escape(EVENT_INFO[g.events.today].title)}.</b> ${escape(EVENT_INFO[g.events.today].blurb)}${isVisitingDay(g.clock.weekday) ? ' Visiting this afternoon, 14:30 to 15:45.' : ''}</p>
         <h4>Out of your cell at night</h4>
         <ul class="checks">
           ${tick(!!inv.withUse('openDoor'), 'Have a key', 'Lift one from an officer (R), or forge one from a soap mould.')}
@@ -300,9 +302,9 @@ export class Ui implements UiPort {
         </ul>
         <h4>Or one of the silly ways</h4>
         <ul class="checks">
-          ${tick(inv.has('guardUniform'), "An officer's uniform", 'Clock off with the day shift at 20:45 in the staff changing room, off the loading bay. With an officer\'s keys as well, the staff door lets you out any time.')}
+          ${tick(inv.has('guardUniform'), "An officer's uniform", 'Clock off with the day shift at 20:45 in the staff changing room, off the loading bay. For your first two days every officer knows your face, so a disguise does not last. With an officer\'s keys as well, the staff door lets you out any time.')}
           ${tick(inv.has('sleepyRoll'), 'A sleepy sausage roll', m.foodRefused ? 'Burned once: officers will not eat anything you offer now.' : 'Sleeping pills from a fixer in a sausage roll. Shout an officer into your cell by day (H) and offer it to him: then his uniform and keys are yours.')}
-          ${tick(inv.has('visitorDisguise'), 'Visitor disguise', 'Leave with the visitors at 15:30.')}
+          ${tick(inv.has('visitorDisguise'), 'Visitor disguise', `The wig and frock are in the chapel's panto box: ${g.chaplain.stage === 'done' ? 'the Reverend lent you the key' : 'padlocked until the Reverend trusts you'}. Leave with the visitors at 15:30 on Tuesdays, Thursdays and weekends.`)}
           ${tick(g.keith.bribedDay === g.clock.day, `${g.keith.name} on the X-ray paid off today`, `${m.xrayBribe} blue drink and ${m.xrayBribe} sausage roll, then into a laundry basket before 11:00. He sits at the X-ray in the loading bay: the blue square on your map.`)}
         </ul>
       </section>`
@@ -539,7 +541,7 @@ export class Ui implements UiPort {
     const home = g.grid.roomName(p.cell)
     $('#who').innerHTML = `${escape(p.name)} <span class="home">${escape(home)}</span>`
     $('#time').textContent = `Day ${clock.day} · ${clock.text}`
-    $('#period').textContent = clock.label
+    $('#period').textContent = `${clock.weekdayName}: ${clock.label}`
     $('#next').textContent = `${next.label} in ${Math.floor(next.in / 60)}h ${String(Math.floor(next.in % 60)).padStart(2, '0')}m`
     const pips = Array.from({ length: ATTEMPTS_PER_ROUND }, (_, i) => `<span class="pip ${i < m.attemptsUsed ? 'used' : ''}"></span>`).join('')
     $('#attempts').innerHTML = `<span class="label">Attempts</span>${pips}<span class="round">round ${m.round}/${ROUNDS}</span>`

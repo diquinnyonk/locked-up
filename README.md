@@ -31,6 +31,36 @@ rolls and a festive bake), which in Grim-on-the-Moor, under the Pastry Protectio
 of 1987, is worse than murder. Everyone inside knows your name. Prisoners and
 officers call you the Greggs Bandit.
 
+## Every day is different
+
+Day one is a Monday, and the HUD shows the weekday. Each morning at unlock
+the prison decides what kind of day it is (`src/game/Events.ts`), says so in
+a toast, and keeps it at the top of the Notebook. Never the same twice running:
+
+| Day | What happens |
+| --- | --- |
+| Quiet | Nothing out of the ordinary. |
+| Shakedown | At some point officers spin every cell on your wing. Your stash may be found, and if you are on the landing you get patted down. |
+| Lockdown | A fight in the showers. Everyone back to their cells for twenty minutes, then doors locked for two and a half hours. You can sleep through it. |
+| Inspection | HM Inspector visits. No pat-downs all day, but officers see further. |
+| New intake | Two landing officers from other wings are stuck in reception in the loading bay until lunch. |
+| Greggs delivery | Sausage rolls and vouchers on the canteen counter at lunch. |
+| Fire drill | The alarm goes and everyone is herded into the yard for half an hour. |
+| Your nan visits | Visiting days only. Sit with her in the visiting hall for three Greggs vouchers. |
+
+## Slower starts
+
+The quickest exits used to work on day one. Now:
+
+- The wig and frock are in the chapel's panto box, padlocked until you have
+  done the Reverend's errand; he lends you the key.
+- Visitors only come on Tuesdays, Thursdays and weekends.
+- For your first two days every officer knows your new face: disguises are
+  seen through two and a half times faster, and the disguise exits are half
+  as likely to work.
+- Fixers only sell sleeping pills to prisoners they trust (gift them a voucher
+  or two first).
+
 ## Saving
 
 The game saves itself in the browser's localStorage (`src/game/Save.ts`): every

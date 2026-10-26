@@ -254,7 +254,8 @@ export const SPAWNS: { zone: string; items: ItemId[] }[] = [
   { zone: 'infirmary', items: ['tape', 'bleach', 'teabags'] },
   { zone: 'yard', items: ['voucher'] },
   { zone: 'blockA', items: ['magazine', 'mopHandle'] },
-  { zone: 'chapel', items: ['wig', 'dress', 'bedsheet'] },
+  // The wig and frock live in the panto box, padlocked until the Reverend trusts you.
+  { zone: 'chapel', items: ['bedsheet'] },
   { zone: 'mess', items: ['guardUniform', 'biscuits', 'teabags'] },
   { zone: 'library', items: ['magazine', 'battery'] },
   { zone: 'gym', items: ['sock', 'tape', 'blueDrink'] },

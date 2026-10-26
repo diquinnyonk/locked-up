@@ -42,11 +42,18 @@ const TIMETABLE: Slot[] = [
 
 export const MINUTES_PER_SECOND = 2
 
+export const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
 export class Clock {
   /** Minutes since the start of day one. */
   minutes = 8 * 60 - 20
   /** Multiplier while sleeping through the night. */
   speed = 1
+  /**
+   * The timetable thrown out for a while: a lockdown after a fight, a fire
+   * drill. Until `until` (in absolute minutes) it is `period` everywhere.
+   */
+  override: { period: Period; label: string; until: number; then?: string } | null = null
 
   update(delta: number): void {
     this.minutes += delta * MINUTES_PER_SECOND * this.speed
@@ -60,7 +67,18 @@ export class Clock {
     return ((this.minutes % 1440) + 1440) % 1440
   }
 
+  /** Day one is a Monday. */
+  get weekday(): number {
+    return (this.day - 1) % 7
+  }
+
+  get weekdayName(): string {
+    return WEEKDAYS[this.weekday]
+  }
+
   get slot(): Slot {
+    if (this.override && this.minutes < this.override.until) return { from: 0, period: this.override.period, label: this.override.label }
+    if (this.override) this.override = null
     const m = this.minuteOfDay
     let current = TIMETABLE[0]
     for (const s of TIMETABLE) if (m >= s.from) current = s
@@ -77,6 +95,11 @@ export class Clock {
 
   /** The next period change, for the HUD. */
   get next(): { label: string; in: number } {
+    const o = this.override
+    if (o && this.minutes < o.until) {
+      const back = TIMETABLE.reduce((cur, s) => ((((o.until % 1440) + 1440) % 1440) >= s.from ? s : cur), TIMETABLE[0])
+      return { label: o.then ?? back.label, in: o.until - this.minutes }
+    }
     const m = this.minuteOfDay
     for (const s of TIMETABLE) if (s.from > m) return { label: s.label, in: s.from - m }
     return { label: TIMETABLE[1].label, in: 1440 - m + TIMETABLE[1].from }

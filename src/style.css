@@ -1558,3 +1558,11 @@ body.panel-open #prompts {
   #tour .card.turn { animation: none; }
   #tour .hole, #tour .card { transition: none; }
 }
+
+/* Today, at the top of the Notebook */
+#panel .today {
+  background: var(--paper-2);
+  border-left: 4px solid var(--accent);
+  padding: 0.55rem 0.7rem;
+  line-height: 1.45;
+}
