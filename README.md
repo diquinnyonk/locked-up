@@ -42,7 +42,7 @@ four-digit dial. It is out of bounds, so get in through the vents or the mess.
 - **Or crack it by ear** with the stethoscope from healthcare: thirty seconds
   of standing still at the dial, and every few seconds a click that carries.
 - **Inside:** the Governor's master key (opens every door, the outer gates
-  included, never wears out and is never missed), the keys to his Jag, six
+  included, and is never missed, but the old brass snaps after five turns), the keys to his Jag, six
   Greggs vouchers of petty cash, and your file. You shred the file, and the
   prison forgets the last thing it learned about you.
 - **The Jag** is parked in the staff car park just outside the staff door in

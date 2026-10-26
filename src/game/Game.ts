@@ -1674,7 +1674,11 @@ export class Game implements World {
     if (door.cell === this.player.cell && this.clock.locked) this.methodHint = 'key'
     else if (!this.methodHint) this.methodHint = door.kind === 'gate' || door.kind === 'perimeter' ? 'key' : this.methodHint
     this.emit({ x: (door.tx + 0.5) * TILE, z: (door.ty + 0.5) * TILE, radius: 3, kind: 'clank' })
-    if (key.id !== 'guardKey' && inv.wear(key)) this.toast(`The ${ITEMS[key.id].name.toLowerCase()} snaps in the lock after this turn.`, 'bad')
+    if (key.id === 'masterKey') {
+      if (inv.wear(key)) this.toast("The master key snaps in the lock after this turn. Old brass: the Governor never needed it this much.", 'bad')
+      else if (key.durability === 1) this.toast('The master key is bending. One more turn, and that will be it.', 'bad')
+      else this.toast(`The master key turns. It is soft old brass: ${key.durability} turns left in it.`, 'neutral')
+    } else if (key.id !== 'guardKey' && inv.wear(key)) this.toast(`The ${ITEMS[key.id].name.toLowerCase()} snaps in the lock after this turn.`, 'bad')
   }
 
   private askGate(door: Door): void {
@@ -1902,7 +1906,7 @@ export class Game implements World {
     give('masterKey')
     give('jagKeys')
     for (let i = 0; i < 6; i++) give('voucher')
-    this.toast("The door swings open. The Governor's master key, the keys to his Jag, and six Greggs vouchers in an envelope marked PETTY CASH (PASTRY).", 'good')
+    this.toast("The door swings open. The Governor's master key (good for five turns), the keys to his Jag, and six Greggs vouchers in an envelope marked PETTY CASH (PASTRY).", 'good')
     // Your file: through the shredder, and the prison forgets one lesson.
     const last = this.memory.lessons.pop()
     if (last) {

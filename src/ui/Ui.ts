@@ -305,7 +305,7 @@ export class Ui implements UiPort {
           ${tick(g.heist.knowA, 'First half of the combination', g.heist.knowA ? `${g.safeCode.slice(0, 2)}: his mother's birthday, circled in the desk diary.` : "Something on the Governor's desk, in his office off the officers' mess.")}
           ${tick(g.heist.knowB, 'Second half', g.heist.knowB ? `${g.safeCode.slice(2)}: the private plate on his Jag, from ${escape(g.keith.name)}.` : "Who sees the Governor's car every day?")}
           ${tick(inv.has('stethoscope'), 'Or a stethoscope', 'Healthcare keeps one. Crack the safe by ear instead: thirty seconds of clicks.')}
-          ${tick(g.heist.opened, 'Safe opened', g.heist.opened ? 'The master key opens every door. The Jag is parked just outside the staff door in the changing room.' : 'A master key, the keys to his Jag, petty cash, and your file to shred.')}
+          ${tick(g.heist.opened, 'Safe opened', g.heist.opened ? 'The master key opens every door, but snaps after five turns. The Jag is parked just outside the staff door in the changing room.' : 'A master key, the keys to his Jag, petty cash, and your file to shred.')}
         </ul>
         <h4>Or one of the silly ways</h4>
         <ul class="checks">

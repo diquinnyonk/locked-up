@@ -76,6 +76,9 @@ export interface ItemDef {
   durability?: number
 }
 
+/** Turns the Governor's master key survives before it snaps. */
+export const MASTER_KEY_TURNS = 5
+
 export const ITEMS: Record<ItemId, ItemDef> = {
   toothbrush: { id: 'toothbrush', name: 'Toothbrush', hex: HEX.plastic, damage: 1, uses: [], contraband: false, blurb: 'Snap the head off and it is half a shiv.' },
   toothpaste: { id: 'toothpaste', name: 'Toothpaste', hex: HEX.toothpaste, damage: 0, uses: ['jamLock'], contraband: false, blurb: 'Packed into a strike plate, it sets hard. The bolt never catches.' },
@@ -129,7 +132,7 @@ export const ITEMS: Record<ItemId, ItemDef> = {
   flag: { id: 'flag', name: 'Signal flag', hex: HEX.clothesRed, damage: 0, uses: ['signal'], contraband: true, blurb: 'A sheet with a red sock sewn on. Run it up the yard flagpole.' },
   sleepyRoll: { id: 'sleepyRoll', name: 'Sleepy sausage roll', hex: HEX.chipsOrange, damage: 0, uses: [], contraband: true, blurb: 'A sausage roll with a secret. Get an officer into your cell and offer it to him: he will be asleep in seconds, and for hours.' },
   stethoscope: { id: 'stethoscope', name: 'Stethoscope', hex: HEX.steel, damage: 1, uses: [], contraband: true, blurb: 'From healthcare. Press it to a safe door and listen for the tumblers. Slow, and the dial clicks.' },
-  masterKey: { id: 'masterKey', name: "Governor's master key", hex: HEX.stainedGold, damage: 0, uses: ['openDoor'], contraband: true, blurb: 'Opens every door in Grim-on-the-Moor, the outer gates included. Nobody counts it at shift change, because nobody knows it exists.', durability: 999 },
+  masterKey: { id: 'masterKey', name: "Governor's master key", hex: HEX.stainedGold, damage: 0, uses: ['openDoor'], contraband: true, blurb: 'Opens every door in Grim-on-the-Moor, the outer gates included. Nobody counts it at shift change, because nobody knows it exists. Old and soft brass: good for five turns, no more.', durability: MASTER_KEY_TURNS },
   jagKeys: { id: 'jagKeys', name: "The Governor's Jag keys", hex: HEX.bookGreen, damage: 0, uses: [], contraband: true, blurb: 'A leather fob with a leaping cat on it. The Jag is parked in the staff car park, just outside the staff door.' },
 }
 

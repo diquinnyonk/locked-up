@@ -1021,6 +1021,10 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   check('heist: the master key opens the staff door', prompt(game, "Unlock with Governor's master key"))
   run(game, 0.5)
   check('heist: the door is open', door.openness > 0.3, `${door.openness}`)
+  const mk = inv.items.find((i) => i.id === 'masterKey')!
+  check('heist: the master key has four turns left', mk.durability === 4, `${mk.durability}`)
+  for (let i = 0; i < 4; i++) (game as any).useKey(door, mk)
+  check('heist: and snaps on the fifth', !inv.has('masterKey') && log.some((l) => l.startsWith('The master key snaps')))
   at({ x: f.jag.x + 1.5, z: f.jag.z }, 'outside')
   run(game, 0.5)
   check("heist: drive off in the Governor's Jag", game.over && log.some((l) => l.startsWith("[end] true The Governor's Jag")), log.slice(-1)[0])
