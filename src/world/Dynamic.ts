@@ -385,6 +385,34 @@ export class Dynamic {
   }
 
   /** The hole under the loose tile by your bunk, open while you dig. */
+  private propsCrate: Mesh | null = null
+  private sack: Mesh | null = null
+
+  /** The Grimsby Rep's props crate in the chapel, and the sack for Act Two. */
+  setPropsCrate(x: number, z: number, visible: boolean, sack: boolean): void {
+    if (!this.propsCrate) {
+      this.propsCrate = new Mesh(
+        mergePainted([
+          box(1.2, 0.8, 0.8, { x: 0, y: 0, z: 0 }, HEX.wood),
+          box(1.26, 0.08, 0.86, { x: 0, y: 0.8, z: 0 }, HEX.brickShade),
+          // Stencilled on the side: GRIMSBY REP. PROPS. THIS WAY UP.
+          box(0.7, 0.16, 0.02, { x: 0, y: 0.42, z: 0.41 }, HEX.paper),
+          box(0.4, 0.08, 0.02, { x: -0.1, y: 0.22, z: 0.41 }, HEX.ink),
+        ]),
+        toon(0xffffff, { tinted: true }),
+      )
+      this.sack = new Mesh(mergePainted([ball(0.36, { x: 0, y: 0.22, z: 0 }, HEX.prisonGreyDark, 2.6, 0.6, 1), ball(0.12, { x: 0.95, y: 0.34, z: 0 }, HEX.ink, 1, 1, 1)]), toon(0xffffff, { tinted: true }))
+      for (const m of [this.propsCrate, this.sack]) {
+        m.layers.enable(SOLID_LAYER)
+        this.group.add(m)
+      }
+    }
+    this.propsCrate.visible = visible
+    this.propsCrate.position.set(x, 0.01, z)
+    this.sack!.visible = visible && sack
+    this.sack!.position.set(x + 1.5, 0.01, z)
+  }
+
   setTunnelHole(x: number, z: number, visible: boolean): void {
     if (!this.tunnelHole) {
       this.tunnelHole = new Mesh(

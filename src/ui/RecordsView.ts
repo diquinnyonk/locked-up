@@ -8,14 +8,18 @@ const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
  * runs; the rest show a nudge, never the answer.
  */
 export function recordsHtml(r: Records): string {
-  const found = ENDINGS.filter((e) => r.endings[e.id]).length
-  const cards = ENDINGS.map((e) => {
+  // A secret ending shows only once you have found it.
+  const shown = ENDINGS.filter((e) => !e.secret || r.endings[e.id])
+  const found = ENDINGS.filter((e) => !e.secret && r.endings[e.id]).length
+  const total = ENDINGS.filter((e) => !e.secret).length
+  const secrets = ENDINGS.filter((e) => e.secret && r.endings[e.id]).length
+  const cards = shown.map((e) => {
     const rec = r.endings[e.id]
     if (!rec) {
       return `<li class="ending missing"><span class="kind">${e.won ? 'Escape' : 'Defeat'}</span><b>Not found yet</b><p>${esc(e.hint)}</p></li>`
     }
     const first = new Date(rec.first).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
-    return `<li class="ending found ${e.won ? 'win' : 'loss'}"><span class="kind">${e.won ? 'Escape' : 'Defeat'}</span><b>${esc(e.title)}</b>
+    return `<li class="ending found ${e.won ? 'win' : 'loss'}"><span class="kind">${e.secret ? 'Secret escape' : e.won ? 'Escape' : 'Defeat'}</span><b>${esc(e.title)}</b>
       <p>${rec.count === 1 ? 'Once' : `${rec.count} times`}, first on ${esc(first)}.</p>
       <dl>
         <dt>Fastest</dt><dd>${duration(rec.fastest.seconds)}</dd>
@@ -33,7 +37,7 @@ export function recordsHtml(r: Records): string {
     ['Time inside', duration(r.seconds)],
   ]
   return `<div class="records">
-    <p class="found"><b>${found} of ${ENDINGS.length}</b> endings found.</p>
+    <p class="found"><b>${found} of ${total}</b> endings found${secrets ? `, and ${secrets} secret one${secrets === 1 ? '' : 's'}` : ''}.</p>
     <ul class="endings">${cards}</ul>
     ${achievementsHtml(r)}
     ${dailyHtml(r)}

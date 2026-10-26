@@ -3,6 +3,7 @@ import { HEX, SUN_DIRECTION, color } from './art/palette'
 import { setToonSunDirection, setWorldTint } from './art/toonMaterial'
 import { Engine } from './core/Engine'
 import { Pad } from './core/Pad'
+import { Play, rollSecret } from './game/Play'
 import { Game } from './game/Game'
 import type { Mode } from './npc/Memory'
 import { CelPipeline } from './render/CelPipeline'
@@ -125,6 +126,9 @@ function begin(save: SaveFile | null): void {
     noteStarted()
     game.clock.minutes = 8 * 60 - 20
     game.startSentence()
+    // The secret play: one sentence in ten, once per browser, never in a
+    // daily (that has to be the same prison for everyone).
+    if (!game.daily && rollSecret(Math.random, params.get('secret') === 'play')) game.play = new Play(game)
   }
   game.input.enabled = true
   game.input.clear()
@@ -286,7 +290,7 @@ engine.onUpdate((delta) => {
         const { best } = recordDaily(game.daily.date, { met, day: run.day, fails: run.fails, seconds: run.seconds })
         ui.endDaily(met, best, describeDaily(game.daily))
       }
-      for (const id of achieveAtEnd({ won: game.ending.won, fails: run.fails, day: run.day, mode: game.mode, dailyMet: met })) {
+      for (const id of achieveAtEnd({ ending: game.ending.id, won: game.ending.won, fails: run.fails, day: run.day, mode: game.mode, dailyMet: met })) {
         const a = ACHIEVEMENTS.find((x) => x.id === id)!
         ui.achievement(a.title, a.text)
       }

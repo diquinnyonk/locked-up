@@ -23,6 +23,7 @@ import { screenCall } from './Phone'
 import { Missions } from './Missions'
 import { type BunkNote, type Letter, Post } from './Post'
 import { LINES } from './Lines'
+import { DIRECTOR, PROPS_CRATE, Play } from './Play'
 import { type AchievementId, unlock } from './Achievements'
 
 /** What the game needs from the interface. Implemented in ui/Ui.ts. */
@@ -143,6 +144,8 @@ export class Game implements World {
   readonly goals = new Goals()
   /** The firms' feuds with each other. */
   readonly feuds = new Feuds(this)
+  /** The secret mission: the Governor's play, in about one sentence in ten. */
+  play: Play | null = null
   /** Your cellmate's story: warned they are a grass, paid off, the gift, a tip-off due. */
   readonly mate = { warned: false, paidOff: false, gift: false, tipOff: false, tipOffs: 0 }
   private vouchersSeen = -1
@@ -185,7 +188,7 @@ export class Game implements World {
     speech: '',
     speechTimer: 0,
     /** Where he is: 'office', 'car', 'tour' or 'away'. */
-    at: 'away' as 'office' | 'car' | 'tour' | 'away',
+    at: 'away' as 'office' | 'car' | 'tour' | 'away' | 'chapel',
     tour: [] as { tx: number; ty: number }[],
     shouted: 0,
   }
@@ -587,7 +590,7 @@ export class Game implements World {
     p.health = 100
   }
 
-  private finish(won: boolean, how: 'escape' | 'gang' | 'solitary' | 'guardDisguise' | 'visitorDisguise' | 'laundry' | 'staffDoor' | 'jag' | 'tunnel', gang: GangId = 'firm'): void {
+  private finish(won: boolean, how: 'curtain' | 'escape' | 'gang' | 'solitary' | 'guardDisguise' | 'visitorDisguise' | 'laundry' | 'staffDoor' | 'jag' | 'tunnel', gang: GangId = 'firm'): void {
     this.over = true
     this.input.enabled = false
     this.ending = { id: how === 'escape' ? 'escape' : how, won }
@@ -595,7 +598,9 @@ export class Game implements World {
     const mateLine = this.mateEpilogue(won)
     const end = (w: boolean, title: string, text: string) => this.ui.end(w, title, text + mateLine)
     const tally = `Day ${this.clock.day}. ${this.memory.totalFailures} failed attempt${this.memory.totalFailures === 1 ? '' : 's'}.`
-    if (won && how === 'tunnel') {
+    if (won && how === 'curtain') {
+      end(true, 'Curtain call', `The gaolers heave the sack into the props crate to thunderous applause from six officers in the front pew. At eleven the Grimsby Rep's van rumbles out of the gate with the scenery, a papier-mâché Château d'If, and ${name}, who climbs out at a lay-by on the A1 still wearing the Abbé Faria's beard.\n${tally}\nThe Governor's review in the Bugle calls the corpse "utterly convincing, then strangely absent for the curtain call".`)
+    } else if (won && how === 'tunnel') {
       end(true, 'Like a mole', `${name} pushes up through the soil of the allotments beyond the wall, covered in clay, under a full moon. Somebody's prize marrows break the fall.\n${tally}\nAt morning roll call an officer lifts a loose floor tile in your cell and says a word the Bugle cannot print.`)
     } else if (won && how === 'jag') {
       end(true, "The Governor's Jag", `${name} slides into the cream leather seats of the Governor's Jaguar, adjusts the mirror, and drives out of the staff car park with a little wave at the gatehouse. The gatehouse waves back.\n${tally}\nThe Governor reports it stolen at nine the next morning. From the bus.`)
@@ -713,6 +718,7 @@ export class Game implements World {
     this.regime()
     this.events.update()
     this.feuds.update()
+    this.play?.update()
 
     this.doors.beginFrame()
     this.updatePlayer(delta)
@@ -761,6 +767,8 @@ export class Game implements World {
     })
     const pb = this.player.body
     this.dynamic.setChristmas(this.season === 'christmas')
+    const pl = this.play
+    this.dynamic.setPropsCrate(PROPS_CRATE.x, PROPS_CRATE.z, !!pl && (pl.stage === 'cast' || pl.stage === 'opening'), !!pl?.cue)
     this.dynamic.updateWeather(this.weather, pb.x, pb.z, delta, (x, z) => {
       const zone = this.grid.zone(Math.floor(x / TILE), Math.floor(z / TILE))
       return zone === 'yard' || zone === 'outside'
@@ -847,6 +855,7 @@ export class Game implements World {
         this.missions.newDay()
         this.events.newDay()
         this.feuds.newDay()
+        this.play?.newDay()
         if (this.contactNights > 0) this.contactNights--
         this.signalTonight = false
         this.flagUp = false
@@ -2674,6 +2683,7 @@ export class Game implements World {
       missions: this.missions.toSave(),
       events: this.events.toSave(),
       feuds: this.feuds.toSave(),
+      play: this.play?.toSave() ?? null,
       heist: { ...this.heist },
       tunnel: { ...this.tunnel },
       goals: this.goals.toSave(),
@@ -2747,6 +2757,10 @@ export class Game implements World {
     this.missions.fromSave(s.missions)
     this.events.fromSave(s.events)
     this.feuds.fromSave(s.feuds)
+    if (s.play) {
+      this.play = new Play(this)
+      this.play.fromSave(s.play)
+    }
     if (s.heist) Object.assign(this.heist, s.heist)
     if (s.tunnel) Object.assign(this.tunnel, s.tunnel)
     this.goals.fromSave(s.goals)
@@ -2966,6 +2980,9 @@ export class Game implements World {
         else if (p.inventory.has('stethoscope')) add('E', 'Crack the safe by ear (stethoscope)', () => this.startCracking())
         else add('E', "The Governor's safe", () => this.toast(this.safeHint(), 'neutral'))
       }
+    }
+    if (p.zone === 'chapel' && this.play?.cue && near(PROPS_CRATE, 1.8)) {
+      add('E', 'Your cue: get in the sack', () => this.finish(true, 'curtain'))
     }
     if (p.zone === 'chapel' && near(f.costumeBox, 1.8)) {
       if (this.chaplain.stage === 'done' && !(p.inventory.has('wig') && p.inventory.has('dress')) && !p.inventory.has('visitorDisguise')) {
@@ -3222,7 +3239,7 @@ export class Game implements World {
     const weekday = this.clock.weekday < 5
     const inspection = this.events.today === 'inspection' && m >= 10 * 60 && m < 16 * 60
     const was = gv.at
-    gv.at = inspection ? 'tour' : !weekday || this.clock.locked ? 'away' : m >= 750 && m < 810 ? 'car' : m >= 570 && m < 990 ? 'office' : 'away'
+    gv.at = this.play?.directing ? 'chapel' : inspection ? 'tour' : !weekday || this.clock.locked ? 'away' : m >= 750 && m < 810 ? 'car' : m >= 570 && m < 990 ? 'office' : 'away'
     const b = gv.body
     b.visible = gv.at !== 'away'
     if (this.talkingTo !== b) {
@@ -3236,6 +3253,22 @@ export class Game implements World {
         b.z = this.fixtures.jag.z + 0.4
         b.yaw = Math.PI / 2
         b.pose = 'search'
+      } else if (gv.at === 'chapel') {
+        // Directing from the front, by the altar, facing the pews.
+        b.x = DIRECTOR.x
+        b.z = DIRECTOR.z
+        b.yaw = Math.PI / 2
+        b.pose = 'talk'
+        if (gv.speechTimer <= -6 && this.rng() < 0.01) {
+          gv.speech = pick2(this.rng, [
+            'From the top! And this time, FEEL the Château d\'If.',
+            'Mr Higginbottom, you are a gaoler, not a lollipop man.',
+            'Projection! The back pew is asleep!',
+            'Less pastry in your pockets, more Dumas in your heart.',
+            'Places, everyone! PLACES!',
+          ])
+          gv.speechTimer = 3.5
+        }
       } else if (gv.at === 'tour') this.governorTour(delta, was !== 'tour')
     }
     if (gv.at !== 'tour') b.speed = 0
@@ -3308,6 +3341,17 @@ export class Game implements World {
     const gv = this.governor
     this.converse(gv.body)
     this.achieve('governor')
+    const play = this.play
+    if (gv.at === 'chapel' && play) {
+      if (play.stage === 'notice') {
+        this.ui.talk(`${gv.name}, Director`, "Ah. You. We are casting the Abbé Faria. Old, wise, dies in Act Two, carried off in a sack. Almost no lines. Can you lie very, very still?", [
+          { label: 'Audition for the Abbé Faria', enabled: true, run: () => this.ui.talk(`${gv.name}, Director`, play.audition(), []) },
+        ])
+      } else {
+        this.ui.talk(`${gv.name}, Director`, pick2(this.rng, ['Not now, I am DIRECTING.', 'Faria! Lovely stillness yesterday. Keep it up. Or rather, down.', 'The van takes the set back after the show. The Grimsby Rep want their Château d\'If returned in one piece.']), [])
+      }
+      return
+    }
     const lines =
       this.memory.round > 1
         ? ["Back again. I admire persistence. I also admire concrete, and I have ordered a great deal of it.", 'You are making my prison better every time you fail. I do appreciate it.']

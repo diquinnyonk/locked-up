@@ -23,6 +23,7 @@ export type AchievementId =
   | 'daily'
   | 'houdini'
   | 'everything'
+  | 'curtain'
 
 export const ACHIEVEMENTS: { id: AchievementId; title: string; text: string }[] = [
   { id: 'settled', title: 'Settled in', text: 'Tick off every first-day goal.' },
@@ -40,6 +41,7 @@ export const ACHIEVEMENTS: { id: AchievementId; title: string; text: string }[] 
   { id: 'early', title: 'Early bird', text: 'Escape by the end of day two.' },
   { id: 'hardcore', title: 'Hardcore hero', text: 'Escape on Hardcore.' },
   { id: 'daily', title: 'Daily grind', text: 'Beat a daily challenge.' },
+  { id: 'curtain', title: 'Break a leg', text: "Take your cue in the Governor's play. (Not every sentence has one.)" },
   { id: 'houdini', title: 'Houdini', text: 'Find every way out.' },
   { id: 'everything', title: 'Completionist', text: 'Find every ending, good and bad.' },
 ]
@@ -55,7 +57,7 @@ export function unlock(id: AchievementId): (typeof ACHIEVEMENTS)[number] | null 
 }
 
 /** Everything a finished sentence earns, once the ending is filed. */
-export function achieveAtEnd(run: { won: boolean; fails: number; day: number; mode?: string; dailyMet: boolean }): AchievementId[] {
+export function achieveAtEnd(run: { ending?: EndingId; won: boolean; fails: number; day: number; mode?: string; dailyMet: boolean }): AchievementId[] {
   const found = new Set(Object.keys(readRecords().endings) as EndingId[])
   const ids: AchievementId[] = []
   if (run.won) ids.push('out')
@@ -63,7 +65,10 @@ export function achieveAtEnd(run: { won: boolean; fails: number; day: number; mo
   if (run.won && run.day <= 2) ids.push('early')
   if (run.won && run.mode === 'hardcore') ids.push('hardcore')
   if (run.dailyMet) ids.push('daily')
-  if (ENDINGS.filter((e) => e.won).every((e) => found.has(e.id))) ids.push('houdini')
-  if (ENDINGS.every((e) => found.has(e.id))) ids.push('everything')
+  if (run.ending === 'curtain') ids.push('curtain')
+  // The secret ending is a bonus, not needed for the full set.
+  const all = ENDINGS.filter((e) => !e.secret)
+  if (all.filter((e) => e.won).every((e) => found.has(e.id))) ids.push('houdini')
+  if (all.every((e) => found.has(e.id))) ids.push('everything')
   return ids.filter((id) => unlock(id))
 }

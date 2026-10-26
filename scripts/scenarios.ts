@@ -1721,6 +1721,82 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   check('win: reach the car outside with contact made', won && log.some((l) => l.startsWith('[end] true')), log.slice(-1)[0])
 }
 
+// ---- The secret play ----
+{
+  const { Play } = await import('../src/game/Play')
+  const home = (game: Game) => {
+    const cell = game.grid.cells.get(game.player.cell)!
+    game.player.body.x = cell.bunks[1].x
+    game.player.body.z = cell.bunks[1].z
+    game.player.zone = game.player.cell
+  }
+  // Morning of the next day: home to bed first, then let unlock come round.
+  const nextDay = (game: Game) => {
+    home(game)
+    game.clock.skipTo(6 * 60 + 25)
+    run(game, 6)
+  }
+  const atChapel = (game: Game, minute: number, secs: number) => {
+    game.clock.skipTo(minute)
+    put(game, 12, 45)
+    run(game, secs)
+  }
+  const { game, log, g } = fresh()
+  game.clock.minutes = 8 * 60 - 20
+  game.startSentence()
+  game.play = new Play(game)
+  game.clock.skipTo(11 * 60 + 35)
+  run(game, 1)
+  const play = game.play
+  check('play: the notice goes up at lunch on day one', play.announced && log.some((l) => l.includes('THE COUNT OF MONTE CRISTO')))
+  nextDay(game)
+  atChapel(game, 15 * 60, 1)
+  check('play: the Governor directs in the chapel on audition day', game.governor.at === 'chapel', game.governor.at)
+  g.talkToGovernor()
+  const audition = lastTalk?.options.find((o) => o.label.includes('Audition'))
+  audition?.run()
+  check('play: an audition gets you the part', play.stage === 'cast', play.stage)
+  for (let i = 0; i < 2; i++) {
+    nextDay(game)
+    atChapel(game, 14 * 60 + 35, 14)
+  }
+  check('play: both rehearsals attended', play.attended.every(Boolean), JSON.stringify(play.attended))
+  nextDay(game)
+  check('play: opening night', play.stage === 'opening', play.stage)
+  atChapel(game, 18 * 60 + 30, 1)
+  check('play: officers in the audience', game.guards.filter((gu) => gu.panto).length >= 4)
+  game.clock.skipTo(19 * 60 + 5)
+  put(game, 12, 45)
+  const cue = prompt(game, 'Your cue')
+  check('play: take your cue and leave in the props crate', cue && game.over && game.ending?.id === 'curtain', game.ending?.id)
+
+  const miss = fresh()
+  miss.game.clock.minutes = 8 * 60 - 20
+  miss.game.startSentence()
+  miss.game.play = new Play(miss.game)
+  miss.game.clock.skipTo(11 * 60 + 35)
+  run(miss.game, 1)
+  nextDay(miss.game)
+  atChapel(miss.game, 15 * 60, 1)
+  miss.g.talkToGovernor()
+  lastTalk?.options.find((o) => o.label.includes('Audition'))?.run()
+  nextDay(miss.game)
+  nextDay(miss.game)
+  check('play: miss a rehearsal and you are recast', miss.game.play!.stage === 'failed' && miss.log.some((l) => l.includes('recast')), miss.game.play!.stage)
+}
+
+// ---- The secret's roll ----
+{
+  const store = new Map<string, string>()
+  ;(globalThis as any).localStorage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => store.set(k, v), removeItem: (k: string) => store.delete(k) }
+  const { rollSecret } = await import('../src/game/Play')
+  check('secret: nine times in ten it does not turn up', !rollSecret(() => 0.5) && store.size === 0)
+  check('secret: one time in ten it does, and is remembered', rollSecret(() => 0.05) && !!store.get('locked-up.secrets'))
+  check('secret: and never again in this browser', !rollSecret(() => 0.01))
+  check('secret: ?secret=play still forces it, for trying it out', rollSecret(() => 0.9, true))
+  delete (globalThis as any).localStorage
+}
+
 // ---- Achievements ----
 {
   const store = new Map<string, string>()

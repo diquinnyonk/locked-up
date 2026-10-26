@@ -188,9 +188,22 @@ Seven come when a sentence ends: any escape, a clean sheet, out by day two,
 an escape on Hardcore, a daily challenge beaten, every way out, and every
 ending. Each one shows once, in gold, and the records screen lists them all.
 
+## A secret
+
+About one sentence in ten, the Governor puts on a play (`src/game/Play.ts`):
+The Count of Monte Cristo, in the chapel, with officers and residents in the
+cast. Audition on day two, turn up to two rehearsals, and on opening night,
+with six officers in the front pews, take your cue: the Abbé Faria dies in
+Act Two and is carried off in a sack to the props crate, which goes back out
+of the gate on the theatre company's van. Miss the audition, a rehearsal or
+your cue and the part goes to someone else. Once it has turned up, a browser
+never rolls it again (`locked-up.secrets` in localStorage). Its ending only
+shows on the records screen once found, and the full sets of endings and
+achievements do not need it. Add `?secret=play` to the address to try it.
+
 ## Endings and records
 
-There are nine endings: seven escapes and two defeats. Every one you reach is
+There are nine endings: seven escapes and two defeats, plus a secret one. Every one you reach is
 filed in this browser's localStorage (`src/game/Records.ts`), apart from the
 saved game, so finishing or starting again never wipes it. For each ending it
 keeps how many times you have reached it, when you first did, and three bests

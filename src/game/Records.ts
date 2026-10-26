@@ -3,9 +3,9 @@
  * localStorage apart from the saved game: finishing a sentence clears the
  * save, never the records.
  */
-export type EndingId = 'escape' | 'tunnel' | 'jag' | 'staffDoor' | 'guardDisguise' | 'visitorDisguise' | 'laundry' | 'solitary' | 'gang'
+export type EndingId = 'curtain' | 'escape' | 'tunnel' | 'jag' | 'staffDoor' | 'guardDisguise' | 'visitorDisguise' | 'laundry' | 'solitary' | 'gang'
 
-export const ENDINGS: { id: EndingId; title: string; won: boolean; hint: string }[] = [
+export const ENDINGS: { id: EndingId; title: string; won: boolean; hint: string; secret?: boolean }[] = [
   { id: 'escape', title: 'Free', won: true, hint: 'Somebody waiting on the road, and a way over or through the wall.' },
   { id: 'tunnel', title: 'Like a mole', won: true, hint: 'Some escapes take weeks. Is that tile by your bunk loose?' },
   { id: 'jag', title: "The Governor's Jag", won: true, hint: 'The Governor keeps more than paperwork in his office.' },
@@ -13,6 +13,7 @@ export const ENDINGS: { id: EndingId; title: string; won: boolean; hint: string 
   { id: 'guardDisguise', title: 'Clocked off', won: true, hint: 'Staff go home at shift change. Do you look like staff?' },
   { id: 'visitorDisguise', title: 'Gone with the visitors', won: true, hint: "The Reverend's panto box, and an afternoon with the visitors." },
   { id: 'laundry', title: 'Spin cycle', won: true, hint: 'Everything in the laundry leaves on a van, past an X-ray man with a sweet tooth.' },
+  { id: 'curtain', title: 'Curtain call', won: true, hint: 'Only some sentences have it.', secret: true },
   { id: 'solitary', title: 'Segregation. Indefinitely.', won: false, hint: 'Use up every attempt.' },
   { id: 'gang', title: 'A firm got you', won: false, hint: 'Make a firm hate you, then run out of road.' },
 ]
@@ -91,7 +92,7 @@ export function noteStarted(): void {
 }
 
 /** A sentence over: file it, and say whether this ending is a new find. */
-export function recordEnding(id: EndingId, run: Run): { isNew: boolean; found: number; best: boolean } {
+export function recordEnding(id: EndingId, run: Run): { isNew: boolean; found: number; best: boolean; secret: boolean } {
   const r = readRecords()
   const def = ENDINGS.find((e) => e.id === id)!
   r.finished++
@@ -110,7 +111,7 @@ export function recordEnding(id: EndingId, run: Run): { isNew: boolean; found: n
     if (run.day < had.earliest.day) (had.earliest = run), (best = true)
   }
   writeRecords(r)
-  return { isNew: !had, found: Object.keys(r.endings).length, best }
+  return { isNew: !had, found: ENDINGS.filter((e) => !e.secret && r.endings[e.id]).length, best, secret: !!def.secret }
 }
 
 /** A daily challenge run over: keep the best of the day's tries. */
