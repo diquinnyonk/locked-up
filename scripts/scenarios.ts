@@ -1371,6 +1371,49 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   check('feuds: or stir it up, and it goes off at the next exercise', f.brawlAt > 0 && f.truceUntil < 0)
 }
 
+// ---- Weather and Christmas ----
+{
+  const { game } = fresh()
+  const seen = new Set<string>()
+  for (let d = 0; d < 30; d++) {
+    game.clock.minutes += 1440
+    game.events.newDay()
+    seen.add(game.weather)
+  }
+  check('weather: clear, rain and fog come and go', seen.has('clear') && seen.has('rain') && seen.has('fog') && !seen.has('snow'), [...seen].join(' '))
+  const yardGuard = game.guards[0]
+  game.events.weather = 'clear'
+  const yt = tileCentre(40, 45)
+  yardGuard.body.x = yt.x
+  yardGuard.body.z = yt.z
+  const clear = yardGuard.visionRange()
+  game.events.weather = 'fog'
+  check('weather: fog outside halves what an officer can see', yardGuard.visionRange() < clear * 0.6)
+}
+{
+  const { game } = fresh()
+  game.season = 'christmas'
+  const seen = new Set<string>()
+  let panto = false
+  for (let d = 0; d < 21; d++) {
+    game.clock.minutes += 1440
+    game.events.newDay()
+    seen.add(game.weather)
+    if (game.clock.weekday === 5) panto = panto || game.events.today === 'panto'
+  }
+  check('christmas: snow instead of rain', seen.has('snow') && !seen.has('rain'), [...seen].join(' '))
+  check('christmas: the panto is on on Saturdays', panto)
+  // A Saturday: off to the panto.
+  while (game.clock.weekday !== 5) game.clock.minutes += 1440
+  game.clock.skipTo(6 * 60 + 25)
+  run(game, 0.2)
+  game.clock.skipTo(18 * 60 + 5)
+  game.events.today = 'panto'
+  game.events.fired = false
+  const there = run(game, 90, () => game.guards.filter((g) => g.panto && g.zone === 'chapel').length >= 4)
+  check('christmas: six officers go and watch it in the chapel', game.guards.filter((g) => g.panto).length === 6 && there, game.guards.filter((g) => g.panto).map((g) => g.zone).join(','))
+}
+
 // ---- Saving and carrying on ----
 {
   const { game: a } = fresh()

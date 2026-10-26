@@ -20,6 +20,7 @@ export interface Scene {
   chase: boolean
   /** Before the sentence starts: the title and the story. */
   title: boolean
+  weather?: string
 }
 
 export interface Volumes {
@@ -49,7 +50,7 @@ export function writeVolumes(v: Volumes): void {
   }
 }
 
-type Bed = 'hum' | 'murmur' | 'wind' | 'vent'
+type Bed = 'hum' | 'murmur' | 'wind' | 'vent' | 'rain'
 type Mood = 'day' | 'night' | 'tense' | 'silent'
 
 /** D minor, mostly: chords as semitones above D3. */
@@ -110,6 +111,7 @@ export class Soundscape {
     this.makeBed('murmur', this.noise, 'bandpass', 650, 0.8, 0.3, 2.7)
     this.makeBed('wind', this.noise, 'bandpass', 380, 0.6, 0.32, 0.09)
     this.makeBed('vent', this.brown, 'bandpass', 520, 4, 0.9)
+    this.makeBed('rain', this.noise, 'highpass', 2400, 0.5, 0.22, 0.3)
     // Mains hum under the building bed.
     const mains = ctx.createOscillator()
     mains.frequency.value = 50
@@ -169,6 +171,8 @@ export class Soundscape {
       murmur: busy && !scene.vent ? 1 : 0,
       wind: outdoors || scene.title ? (scene.night ? 0.7 : 1) : 0,
       vent: scene.vent ? 1 : 0,
+      // On the roof indoors, on everything outside.
+      rain: scene.weather === 'rain' && !scene.title ? (outdoors ? 1 : scene.vent ? 0.6 : 0.3) : 0,
     }
     for (const [name, g] of this.beds) g.gain.setTargetAtTime(level[name], t, 0.8)
 

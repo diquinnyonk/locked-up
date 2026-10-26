@@ -5,9 +5,13 @@ import {
   ConeGeometry,
   DoubleSide,
   Group,
+  LineBasicMaterial,
+  LineSegments,
   Mesh,
   MeshBasicMaterial,
   Object3D,
+  Points,
+  PointsMaterial,
 } from 'three'
 import { HEX, color } from '../art/palette'
 import { mergePainted } from '../art/paint'
@@ -296,6 +300,89 @@ export class Dynamic {
   }
 
   private tunnelHole: Mesh | null = null
+
+  // ---- Weather: rain or snow, over open ground only (there are no roofs
+  //      to keep it off the rooms) ----
+  private rain: LineSegments | null = null
+  private snow: Points | null = null
+  private readonly drops = new Float32Array(900 * 3)
+
+  /** Moves the rain or snow along, around (x, z), only where `open` says outdoors. */
+  updateWeather(kind: 'clear' | 'rain' | 'fog' | 'snow', x: number, z: number, delta: number, open: (x: number, z: number) => boolean): void {
+    const n = 900
+    if (!this.rain) {
+      const g = new BufferGeometry()
+      g.setAttribute('position', new BufferAttribute(new Float32Array(n * 6), 3))
+      this.rain = new LineSegments(g, new LineBasicMaterial({ color: 0xbcd4e6, transparent: true, opacity: 0.55 }))
+      this.rain.frustumCulled = false
+      const s = new BufferGeometry()
+      s.setAttribute('position', new BufferAttribute(new Float32Array(n * 3), 3))
+      this.snow = new Points(s, new PointsMaterial({ color: 0xffffff, size: 0.16, transparent: true, opacity: 0.9 }))
+      this.snow.frustumCulled = false
+      this.group.add(this.rain, this.snow)
+      for (let i = 0; i < n; i++) this.drops[i * 3 + 1] = -100
+    }
+    this.rain.visible = kind === 'rain'
+    this.snow!.visible = kind === 'snow'
+    if (kind !== 'rain' && kind !== 'snow') return
+    const fall = kind === 'rain' ? 22 : 1.6
+    const R = 26
+    const d = this.drops
+    for (let i = 0; i < n; i++) {
+      d[i * 3 + 1] -= fall * delta
+      if (kind === 'snow') d[i * 3] += Math.sin(this.time * 1.3 + i) * delta * 0.4
+      const far = Math.abs(d[i * 3] - x) > R || Math.abs(d[i * 3 + 2] - z) > R
+      if (d[i * 3 + 1] < 0 || far) {
+        // Somewhere new above open ground, or nowhere this frame.
+        const nx = x + (Math.random() * 2 - 1) * R
+        const nz = z + (Math.random() * 2 - 1) * R
+        d[i * 3] = nx
+        d[i * 3 + 2] = nz
+        d[i * 3 + 1] = open(nx, nz) ? (far ? Math.random() * 12 : 12) : -100
+      }
+    }
+    if (kind === 'rain') {
+      const pos = this.rain.geometry.getAttribute('position') as BufferAttribute
+      const a = pos.array as Float32Array
+      for (let i = 0; i < n; i++) {
+        a[i * 6] = a[i * 6 + 3] = d[i * 3]
+        a[i * 6 + 1] = d[i * 3 + 1]
+        a[i * 6 + 4] = d[i * 3 + 1] + 0.7
+        a[i * 6 + 2] = a[i * 6 + 5] = d[i * 3 + 2] + 0.15
+      }
+      pos.needsUpdate = true
+    } else {
+      const pos = this.snow!.geometry.getAttribute('position') as BufferAttribute
+      ;(pos.array as Float32Array).set(d)
+      pos.needsUpdate = true
+    }
+  }
+
+  // ---- Christmas: a tree in the canteen and paper chains ----
+  private christmas: Mesh | null = null
+
+  setChristmas(on: boolean): void {
+    if (on && !this.christmas) {
+      const tx = (44.6 + 0.5) * TILE
+      const tz = (17.4 + 0.5) * TILE
+      const parts = [cyl(0.12, 0.12, 0.5, { x: tx, y: 0, z: tz }, HEX.wood, 8)]
+      for (let k = 0; k < 4; k++) parts.push(cyl(0.05, 0.95 - k * 0.2, 0.75, { x: tx, y: 0.45 + k * 0.5, z: tz }, HEX.bookGreen, 10))
+      const baubles = [HEX.clothesRed, HEX.stainedGold, HEX.bookBlue, HEX.paper]
+      for (let k = 0; k < 14; k++) {
+        const a = k * 2.4
+        const h = 0.6 + (k % 7) * 0.28
+        const r = 0.85 - (h - 0.5) * 0.36
+        parts.push(ball(0.07, { x: tx + Math.sin(a) * r, y: h, z: tz + Math.cos(a) * r }, baubles[k % baubles.length]))
+      }
+      parts.push(ball(0.14, { x: tx, y: 2.55, z: tz }, HEX.stainedGold))
+      // Paper chains across the canteen, red and green.
+      for (let k = 0; k < 24; k++) parts.push(box(0.5, 0.06, 0.06, { x: (34.5 + k * 0.5) * TILE, y: 2.7 - Math.sin((k / 23) * Math.PI) * 0.35, z: 23.5 * TILE }, k % 2 ? HEX.clothesRed : HEX.bookGreen))
+      this.christmas = new Mesh(mergePainted(parts), toon(0xffffff, { tinted: true, emissive: 0.15 }))
+      this.christmas.layers.enable(SOLID_LAYER)
+      this.group.add(this.christmas)
+    }
+    if (this.christmas) this.christmas.visible = on
+  }
 
   /** The hole under the loose tile by your bunk, open while you dig. */
   setTunnelHole(x: number, z: number, visible: boolean): void {

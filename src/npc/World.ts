@@ -1,4 +1,4 @@
-import type { DayEvent } from '../game/Events'
+import type { DayEvent, Weather } from '../game/Events'
 import type { Mode } from './Memory'
 import type { Clock } from '../game/Clock'
 import type { Inventory } from '../game/Items'
@@ -90,6 +90,7 @@ export interface World {
   lure: Lure | null
   /** What kind of day it is (see game/Events.ts). */
   readonly todayEvent: DayEvent
+  readonly weather: Weather
   alarm: { active: boolean; timer: number; x: number; z: number }
   /** Cells the night officer still has to try. */
   lockChecks: Door[]

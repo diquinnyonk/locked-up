@@ -12,7 +12,7 @@ import { CONE_FRONT_RAYS, CONE_RAYS, Dynamic, type LooseItem } from '../world/Dy
 import { BLOCKS, type BlockId, type Door, EAST_WALL, type Grate, Grid, PLAYER_CELL, TILE, Tile, blockOfZone, tileCentre, worldToTile } from '../world/Grid'
 import { findPath, moveCircle } from '../world/Nav'
 import { Clock, RESTRICTED, allowedZones } from './Clock'
-import { type DayEvent, Events, isVisitingDay } from './Events'
+import { type DayEvent, Events, type Weather, isVisitingDay, weatherSteps } from './Events'
 import type { EndingId } from './Records'
 import { type GoalId, Goals } from './Goals'
 import { Feuds } from './Feuds'
@@ -742,6 +742,11 @@ export class Game implements World {
       flagAt: this.fixtures.flagpole,
     })
     const pb = this.player.body
+    this.dynamic.setChristmas(this.season === 'christmas')
+    this.dynamic.updateWeather(this.weather, pb.x, pb.z, delta, (x, z) => {
+      const zone = this.grid.zone(Math.floor(x / TILE), Math.floor(z / TILE))
+      return zone === 'yard' || zone === 'outside'
+    })
     this.dynamic.marker.position.set(pb.x, pb.y + (this.player.inVent ? 3.6 : 2.9) + Math.sin(performance.now() / 300) * 0.08, pb.z)
     this.dynamic.marker.visible = true
     const beacons: { x: number; z: number; hex: number }[] = this.keith.body.visible ? [{ x: this.keith.body.x, z: this.keith.body.z, hex: HEX.stainedBlue }] : []
@@ -997,7 +1002,7 @@ export class Game implements World {
     else if (this.seated) b.pose = 'sit'
     else if (this.fightingFor > 0) b.pose = 'fight'
     else if (b.pose !== 'phone' || moving) b.pose = 'walk'
-    if (p.running && moving && !p.inVent) this.emit({ x: b.x, z: b.z, radius: 5, kind: 'clank' })
+    if (p.running && moving && !p.inVent) this.emit({ x: b.x, z: b.z, radius: 5 * (p.zone === 'yard' || p.zone === 'outside' ? weatherSteps(this.weather) : 1), kind: 'clank' })
 
     const zone = this.grid.zoneAtWorld(b.x, b.z)
     const wasIn = p.zone === p.cell
@@ -2778,6 +2783,13 @@ export class Game implements World {
   get todayEvent(): DayEvent {
     return this.events.today
   }
+
+  get weather(): Weather {
+    return this.events.weather
+  }
+
+  /** December: snow, a tree in the canteen, the panto on Saturdays. Set by the page. */
+  season: 'none' | 'christmas' = 'none'
 
   private toggleDisguise(kind: 'guard' | 'visitor'): void {
     const p = this.player

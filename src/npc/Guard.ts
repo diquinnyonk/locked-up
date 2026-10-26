@@ -2,7 +2,7 @@ import { HEX } from '../art/palette'
 import { type Body, makeBody } from '../render/Crowd'
 import { type BlockId, type Door, TILE, blockOfZone, tileCentre, worldToTile } from '../world/Grid'
 import { OFFICER_NAMES, OFFICER_TRAITS, type Trait, voiceSlug } from './names'
-import { RECEPTION } from '../game/Events'
+import { PANTO, RECEPTION, weatherSight } from '../game/Events'
 import { ITEMS } from '../game/Items'
 import { Agent } from './Agent'
 import { type Node, type Status, bt, traced } from './BehaviourTree'
@@ -61,6 +61,8 @@ export class Guard extends Agent {
   busy = false
   /** New intake: stuck in reception in the loading bay until lunch. */
   reception = false
+  /** Panto night: in the chapel's front row. */
+  panto = false
   /** Their way about them (see names.ts). */
   readonly trait: Trait
   /** Chatty: seconds left in a chat, and till the next one. */
@@ -217,7 +219,7 @@ export class Guard extends Agent {
   visionRange(): number {
     const night = this.world.clock.darkness
     const base = 15 - night * 7
-    return base * this.world.memory.visionScale * (this.busy ? 0.6 : 1) * (this.world.todayEvent === 'inspection' ? 1.15 : 1) * (this.world.mode === 'story' ? 0.85 : 1) * (this.trait === 'sharp' ? 1.25 : 1) * (this.dozing ? 0.5 : 1)
+    return base * this.world.memory.visionScale * (this.busy ? 0.6 : 1) * (this.world.todayEvent === 'inspection' ? 1.15 : 1) * (this.world.mode === 'story' ? 0.85 : 1) * (this.trait === 'sharp' ? 1.25 : 1) * (this.dozing ? 0.5 : 1) * (this.zone === 'yard' || this.zone === 'outside' ? weatherSight(this.world.weather) : 1)
   }
 
   canSeePlayer(): boolean {
@@ -421,9 +423,10 @@ function buildGuardTree(world: World): Node<Guard> {
 
   const reception = bt.sequence<Guard>(
     'reception',
-    bt.when('new intake', (g) => g.reception && !world.clock.locked),
-    traced('book in the new arrivals', (g) => {
-      const spot = { x: RECEPTION.x + (g.block.charCodeAt(0) % 2) * 1.6, z: RECEPTION.z }
+    bt.when('new intake or panto', (g) => (g.reception || g.panto) && !world.clock.locked),
+    traced('book in the new arrivals, or watch the panto', (g) => {
+      const base = g.panto ? PANTO : RECEPTION
+      const spot = { x: base.x + (g.block.charCodeAt(0) % 2) * 1.6 + (g.panto ? (g.duty.length % 3) * 1.4 : 0), z: base.z + (g.panto ? (g.duty.charCodeAt(0) % 2) * 1.2 : 0) }
       const s = g.goToWorld(spot.x, spot.z, WALK, 0.6)
       g.body.pose = s === 'running' ? 'walk' : 'stand'
       if (s !== 'running') g.lookYaw = Math.PI

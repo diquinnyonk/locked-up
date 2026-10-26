@@ -17,7 +17,25 @@ import type { Game } from './Game'
  *
  * Day one is always quiet; the same kind of day never comes twice running.
  */
-export type DayEvent = 'quiet' | 'shakedown' | 'lockdown' | 'inspection' | 'intake' | 'greggs' | 'fireDrill' | 'family'
+export type DayEvent = 'quiet' | 'shakedown' | 'lockdown' | 'inspection' | 'intake' | 'greggs' | 'fireDrill' | 'family' | 'panto'
+
+/** The day's weather. Snow only in December. */
+export type Weather = 'clear' | 'rain' | 'fog' | 'snow'
+
+export const WEATHER_INFO: Record<Weather, string> = {
+  clear: '',
+  rain: 'Rain all day: it covers your footsteps outside, and officers in the yard see less.',
+  fog: 'Thick fog on the moor: outside, officers can barely see half as far.',
+  snow: 'Snow: footsteps are muffled outside, and the yard is white.',
+}
+
+/** How far an officer outdoors sees, and how far your steps carry outdoors, in this weather. */
+export function weatherSight(w: Weather): number {
+  return w === 'fog' ? 0.55 : w === 'rain' ? 0.8 : w === 'snow' ? 0.9 : 1
+}
+export function weatherSteps(w: Weather): number {
+  return w === 'rain' ? 0.5 : w === 'snow' ? 0.7 : 1
+}
 
 export const EVENT_INFO: Record<DayEvent, { title: string; blurb: string }> = {
   quiet: { title: 'A quiet day', blurb: 'Nothing out of the ordinary. Yet.' },
@@ -28,6 +46,7 @@ export const EVENT_INFO: Record<DayEvent, { title: string; blurb: string }> = {
   greggs: { title: 'Greggs delivery', blurb: 'A Greggs van is coming to the canteen at lunch. Get there early.' },
   fireDrill: { title: 'Fire drill', blurb: 'The fire alarm is being tested today. When it goes, everyone is herded into the yard for half an hour, and nobody is quite sure who is where.' },
   family: { title: 'Your nan is visiting', blurb: 'Your nan is coming at visiting time (14:30 to 15:45). Sit with her in the visiting hall.' },
+  panto: { title: 'Panto night', blurb: "The Christmas panto is on in the chapel from 18:00 to 20:00. Six officers have tickets, so the landings will be thin." },
 }
 
 /** Visitors come on Tuesdays, Thursdays and at the weekend. */
@@ -39,6 +58,7 @@ export function isVisitingDay(weekday: number): boolean {
 
 export class Events {
   today: DayEvent = 'quiet'
+  weather: Weather = 'clear'
   /** Minute of the day the timed part happens, where there is one. */
   at = -1
   /** The timed part has happened. */
@@ -58,9 +78,20 @@ export class Events {
     this.fired = false
     this.nanSeen = false
     this.lockedUntil = -1
-    for (const gu of g.guards) gu.reception = false
+    for (const gu of g.guards) gu.reception = gu.panto = false
+    // The weather first: clear most days, and snow instead of rain at Christmas.
+    const wr = g.rng()
+    this.weather = day <= 1 ? 'clear' : wr < 0.55 ? 'clear' : wr < 0.8 ? (g.season === 'christmas' ? 'snow' : 'rain') : 'fog'
+    if (this.weather !== 'clear') g.toast(WEATHER_INFO[this.weather], 'neutral')
     if (day <= 1) {
       this.today = 'quiet'
+      return
+    }
+    // Saturdays in December: the panto.
+    if (g.season === 'christmas' && g.clock.weekday === 5) {
+      this.today = 'panto'
+      this.at = -1
+      g.toast(`${EVENT_INFO.panto.title}. ${EVENT_INFO.panto.blurb}`, 'good')
       return
     }
     const options: [DayEvent, number][] = [
@@ -93,6 +124,16 @@ export class Events {
     const m = g.clock.minuteOfDay
     if (g.clock.locked && !g.clock.override) return
     if (this.today === 'intake' && m >= 11 * 60 + 30) for (const gu of g.guards) gu.reception = false
+    // Panto night: six officers in the chapel from six till eight.
+    if (this.today === 'panto') {
+      const on = m >= 18 * 60 && m < 20 * 60
+      const watching = g.guards.filter((gu) => gu.duty !== 'landing' || gu.block !== g.player.block).slice(0, 6)
+      for (const gu of g.guards) gu.panto = on && watching.includes(gu)
+      if (on && !this.fired) {
+        this.fired = true
+        g.toast("Oh no it isn't! The panto has started in the chapel, and six officers are in the front row.", 'good')
+      }
+    }
     if (this.today === 'greggs' && !this.fired && m >= 11 * 60 + 30 && m < 12 * 60 + 30) {
       this.fired = true
       const s = SERVERY
@@ -179,12 +220,13 @@ export class Events {
   }
 
   toSave() {
-    return { today: this.today, at: this.at, fired: this.fired, lockedUntil: this.lockedUntil, nanSeen: this.nanSeen, reception: this.game.guards.flatMap((gu, i) => (gu.reception ? [i] : [])) }
+    return { today: this.today, weather: this.weather, at: this.at, fired: this.fired, lockedUntil: this.lockedUntil, nanSeen: this.nanSeen, reception: this.game.guards.flatMap((gu, i) => (gu.reception ? [i] : [])) }
   }
 
   fromSave(s: Partial<ReturnType<Events['toSave']>> | undefined): void {
     if (!s) return
     this.today = s.today ?? 'quiet'
+    this.weather = s.weather ?? 'clear'
     this.at = s.at ?? -1
     this.fired = s.fired ?? false
     this.lockedUntil = s.lockedUntil ?? -1
@@ -199,6 +241,9 @@ function nearest(guards: Guard[], x: number, z: number): Guard | undefined {
 
 /** In front of the canteen counter, where the Greggs delivery goes. */
 const SERVERY = { x: 40 * TILE, z: 29 * TILE }
+
+/** Where the officers watching the panto sit, in the chapel. */
+export const PANTO = { x: 15.5 * TILE, z: 44.5 * TILE }
 
 /** Where the officers stuck on reception stand, in the loading bay. */
 export const RECEPTION = { x: 61.5 * TILE, z: 55.5 * TILE }

@@ -39,6 +39,9 @@ const voice = new Voice()
 const saved = readSave()
 Game.seedForNext = saved?.seed ?? null
 const game = new Game(engine.scene, ui, 'Prisoner')
+// December, or ?season=christmas: snow, a tree, the panto.
+game.season = new Date().getMonth() === 11 || new URLSearchParams(location.search).get('season') === 'christmas' ? 'christmas' : 'none'
+const fogEl = document.getElementById('fog') as HTMLElement
 // Rigged, animated characters in place of the jointed figures. If anything
 // about them fails to build, the jointed crowd simply stays.
 try {
@@ -248,7 +251,11 @@ engine.onUpdate((delta) => {
   engine.renderer.setClearColor(clear)
   const hunted = game.alarm.active || game.guards.some((g) => g.chasing)
   sfx.setAlarm(hunted && started && !game.over)
+  // Fog: thick outside, a haze through the windows inside.
+  const outside = game.player.zone === 'yard' || game.player.zone === 'outside'
+  fogEl.style.opacity = started && game.weather === 'fog' && !game.player.inVent ? (outside ? '0.85' : '0.25') : '0'
   sfx.scene({
+    weather: game.weather,
     zone: game.player.zone,
     night: game.clock.darkness > 0.6 || game.clock.period === 'lightsOut',
     vent: game.player.inVent,

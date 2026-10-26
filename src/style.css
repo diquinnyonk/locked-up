@@ -1680,3 +1680,15 @@ body.panel-open #prompts {
 #panel .staff b { font: 800 1rem var(--display); text-transform: uppercase; }
 #panel .staff small { color: var(--quiet); }
 #panel .staff span { font-size: 0.92rem; line-height: 1.4; }
+
+/* Fog on the moor: a soft grey veil, thickest at the edges */
+#fog {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, rgb(214 222 226 / 20%) 0%, rgb(214 222 226 / 75%) 55%, rgb(214 222 226 / 95%) 100%);
+  opacity: 0;
+  transition: opacity 1.2s ease;
+  /* Above the world, below everything you read. */
+  z-index: 0;
+}
