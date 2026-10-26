@@ -112,6 +112,8 @@ article.line {
   border-left: 5px solid var(--rule);
 }
 article.line[data-done="true"] { border-left-color: var(--good); }
+.line .meta { margin: 0.35rem 0 0; font-size: 0.82rem; color: var(--quiet); }
+.line .meta b { color: var(--ink); font-weight: 600; }
 .line .key { font: 0.78rem/1.2 var(--mono); color: var(--quiet); overflow-wrap: anywhere; display: flex; justify-content: space-between; gap: 0.6rem; }
 .line .state { font: 800 0.8rem/1.2 var(--display); text-transform: uppercase; letter-spacing: 0.04em; color: var(--quiet); white-space: nowrap; }
 .line[data-done="true"] .state { color: var(--good); }

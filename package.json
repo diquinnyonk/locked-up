@@ -11,7 +11,8 @@
     "test": "tsx scripts/scenarios.ts",
     "sim": "tsx scripts/sim.ts",
     "dialogue": "tsx scripts/dialogue.ts",
-    "pages": "node scripts/pages.mjs"
+    "pages": "node scripts/pages.mjs",
+    "heard": "tsx scripts/heard.ts"
   },
   "dependencies": {
     "three": "^0.185.1"

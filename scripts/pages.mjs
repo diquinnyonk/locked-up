@@ -11,8 +11,11 @@ import { cpSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 
 execSync('npx tsx scripts/dialogue.ts', { stdio: 'inherit' })
 execSync('npx vite build --base ./ --outDir pages --emptyOutDir', { stdio: 'inherit' })
-const lines = readFileSync('dialogue/script.json', 'utf8')
-const page = readFileSync('recorder/recorder.src.html', 'utf8').replace('__LINES__', JSON.stringify(JSON.parse(lines)).replace(/<\//g, '<\\/'))
+// Each line with how often players hear it (npm run heard), for the
+// studio's "most heard first" order.
+const heard = JSON.parse(readFileSync('dialogue/heard.json', 'utf8'))
+const lines = JSON.parse(readFileSync('dialogue/script.json', 'utf8')).map((l) => (heard[l.key] ? { ...l, heard: heard[l.key] } : l))
+const page = readFileSync('recorder/recorder.src.html', 'utf8').replace('__LINES__', JSON.stringify(lines).replace(/<\//g, '<\\/'))
   // A new name for the script whenever it changes, so phones never keep an old copy.
   .replace('src="recorder.js"', `src="recorder.js?v=${createHash('sha1').update(readFileSync('recorder/recorder.js')).digest('hex').slice(0, 8)}"`)
 writeFileSync('pages/recorder.html', page)

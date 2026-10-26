@@ -14,6 +14,11 @@
   let filter = 'All' // one character, or All
   let group = 'All' // Officers, Prisoners, Bosses, Named characters, or All
   let todoOnly = false
+  /** 'who': grouped by character. 'heard': the lines players hear most, first. */
+  let order = 'who'
+  try {
+    order = localStorage.getItem('grim-voice-studio.order') || 'who'
+  } catch {}
   /** Lines recorded since the page opened stay on screen under "Still to
    *  record", so a take never vanishes before you have heard it. */
   const fresh = new Set()
@@ -93,7 +98,14 @@
       const n = new Set(LINES.filter((l) => g === 'All' || groupOf(l) === g).map((l) => l.speaker)).size
       top.append(chip(g === 'All' ? 'Everyone' : `${g} (${n})`, group === g, () => { group = g; filter = 'All'; render() }))
     }
-    top.append(chip('Still to record', todoOnly, () => { todoOnly = !todoOnly; fresh.clear(); render() }, 'todo'))
+    top.append(chip('Most heard first', order === 'heard', () => {
+      order = order === 'heard' ? 'who' : 'heard'
+      try {
+        localStorage.setItem('grim-voice-studio.order', order)
+      } catch {}
+      render()
+    }, 'todo'))
+    top.append(chip('Still to record', todoOnly, () => { todoOnly = !todoOnly; fresh.clear(); render() }))
     el.append(top)
     if (group === 'All') return
     // ...then one of them, to do a whole voice in one sitting.
@@ -131,12 +143,23 @@
       main.innerHTML = '<p class="empty">Nothing left to record here.</p>'
       return
     }
+    main.innerHTML = ''
+    if (order === 'heard') {
+      // One list, the lines a player hears most at the top; lines nobody
+      // heard in the test games keep their usual order underneath.
+      const ranked = shown.map((l, i) => [l, i]).sort((a, b) => (b[0].heard || 0) - (a[0].heard || 0) || a[1] - b[1]).map(([l]) => l)
+      const sec = document.createElement('section')
+      sec.className = 'who'
+      sec.innerHTML = `<h2>Most heard first</h2><p class="role">From a few days of test games: how often a player hears each line. Record from the top and the game starts to sound like itself soonest.</p>`
+      for (const l of ranked) sec.append(card(l, true))
+      main.append(sec)
+      return
+    }
     const groups = new Map()
     for (const l of shown) {
       if (!groups.has(l.speaker)) groups.set(l.speaker, [])
       groups.get(l.speaker).push(l)
     }
-    main.innerHTML = ''
     for (const [speaker, lines] of groups) {
       const sec = document.createElement('section')
       sec.className = 'who'
@@ -148,7 +171,7 @@
     }
   }
 
-  function card(l) {
+  function card(l, withSpeaker) {
     const id = docId(l.key)
     const take = takes.get(l.key)
     const live = recording?.key === l.key
@@ -158,6 +181,7 @@
     a.dataset.done = take ? 'true' : 'false'
     a.innerHTML = `
       <div class="key"><span>${esc(l.key)}</span><span class="state">${live ? 'Recording' : take ? `Recorded, ${take.seconds.toFixed(1)}s` : 'Not yet'}</span></div>
+      <p class="meta">${withSpeaker ? `<b>${esc(short(l.speaker))}</b> · ` : ''}${l.heard ? `heard about ${l.heard} time${l.heard === 1 ? '' : 's'} a day` : 'rarely heard, or only on a job'}</p>
       <blockquote>${lineHtml(l.line)}</blockquote>
       ${take && !live ? `<audio controls preload="none" src="${url(l.key)}"></audio>` : ''}
       <div class="actions">
