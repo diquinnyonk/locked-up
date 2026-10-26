@@ -31,6 +31,26 @@ rolls and a festive bake), which in Grim-on-the-Moor, under the Pastry Protectio
 of 1987, is worse than murder. Everyone inside knows your name. Prisoners and
 officers call you the Greggs Bandit.
 
+## The Governor's safe
+
+The Governor's office, off the officers' mess, has a heavy old safe with a
+four-digit dial. It is out of bounds, so get in through the vents or the mess.
+
+- **The combination:** the first two digits are his mother's birthday, circled
+  in the desk diary on his desk. The last two are the number on his Jag's
+  private plate: ask Keith about the Governor. The Notebook keeps what you know.
+- **Or crack it by ear** with the stethoscope from healthcare: thirty seconds
+  of standing still at the dial, and every few seconds a click that carries.
+- **Inside:** the Governor's master key (opens every door, the outer gates
+  included, never wears out and is never missed), the keys to his Jag, six
+  Greggs vouchers of petty cash, and your file. You shred the file, and the
+  prison forgets the last thing it learned about you.
+- **The Jag** is parked in the staff car park just outside the staff door in
+  the changing room. Let yourself out with the master key and drive away: a
+  new ending, "The Governor's Jag", no car signal needed.
+- **Caught in the office**, the Governor changes the combination, and from
+  then on an officer looks into his office every hour.
+
 ## Every day is different
 
 Day one is a Monday, and the HUD shows the weekday. Each morning at unlock

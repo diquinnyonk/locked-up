@@ -300,6 +300,13 @@ export class Ui implements UiPort {
           ${tick(inv.has('grapple'), 'Grappling hook', 'Two sheets, a fork and gaffer tape. Throw it from the south edge of the yard.')}
           ${tick(!!inv.withUse('openDoor'), 'A key for the gates', 'The loading bay gate opens onto the road.')}
         </ul>
+        <h4>The Governor's safe</h4>
+        <ul class="checks">
+          ${tick(g.heist.knowA, 'First half of the combination', g.heist.knowA ? `${g.safeCode.slice(0, 2)}: his mother's birthday, circled in the desk diary.` : "Something on the Governor's desk, in his office off the officers' mess.")}
+          ${tick(g.heist.knowB, 'Second half', g.heist.knowB ? `${g.safeCode.slice(2)}: the private plate on his Jag, from ${escape(g.keith.name)}.` : "Who sees the Governor's car every day?")}
+          ${tick(inv.has('stethoscope'), 'Or a stethoscope', 'Healthcare keeps one. Crack the safe by ear instead: thirty seconds of clicks.')}
+          ${tick(g.heist.opened, 'Safe opened', g.heist.opened ? 'The master key opens every door. The Jag is parked just outside the staff door in the changing room.' : 'A master key, the keys to his Jag, petty cash, and your file to shred.')}
+        </ul>
         <h4>Or one of the silly ways</h4>
         <ul class="checks">
           ${tick(inv.has('guardUniform'), "An officer's uniform", 'Clock off with the day shift at 20:45 in the staff changing room, off the loading bay. For your first two days every officer knows your face, so a disguise does not last. With an officer\'s keys as well, the staff door lets you out any time.')}

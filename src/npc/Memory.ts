@@ -14,7 +14,7 @@
  */
 import { GANGS, GANG_IDS, type GangId, type GangState } from './Gangs'
 
-export type Method = 'key' | 'toothpaste' | 'sick' | 'riot' | 'vent' | 'wall' | 'gate' | 'guardDisguise' | 'visitorDisguise' | 'laundry' | 'lure'
+export type Method = 'key' | 'toothpaste' | 'sick' | 'riot' | 'vent' | 'wall' | 'gate' | 'guardDisguise' | 'visitorDisguise' | 'laundry' | 'lure' | 'safe'
 
 export const METHOD_NAMES: Record<Method, string> = {
   key: 'Stolen or forged key',
@@ -28,6 +28,7 @@ export const METHOD_NAMES: Record<Method, string> = {
   visitorDisguise: 'Dressed as a visitor',
   laundry: 'In the laundry van',
   lure: 'An officer lured into your cell',
+  safe: "The Governor's safe",
 }
 
 export const ATTEMPTS_PER_ROUND = 4
@@ -41,7 +42,7 @@ export interface Lesson {
 export class PrisonMemory {
   round = 1
   attemptsUsed = 0
-  readonly used: Record<Method, number> = { key: 0, toothpaste: 0, sick: 0, riot: 0, vent: 0, wall: 0, gate: 0, guardDisguise: 0, visitorDisguise: 0, laundry: 0, lure: 0 }
+  readonly used: Record<Method, number> = { key: 0, toothpaste: 0, sick: 0, riot: 0, vent: 0, wall: 0, gate: 0, guardDisguise: 0, visitorDisguise: 0, laundry: 0, lure: 0, safe: 0 }
   readonly hotspots: { x: number; z: number; weight: number }[] = []
   /** Calls flagged by the wiretap; each makes the next listener stricter. */
   phoneFlags = 0
@@ -228,6 +229,8 @@ function lessonFor(method: Method, times: number): string {
       return times === 1 ? 'Officers now count heads at shift change. And moustaches.' : 'Staff must show a warrant card at the gate. Mr Crumpet has lost his twice already.'
     case 'visitorDisguise':
       return times === 1 ? 'Visitors are counted in and out, and stubble earns a second look.' : 'Every visitor is now asked their own birthday on the way out. Most get it right.'
+    case 'safe':
+      return times === 1 ? 'The Governor has changed the combination, and an officer looks into his office on every round.' : 'The Governor changes the combination every week and keeps it in his head. And the officers check his office hourly.'
     case 'lure':
       return times === 1 ? 'Officers will not eat anything a prisoner hands them, and they keep their backs to the wall in a cell.' : 'Nobody comes when you shout from your cell. Not even for a rat.'
     case 'laundry':

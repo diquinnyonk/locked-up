@@ -85,6 +85,10 @@ export class Game implements World {
   private drugged: { guard: Guard; eatsIn: number } | null = null
   private sleeper: Guard | null = null
   private disguisedAs: string | null = null
+  /** The Governor's safe: what you know of the combination, and whether it is open. */
+  readonly heist = { knowA: false, knowB: false, opened: false }
+  /** Seconds left cracking the safe by ear, and where you knelt. */
+  private cracking: { t: number; x: number; z: number; click: number } | null = null
   alarm = { active: false, timer: 0, x: 0, z: 0 }
 
   /** Speech bubbles for the UI to draw this frame. */
@@ -418,6 +422,9 @@ export class Game implements World {
     this.sounds.push({ sound: 'caught', volume: 1 })
     const wasVent = p.inVent || method === 'vent'
     const result = this.memory.fail(method, p.body.x, p.body.z)
+    // Caught at the safe: the Governor changes the combination.
+    if (method === 'safe') this.heist.knowA = this.heist.knowB = false
+    this.cracking = null
     this.log.push(`Day ${this.clock.day}: caught by ${by.name} (${METHOD_NAMES[method]}).`)
     if (wasVent) {
       const g = this.grid.grates.find((gr) => gr.id === 'your cell')!
@@ -507,12 +514,14 @@ export class Game implements World {
     p.health = 100
   }
 
-  private finish(won: boolean, how: 'escape' | 'gang' | 'solitary' | 'guardDisguise' | 'visitorDisguise' | 'laundry' | 'staffDoor', gang: GangId = 'firm'): void {
+  private finish(won: boolean, how: 'escape' | 'gang' | 'solitary' | 'guardDisguise' | 'visitorDisguise' | 'laundry' | 'staffDoor' | 'jag', gang: GangId = 'firm'): void {
     this.over = true
     this.input.enabled = false
     const name = this.player.name
     const tally = `Day ${this.clock.day}. ${this.memory.totalFailures} failed attempt${this.memory.totalFailures === 1 ? '' : 's'}.`
-    if (won && how === 'staffDoor') {
+    if (won && how === 'jag') {
+      this.ui.end(true, "The Governor's Jag", `${name} slides into the cream leather seats of the Governor's Jaguar, adjusts the mirror, and drives out of the staff car park with a little wave at the gatehouse. The gatehouse waves back.\n${tally}\nThe Governor reports it stolen at nine the next morning. From the bus.`)
+    } else if (won && how === 'staffDoor') {
       const who = this.disguisedAs ?? 'an officer'
       this.ui.end(true, 'Off shift early', `${name} unlocks the staff door with ${who}'s keys, smelling faintly of Brut, and strolls across the staff car park like they own the place.\n${tally}\nHours later ${who} wakes up in a cell in a vest and pink boxers, with sausage roll crumbs down the front.`)
     } else if (won && how === 'guardDisguise') {
@@ -951,12 +960,19 @@ export class Game implements World {
     }
 
     this.updateLure(delta)
+    this.updateHeist(delta)
     this.updateIllegal()
     p.dodgy = this.dodgyTimer > 0 || p.inventory.weapon.damage >= 4 ? 1 : 0
 
     // Outside the wall.
     if (zone === 'outside' && !p.inVent) {
       const car = this.dynamic.car.position
+      const jag = this.fixtures.jag
+      if (p.inventory.has('jagKeys') && Math.hypot(b.x - jag.x, b.z - jag.z) < 3) {
+        this.sounds.push({ sound: 'good', volume: 1 })
+        this.finish(true, 'jag')
+        return
+      }
       if (this.carPresent && Math.hypot(b.x - car.x, b.z - car.z) < 3.4) {
         this.sounds.push({ sound: 'good', volume: 1 })
         this.finish(true, 'escape')
@@ -1809,6 +1825,92 @@ export class Game implements World {
     }
   }
 
+  // ---- The Governor's safe ----
+
+  /**
+   * Four digits: his mother's birthday (in the desk diary) and the number on
+   * his Jag's private plate (Keith sees it every day). A new combination
+   * every time someone is caught at it.
+   */
+  get safeCode(): string {
+    const r = mulberry32(this.seed * 31 + 7 + this.memory.used.safe * 7919)
+    const day = 10 + Math.floor(r() * 19)
+    const plate = 10 + Math.floor(r() * 90)
+    return `${day}${plate}`
+  }
+
+  private safeHint(): string {
+    const h = this.heist
+    const code = this.safeCode
+    if (h.knowA) return `A heavy old safe with a four-digit dial. You know it starts ${code.slice(0, 2)}. The rest? Something the Governor loves more than his mother.`
+    if (h.knowB) return `A heavy old safe with a four-digit dial. You know it ends ${code.slice(2)}. The start must be on his desk somewhere.`
+    return 'A heavy old safe with a four-digit dial. The Governor would pick numbers he cannot forget. Or a stethoscope from healthcare would let you hear the tumblers.'
+  }
+
+  private readDiary(): void {
+    this.heist.knowA = true
+    const day = this.safeCode.slice(0, 2)
+    this.toast(`The desk diary: "Mother's birthday" circled on the ${day}th, underlined three times, with "SAFE?? NO, TOO OBVIOUS" crossed out next to it. That is the first half: ${day}.`, 'good')
+  }
+
+  private startCracking(): void {
+    const b = this.player.body
+    this.cracking = { t: 30, x: b.x, z: b.z, click: 4 }
+    this.toast('Stethoscope to the door, dial in your fingers. Thirty seconds, and keep still: every click carries.', 'neutral')
+  }
+
+  private updateHeist(delta: number): void {
+    const p = this.player
+    if (p.zone === 'governor' && !this.methodHint) this.methodHint = 'safe'
+    const c = this.cracking
+    if (c) {
+      if (Math.hypot(p.body.x - c.x, p.body.z - c.z) > 1 || p.zone !== 'governor') {
+        this.cracking = null
+        this.toast('You lose the count. Start again.', 'bad')
+      } else {
+        c.t -= delta
+        c.click -= delta
+        if (c.click <= 0) {
+          c.click = 5
+          this.emit({ x: p.body.x, z: p.body.z, radius: 7, kind: 'clank' })
+        }
+        if (c.t <= 0) {
+          this.cracking = null
+          this.openSafe()
+        }
+      }
+    }
+    // Once burned, an officer looks into the office every hour.
+    const m = this.clock.minuteOfDay
+    if (this.memory.used.safe >= 1 && Math.floor(m / 60) !== Math.floor((m - delta * 2) / 60)) {
+      const office = this.grid.rooms.get('governor')!.rects[0]
+      const spot = { x: ((office.x0 + office.x1) / 2) * TILE, z: (office.y1 - 0.5) * TILE }
+      const g = this.guards.filter((gg) => gg.ko <= 0 && !gg.chasing && !gg.busy && !gg.investigate).sort((a, b) => a.distanceTo(spot.x, spot.z) - b.distanceTo(spot.x, spot.z))[0]
+      if (g) g.investigate = { x: spot.x, z: spot.z, t: 12 }
+    }
+  }
+
+  private openSafe(): void {
+    const p = this.player
+    const inv = p.inventory
+    this.heist.opened = true
+    this.dodgyTimer = 5
+    this.sounds.push({ sound: 'good', volume: 0.8 })
+    const give = (id: ItemId) => {
+      if (!inv.add(id)) this.dynamic.spawnItem(id, p.body.x + 0.5, p.body.z + 0.3, p.zone)
+    }
+    give('masterKey')
+    give('jagKeys')
+    for (let i = 0; i < 6; i++) give('voucher')
+    this.toast("The door swings open. The Governor's master key, the keys to his Jag, and six Greggs vouchers in an envelope marked PETTY CASH (PASTRY).", 'good')
+    // Your file: through the shredder, and the prison forgets one lesson.
+    const last = this.memory.lessons.pop()
+    if (last) {
+      this.memory.used[last.method] = Math.max(0, this.memory.used[last.method] - 1)
+      this.toast(`And a brown folder with your name on it. You feed it through the Governor's shredder. They have forgotten: ${last.text}`, 'good')
+    } else this.toast('And a brown folder with your name on it, still thin. You shred it anyway, for the joy of it.', 'neutral')
+  }
+
   /** "Fancy a sausage roll, guv?" */
   private offerRoll(g: Guard): void {
     const inv = this.player.inventory
@@ -2147,7 +2249,7 @@ export class Game implements World {
     return (
       !this.over && p.illegal === 0 && !p.attempt && !p.inVent && !p.inBasket && !p.escortedBy && !this.talkingTo &&
       !this.riot.active && !this.sickCall && !this.lure && !this.drugged && !this.climb && !this.alarm.active &&
-      !this.business && !this.guards.some((g) => g.chasing)
+      !this.business && !this.cracking && !this.guards.some((g) => g.chasing)
     )
   }
 
@@ -2181,6 +2283,7 @@ export class Game implements World {
       toiletIncidents: this.toiletIncidents,
       missions: this.missions.toSave(),
       events: this.events.toSave(),
+      heist: { ...this.heist },
       override: this.clock.override,
       post: this.post.toSave(),
       log: [...this.log],
@@ -2247,6 +2350,7 @@ export class Game implements World {
     this.toiletIncidents = s.toiletIncidents
     this.missions.fromSave(s.missions)
     this.events.fromSave(s.events)
+    if (s.heist) Object.assign(this.heist, s.heist)
     this.clock.override = s.override ?? null
     this.post.fromSave(s.post)
     this.log.splice(0, this.log.length, ...s.log)
@@ -2435,7 +2539,20 @@ export class Game implements World {
         add('E', shift ? 'Clock off with the day shift' : 'Staff door (locked: keys, or wait for shift change, 20:45 to 21:20)', () => {
           if (shift) this.sillyExit('guardDisguise')
         })
-      } else add('E', 'Staff door: officers only', () => this.toast('Only staff leave this way. You would need to look like one, and have keys or wait for shift change.', 'neutral'))
+      } else if (!keys || keys.id === 'lockpick') add('E', 'Staff door: officers only', () => this.toast('Only staff leave this way. You would need to look like one, and have keys or wait for shift change.', 'neutral'))
+      // With a key and no uniform, the door's own unlock prompt takes it from here.
+    }
+    // The Governor's office: the desk diary and the safe.
+    if (p.zone === 'governor') {
+      const h = this.heist
+      if (!h.knowA && near(f.govDesk, 1.6)) add('E', "Read the Governor's desk diary", () => this.readDiary())
+      if (near(f.safe, 1.6)) {
+        if (h.opened) add('E', "The Governor's safe (open, and empty)", () => this.toast('Nothing left but a smell of cigars and a Greggs receipt.', 'neutral'))
+        else if (this.cracking) add('E', `Cracking the safe by ear: ${Math.ceil(this.cracking.t)}s, keep still`, () => {})
+        else if (h.knowA && h.knowB) add('E', `Open the safe (${this.safeCode})`, () => this.openSafe())
+        else if (p.inventory.has('stethoscope')) add('E', 'Crack the safe by ear (stethoscope)', () => this.startCracking())
+        else add('E', "The Governor's safe", () => this.toast(this.safeHint(), 'neutral'))
+      }
     }
     if (p.zone === 'chapel' && near(f.costumeBox, 1.8)) {
       if (this.chaplain.stage === 'done' && !(p.inventory.has('wig') && p.inventory.has('dress')) && !p.inventory.has('visitorDisguise')) {
@@ -2792,6 +2909,16 @@ export class Game implements World {
           const take = pick2(this.rng, ['keith.bribed.1', 'keith.bribed.2'] as const)
           this.ui.talk(`${k.name}, X-ray operator`, LINES[take].text, [], take)
           this.toast(`${k.name} is paid off for today. Get in a laundry basket before 11:00.`, 'good')
+        },
+      },
+      {
+        label: 'Ask about the Governor',
+        enabled: true,
+        run: () => {
+          const plate = this.safeCode.slice(2)
+          this.heist.knowB = true
+          this.ui.talk(`${k.name}, X-ray operator`, `The Governor? Green Jag, private plate: R P ${plate}. Polishes it in the staff car park every lunchtime. Says it's the only thing in here that doesn't answer back.`, [])
+          this.toast(`R P ${plate}. A man who puts his initials on his car puts his numbers everywhere. Second half of the combination: ${plate}?`, 'good')
         },
       },
       {

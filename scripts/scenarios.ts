@@ -6,7 +6,7 @@
 import { Scene } from 'three'
 import { Game, type UiPort } from '../src/game/Game'
 import { screenCall } from '../src/game/Phone'
-import { MAP_H, MAP_W, TILE, Tile, tileCentre } from '../src/world/Grid'
+import { EAST_WALL, MAP_H, MAP_W, TILE, Tile, tileCentre } from '../src/world/Grid'
 import { findPath } from '../src/world/Nav'
 import { keyFor } from '../src/audio/lineKeys'
 import { castLine, ownerOf, voiceFor } from '../src/audio/cast'
@@ -988,6 +988,70 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   Game.seedForNext = null
   b.fromSave(json)
   check('events: today is kept in a save', b.events.today === 'inspection' && b.events.nanSeen)
+}
+
+// ---- The Governor's safe ----
+{
+  const { game, log } = fresh()
+  const f = game.fixtures
+  const inv = game.player.inventory
+  for (const id of ['toothbrush', 'toothpaste', 'bedsheet'] as const) inv.remove(id)
+  const at = (pt: { x: number; z: number }, zone: string) => {
+    game.player.body.x = pt.x
+    game.player.body.z = pt.z
+    game.player.zone = zone
+  }
+  game.memory.fail('vent', 0, 0)
+  const lessons = game.memory.lessons.length
+  at(f.safe, 'governor')
+  check('heist: the safe needs a combination', prompt(game, "The Governor's safe") && log.slice(-1)[0].includes('four-digit'))
+  at(f.govDesk, 'governor')
+  check('heist: the desk diary gives the first half', prompt(game, 'desk diary') && game.heist.knowA && log.slice(-1)[0].includes(game.safeCode.slice(0, 2)))
+  ;(game as any).talkToKeith()
+  lastTalk!.options.find((o) => o.label === 'Ask about the Governor')!.run()
+  check('heist: Keith knows his number plate, the second half', game.heist.knowB && lastTalk!.line.includes(game.safeCode.slice(2)))
+  game.endConversation()
+  at(f.safe, 'governor')
+  check('heist: then the safe opens', prompt(game, `Open the safe (${game.safeCode})`) && game.heist.opened)
+  check('heist: master key, Jag keys and petty cash', inv.has('masterKey') && inv.has('jagKeys') && inv.count('voucher') >= 6)
+  check('heist: your file shredded, they forget a lesson', game.memory.lessons.length === lessons - 1 && game.memory.used.vent === 0)
+  // Out of the staff door with the master key, to the Jag.
+  const door = game.grid.doorAtTile(EAST_WALL, 56)!
+  at({ x: (EAST_WALL - 0.5) * TILE, z: 56.5 * TILE }, 'changing')
+  check('heist: the master key opens the staff door', prompt(game, "Unlock with Governor's master key"))
+  run(game, 0.5)
+  check('heist: the door is open', door.openness > 0.3, `${door.openness}`)
+  at({ x: f.jag.x + 1.5, z: f.jag.z }, 'outside')
+  run(game, 0.5)
+  check("heist: drive off in the Governor's Jag", game.over && log.some((l) => l.startsWith("[end] true The Governor's Jag")), log.slice(-1)[0])
+}
+{
+  const { game, log } = fresh()
+  const f = game.fixtures
+  game.player.inventory.add('stethoscope')
+  game.player.body.x = f.safe.x
+  game.player.body.z = f.safe.z
+  game.player.zone = 'governor'
+  check('heist: or crack it by ear with a stethoscope', prompt(game, 'Crack the safe by ear'))
+  const g0 = game.guards[0]
+  // Nobody about: hold every officer still and far away.
+  const opened = run(game, 40, () => {
+    game.player.body.x = f.safe.x
+    game.player.body.z = f.safe.z
+    for (const g of game.guards) g.ko = 1
+    return game.heist.opened
+  })
+  check('heist: thirty seconds of clicks, and it opens', opened)
+  const { game: b } = fresh()
+  b.heist.knowA = b.heist.knowB = true
+  const before = b.safeCode
+  b.player.body.x = b.fixtures.safe.x
+  b.player.body.z = b.fixtures.safe.z
+  b.player.zone = 'governor'
+  run(b, 0.1)
+  b.caught(b.guards[0])
+  check('heist: caught at it, the Governor changes the combination', !b.heist.knowA && !b.heist.knowB && b.safeCode !== before && b.memory.used.safe === 1, `${b.memory.lessons.slice(-1)[0]?.method}`)
+  void g0
 }
 
 // ---- Saving and carrying on ----

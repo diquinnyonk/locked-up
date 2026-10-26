@@ -69,7 +69,8 @@ export function buildPrison(grid: Grid): { group: Group; fixtures: Fixtures } {
     tree(add, x, z, 1 + ((i * 7) % 3) * 0.2)
   }
   for (let i = 0; i < 12; i++) tree(add, 2 * TILE + ((i * 17) % 5), 10 + i * 9, 1.1)
-  for (let i = 0; i < 12; i++) tree(add, (EAST_WALL + 3) * TILE + ((i * 11) % 5), 14 + i * 9, 1.0)
+  // Stopping short of the staff car park.
+  for (let i = 0; i < 10; i++) tree(add, (EAST_WALL + 3) * TILE + ((i * 11) % 5), 14 + i * 9, 1.0)
 
   // ---- Floors, one painted quad per tile, with a faint chequer ----
   for (let ty = 0; ty < MAP_H; ty++) {

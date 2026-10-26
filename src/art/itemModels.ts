@@ -76,6 +76,12 @@ function parts(id: ItemId): BufferGeometry[] {
       return [box(0.3, 0.03, 0.22, o(), HEX.paper), ball(0.045, o(-0.06, 0.05, -0.03), HEX.porcelain, 1, 0.6, 1), ball(0.045, o(0.05, 0.05, 0.02), HEX.porcelain, 1, 0.6, 1), ball(0.045, o(0.0, 0.05, 0.07), HEX.porcelain, 1, 0.6, 1)]
     case 'sleepyRoll':
       return [box(0.46, 0.04, 0.3, o(), HEX.porcelain), cylX(0.09, 0.36, o(0, 0.12), HEX.chipsOrange, 10), cylX(0.05, 0.37, o(0, 0.13), HEX.skinShade, 8), ball(0.03, o(0.08, 0.21, 0.02), HEX.porcelain), ball(0.03, o(-0.07, 0.21, -0.02), HEX.porcelain)]
+    case 'stethoscope':
+      return [ring(0.12, 0.015, o(0, 0.02), HEX.ink), cyl(0.06, 0.06, 0.03, o(0.18, 0.02, 0.1), HEX.steel, 12), box(0.02, 0.02, 0.14, o(0.1, 0.02, 0.06), HEX.ink)]
+    case 'masterKey':
+      return [ring(0.07, 0.02, o(-0.14, 0.02), HEX.stainedGold), box(0.24, 0.03, 0.04, o(0.04, 0.02), HEX.stainedGold), box(0.04, 0.03, 0.07, o(0.12, 0.02, 0.04), HEX.stainedGold), box(0.04, 0.03, 0.05, o(0.04, 0.02, 0.035), HEX.stainedGold)]
+    case 'jagKeys':
+      return [box(0.14, 0.04, 0.22, o(-0.05, 0.02), HEX.ink), box(0.16, 0.03, 0.03, o(0.1, 0.02, -0.06), HEX.metal), box(0.06, 0.045, 0.06, o(-0.05, 0.04), HEX.stainedGold)]
     case 'hymnBook':
       return [box(0.36, 0.1, 0.26, o(), HEX.bookRed), box(0.34, 0.08, 0.24, o(0.015, 0.01), HEX.paper), box(0.08, 0.102, 0.03, o(0, 0, 0), HEX.stainedGold), box(0.03, 0.102, 0.12, o(0, 0, 0), HEX.stainedGold)]
     case 'guardUniform':
