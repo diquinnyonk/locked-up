@@ -5,6 +5,7 @@ import type { Game, UiPort } from '../game/Game'
 import { ITEMS, INVENTORY_SLOTS, type ItemId, RECIPES, vouchers } from '../game/Items'
 import { itemIcon } from './itemIcons'
 import { CONTROLS } from './Tour'
+import { GOALS } from '../game/Goals'
 import { ENDINGS, type Run, duration, readRecords } from '../game/Records'
 import { TUNNEL_LENGTH } from '../game/Game'
 import { recordsHtml, showRecords } from './RecordsView'
@@ -223,6 +224,7 @@ export class Ui implements UiPort {
   }
 
   openMenu(tab: MenuTab): void {
+    this.game?.goal('notebook')
     this.openPanel('Notebook', 'menu')
     this.menuTab = tab
     const tabs = document.createElement('nav')
@@ -551,6 +553,7 @@ export class Ui implements UiPort {
 
   toggleMap(): void {
     this.bigMap = !this.bigMap
+    if (this.bigMap) this.game?.goal('map')
     this.minimap.classList.toggle('big', this.bigMap)
     document.body.classList.toggle('bigmap', this.bigMap)
     $('#mapbtn').innerHTML = this.bigMap ? 'Close map <kbd>M</kbd>' : 'Bigger map <kbd>M</kbd>'
@@ -614,7 +617,11 @@ export class Ui implements UiPort {
 
     // Jobs on the go.
     const revJob = chaplainJob(g)
+    const goals = g.goals.shown && !g.goals.finished
+      ? `<div class="job goals"><b>First day</b><ul>${GOALS.map((go) => `<li class="${g.goals.done.has(go.id) ? 'done' : ''}" title="${escape(go.hint)}">${escape(go.text)}</li>`).join('')}</ul><small>${g.goals.done.size} of ${GOALS.length}</small></div>`
+      : ''
     const jobs =
+      goals +
       (revJob ? `<div class="job${revJob.done ? ' done' : ''}"><b>The Missing Hymn Books</b>${escape(revJob.line)}<br><small>for ${escape(g.chaplain.name)}</small></div>` : '') +
       g.missions.active
         .map((m) => `<div class="job${m.done ? ' done' : ''}"><b>${escape(m.tpl.title)}</b>${escape(g.missions.describe(m))}<br><small>for ${escape(m.giverName)}</small></div>`)

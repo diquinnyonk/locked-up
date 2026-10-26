@@ -14,6 +14,7 @@ import { moveCircle } from '../world/Nav'
 import { Clock, RESTRICTED, allowedZones } from './Clock'
 import { type DayEvent, Events, isVisitingDay } from './Events'
 import type { EndingId } from './Records'
+import { type GoalId, Goals } from './Goals'
 import { Doors } from './Doors'
 import { ITEMS, Inventory, type ItemId, RECIPES, type Recipe, SPAWNS, vouchers } from './Items'
 import { screenCall } from './Phone'
@@ -133,6 +134,9 @@ export class Game implements World {
   readonly missions: Missions
   /** What kind of day it is: a shakedown, a lockdown, a Greggs delivery... */
   readonly events = new Events(this)
+  /** First-day goals on the HUD. */
+  readonly goals = new Goals()
+  private vouchersSeen = -1
   readonly visitors: { body: Body; seat: { x: number; z: number }; gone: boolean }[] = []
   /** The player's own clothes, for when the disguise comes off. */
   private readonly ownLook = { top: HEX.player, trousers: HEX.prisonGreyDark, hair: HEX.hairBrown as number | null }
@@ -979,6 +983,11 @@ export class Game implements World {
     this.updateLure(delta)
     this.updateHeist(delta)
     this.updateTunnel(delta)
+    // A Greggs voucher more than you had: earned, found or given.
+    const v = this.player.inventory.count('voucher')
+    if (this.vouchersSeen >= 0 && v > this.vouchersSeen) this.goal('voucher')
+    this.vouchersSeen = v
+    if (this.goals.shown && !this.goals.finished && this.clock.day >= 3) this.goals.finished = true
     this.updateIllegal()
     p.dodgy = this.dodgyTimer > 0 || p.inventory.weapon.damage >= 4 ? 1 : 0
 
@@ -1849,6 +1858,12 @@ export class Game implements World {
     }
   }
 
+  /** A first-day goal done. */
+  goal(id: GoalId): void {
+    if (!this.goals.shown) return
+    if (this.goals.tick(id)) this.toast('First day: done. You know your way around. Now find your way out.', 'good')
+  }
+
   // ---- The tunnel under the loose tile ----
 
   /** The loose floor tile beside your bunk, in the open where you can see it. */
@@ -2245,6 +2260,8 @@ export class Game implements World {
   talkTo(pr: Prisoner): void {
     pr.stop()
     this.converse(pr.body)
+    if (pr.isCellmate) this.goal('cellmate')
+    if (pr.sells.length) this.goal('fixer')
     const inv = this.player.inventory
     const options: { label: string; enabled: boolean; run: () => void }[] = []
     const refresh = () => this.talkTo(pr)
@@ -2439,6 +2456,7 @@ export class Game implements World {
       events: this.events.toSave(),
       heist: { ...this.heist },
       tunnel: { ...this.tunnel },
+      goals: this.goals.toSave(),
       override: this.clock.override,
       post: this.post.toSave(),
       log: [...this.log],
@@ -2508,6 +2526,7 @@ export class Game implements World {
     this.events.fromSave(s.events)
     if (s.heist) Object.assign(this.heist, s.heist)
     if (s.tunnel) Object.assign(this.tunnel, s.tunnel)
+    this.goals.fromSave(s.goals)
     this.clock.override = s.override ?? null
     this.post.fromSave(s.post)
     this.log.splice(0, this.log.length, ...s.log)

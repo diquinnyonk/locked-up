@@ -1177,6 +1177,29 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   check('tunnel: thirty metres, and you crawl out', prompt(game, 'Crawl out through the tunnel') && game.over && game.ending?.id === 'tunnel' && log.some((l) => l.startsWith('[end] true Like a mole')))
 }
 
+// ---- First-day goals ----
+{
+  const { game, log } = fresh()
+  ;(game as any).talkTo(game.cellmate!)
+  game.endConversation()
+  check('goals: nothing ticks before the tour is over', game.goals.done.size === 0)
+  game.goals.shown = true
+  ;(game as any).talkTo(game.cellmate!)
+  game.endConversation()
+  const fixer = game.prisoners.find((pr) => pr.sells.length)!
+  ;(game as any).talkTo(fixer)
+  game.endConversation()
+  run(game, 0.1)
+  game.player.inventory.add('voucher')
+  run(game, 0.1)
+  check('goals: cellmate, fixer and a voucher tick themselves', ['cellmate', 'fixer', 'voucher'].every((id) => game.goals.done.has(id as any)))
+  game.goal('notebook')
+  game.goal('map')
+  game.goal('job')
+  check('goals: all six, and the list goes', game.goals.finished && log.some((l) => l.startsWith('First day: done')))
+  check('goals: kept in a save', JSON.parse(JSON.stringify(game.toSave())).goals.done.length === 6)
+}
+
 // ---- Saving and carrying on ----
 {
   const { game: a } = fresh()

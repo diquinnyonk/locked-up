@@ -167,6 +167,8 @@ function tour(after: () => void): void {
 }
 
 function welcome(): void {
+  // The tour is over: a checklist to get going with.
+  game.goals.shown = true
   const name = game.player.name
   ui.card(
     `${name}, the Greggs Bandit`,

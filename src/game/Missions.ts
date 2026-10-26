@@ -493,6 +493,7 @@ export class Missions {
   private accept(m: Mission): void {
     const g = this.game
     this.active.push(m)
+    g.goal('job')
     if (m.tpl.give && !g.player.inventory.add(m.tpl.give)) {
       g.toast('Your pockets are full: they drop it at your feet.', 'bad')
       g.dynamic.spawnItem(m.tpl.give, g.player.body.x, g.player.body.z + 0.6, g.player.zone)
