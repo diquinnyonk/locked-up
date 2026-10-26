@@ -188,22 +188,72 @@ Seven come when a sentence ends: any escape, a clean sheet, out by day two,
 an escape on Hardcore, a daily challenge beaten, every way out, and every
 ending. Each one shows once, in gold, and the records screen lists them all.
 
-## A secret
+## More ways out
 
-About one sentence in ten, the Governor puts on a play (`src/game/Play.ts`):
+Six more routes in every sentence (`src/game/Routes.ts`), each one roll of
+the dice at the end that gets worse every time one is rumbled, and shut for
+good after two:
+
+- **Bin day.** On Thursdays the lorry empties the kitchen wheelie bins by the
+  servery at 10:30. Climb in during work. Next time, the kitchen tips them
+  out by hand first.
+- **The hospital run.** Read up on appendicitis in the library, fake sick at
+  night, and in healthcare clutch the right side (R). Get it wrong and the
+  nurse hands you a Rennie.
+- **A court date.** Write to your solicitor from the library for a hearing
+  two days later, and take a handcuff key (copper wire hardened in a lighter
+  flame) in your shoe. The van stops at a services on the A1.
+- **Forged release papers.** A blank form from the library printer, the
+  Governor's rubber stamp from his desk (R), and his signature, which you
+  will only get right if you have seen it in his desk diary. Hand them in at
+  the discharge desk by the visitors' gate (R).
+- **The fire engine.** A fire drill brings one into the yard for half an
+  hour. Hide in a hose locker before it goes.
+- **A bedsheet glider.** Two bedsheets, a mop handle and tape, off the south
+  edge of the yard. It needs a gale, the new windy weather.
+
+The library is a menu of its own now (R anywhere in it): the medical
+dictionary, the printer and a letter to your solicitor.
+
+## Secrets
+
+About one sentence in ten has a secret mission, chosen from the ones this
+browser has not had yet; each only ever turns up once
+(`locked-up.secrets` in localStorage, `src/game/secrets/`). Each brings its
+own visitor, its own deadline and its own secret ending. Add
+`?secret=play`, `bakeoff`, `celebrity`, `royal` or `greylady` to the address
+to try one without using it up.
+
+- **The Governor's play.** The Count of Monte Cristo in the chapel (below).
+- **The Great Grim Bake Off.** Three rounds in the canteen on three
+  afternoons, judged by Dame Prudence Bunn: a sausage roll, a blue drink, and
+  three Greggs vouchers of decorations. Win them all and leave in a camera
+  flight case.
+- **The celebrity inmate.** Gavin Crumble, disgraced TV chef, holds court in
+  the library. Bring him digestives, a blue drink and a magazine with him on
+  the cover, and on his release day walk out in his coat and sunglasses.
+- **The royal visit.** The Duke of Grimsby opens the new gym. Volunteer for
+  the guard of honour (the Governor or the Reverend) and on the day hide in
+  the giant floral arrangement before the florist's van leaves.
+- **The Grey Lady.** A ghost story: the prison history in the library, the
+  Reverend and the organ's dead pipe, an iron key, and the crypt flagstone by
+  the altar, at night. She waits for you there.
+
+## The Governor's play
+
+The Governor puts on a play (`src/game/Play.ts`):
 The Count of Monte Cristo, in the chapel, with officers and residents in the
 cast. Audition on day two, turn up to two rehearsals, and on opening night,
 with six officers in the front pews, take your cue: the Abbé Faria dies in
 Act Two and is carried off in a sack to the props crate, which goes back out
 of the gate on the theatre company's van. Miss the audition, a rehearsal or
-your cue and the part goes to someone else. Once it has turned up, a browser
-never rolls it again (`locked-up.secrets` in localStorage). Its ending only
-shows on the records screen once found, and the full sets of endings and
-achievements do not need it. Add `?secret=play` to the address to try it.
+your cue and the part goes to someone else. Secret endings only show on the
+records screen once found, and the full sets of endings and achievements do
+not need them.
 
 ## Endings and records
 
-There are nine endings: seven escapes and two defeats, plus a secret one. Every one you reach is
+There are fifteen endings: thirteen escapes and two defeats, plus five secret ones. Every one you reach is
 filed in this browser's localStorage (`src/game/Records.ts`), apart from the
 saved game, so finishing or starting again never wipes it. For each ending it
 keeps how many times you have reached it, when you first did, and three bests

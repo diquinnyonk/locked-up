@@ -61,7 +61,7 @@ export class Celebrity extends SecretBase {
       const gate = g.fixtures.visitorsGate
       return { x: gate.x + 1.5, z: gate.z - 2.5, yaw: Math.PI, pose: 'stand' }
     }
-    if (d >= 0 && d < RELEASE && this.m >= FROM && this.m < TO) return { ...LIBRARY, yaw: 0, pose: 'sit' }
+    if (d >= 0 && d < RELEASE && this.m >= FROM && this.m < TO) return { ...LIBRARY, yaw: 0, pose: 'stand' }
     return null
   }
 

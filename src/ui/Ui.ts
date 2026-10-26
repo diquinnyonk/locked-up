@@ -609,6 +609,8 @@ export class Ui implements UiPort {
       </ol>
       <h3>The officer in your cell</h3>
       <p class="hint">By day in your cell, press H to shout for an officer about a rat. He comes in and has a good look round with his back to you: give him a sleepy sausage roll, or a cosh round the ear. Take his uniform (E) and keys (R), and let yourself out of the staff door in the changing room. When he wakes, hours later and in his boxers, every officer knows about the stranger in uniform.</p>
+      <h3>Other ways out</h3>
+      <p class="hint">Thursday's bin lorry at 10:30. A hospital run, if you know your appendicitis (the library has a medical dictionary). A court date from your solicitor, with a handcuff key in your shoe. Forged release papers: a form from the library printer, the Governor's stamp, and his signature. A fire engine in the yard during a fire drill. A bedsheet glider off the south edge of the yard on a windy day. Each gets harder every time one is rumbled, and twice rumbled it is shut.</p>
       <h3>Silly ways out</h3>
       <p class="hint">Whole escapes on their own, no car needed. Odds now: officer ${Math.round(g.memory.sillyExitChance('guardDisguise') * 100)}%, visitor ${Math.round(g.memory.sillyExitChance('visitorDisguise') * 100)}%, laundry ${Math.round(g.memory.sillyExitChance('laundry') * 100)}% once ${escape(g.keith.name)} is paid. They get worse each time one is rumbled.</p>
       <h3>The firms</h3>
