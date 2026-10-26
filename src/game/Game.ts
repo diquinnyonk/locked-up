@@ -2373,6 +2373,20 @@ export class Game implements World {
           : ["Ah, the Greggs Bandit. I've got my eye on you. And on my lunch.", 'What do you want? If it is the telly remote, the answer is no.', 'Keep your nose clean and we will get along famously.', "Not now, I'm on my break. I'm always on my break.", 'Lovely weather for it. Not that you would know.', "If you're after the toilet roll, there is none. There's never any."]
     const line = lines[Math.floor(this.rng() * lines.length)]
     const options = this.missions.options(g)
+    // Mr Crumpet's sweet tooth.
+    if (g.trait === 'biscuits' && !g.blindEye) {
+      const inv = this.player.inventory
+      options.unshift({
+        label: '"Custard cream, guv? Whole packet."',
+        enabled: inv.has('biscuits'),
+        run: () => {
+          inv.remove('biscuits')
+          g.blindEye = true
+          this.ui.talk(g.name, "Well. I never say no to a custard cream. And I never see anything with my mouth full. Funny, that.", [])
+          this.toast(`${g.name} will look the other way, once.`, 'good')
+        },
+      })
+    }
     if (this.lure?.guard === g && this.lure.stage === 'inside') {
       const inv = this.player.inventory
       options.unshift({ label: '"Fancy a sausage roll, guv?"', enabled: inv.has('sleepyRoll') || inv.has('sausageRoll'), run: () => this.offerRoll(g) })
@@ -3330,11 +3344,12 @@ export class Game implements World {
         // Fresh noise: the nearest free officer in earshot comes to look.
         if (n.kind === 'clank' || n.kind === 'throw') {
           let best: Guard | null = null
-          let bd = n.radius
+          let bd = Infinity
           for (const g of this.guards) {
             if (g.ko > 0 || g.chasing || g.busy || this.sickCall?.responders.includes(g)) continue
-            const d = Math.hypot(g.x - n.x, g.z - n.z)
-            if (d < bd) {
+            // The nosy hear it from much further off.
+            const d = Math.hypot(g.x - n.x, g.z - n.z) / (g.trait === 'nosy' ? 1.6 : 1)
+            if (d < n.radius && d < bd) {
               bd = d
               best = g
             }

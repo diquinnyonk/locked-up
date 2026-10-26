@@ -1672,3 +1672,11 @@ body.panel-open #prompts {
 #panel .volumes { display: grid; gap: 0.4rem; margin: 0.4rem 0 0.8rem; }
 #panel .volumes label { display: grid; grid-template-columns: 7.5rem 1fr; align-items: center; gap: 0.6rem; }
 #panel .volumes input { accent-color: var(--ink); width: 100%; }
+
+/* The Officers page */
+#panel .staff { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.45rem; }
+#panel .staff li { display: grid; gap: 0.1rem; padding: 0.5rem 0.6rem; background: var(--paper-2); border-left: 4px solid var(--accent); }
+#panel .staff li.plain { border-left-color: var(--paper-3); }
+#panel .staff b { font: 800 1rem var(--display); text-transform: uppercase; }
+#panel .staff small { color: var(--quiet); }
+#panel .staff span { font-size: 0.92rem; line-height: 1.4; }

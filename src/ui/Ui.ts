@@ -6,6 +6,7 @@ import { ITEMS, INVENTORY_SLOTS, type ItemId, RECIPES, vouchers } from '../game/
 import { itemIcon } from './itemIcons'
 import { CONTROLS } from './Tour'
 import { GOALS } from '../game/Goals'
+import { TRAITS } from '../npc/names'
 import { type Volumes, readVolumes } from '../audio/Soundscape'
 import { ENDINGS, type Run, duration, readRecords } from '../game/Records'
 import { TUNNEL_LENGTH } from '../game/Game'
@@ -23,7 +24,7 @@ import { type BunkNote, type Letter, governorsLetter } from '../game/Post'
  * The interface, in DOM. Flat ink panels on paper, hard edges, no gradients:
  * the same graphic language as the cel world underneath it.
  */
-export type MenuTab = 'main' | 'jobs' | 'pockets' | 'post' | 'notes' | 'endings' | 'help'
+export type MenuTab = 'main' | 'jobs' | 'pockets' | 'post' | 'notes' | 'staff' | 'endings' | 'help'
 
 const $ = <T extends HTMLElement>(sel: string) => document.querySelector(sel) as T
 
@@ -237,6 +238,7 @@ export class Ui implements UiPort {
       ['pockets', 'Pockets'],
       ['post', g.post.unread ? `Post (${g.post.unread})` : 'Post'],
       ['notes', 'Notes'],
+      ['staff', 'Officers'],
       ['endings', 'Endings'],
       ['help', 'How to play'],
     ]
@@ -256,6 +258,7 @@ export class Ui implements UiPort {
     else if (tab === 'post') this.renderPost(body)
     else if (tab === 'help') this.renderHelp(body)
     else if (tab === 'endings') body.innerHTML = recordsHtml(readRecords())
+    else if (tab === 'staff') this.renderStaff(body)
     else this.renderNotes(body)
     // Saving: automatic, and a button for peace of mind.
     const bar = document.createElement('div')
@@ -490,6 +493,20 @@ export class Ui implements UiPort {
     back.textContent = 'Keep it with your post'
     back.onclick = () => this.openMenu('post')
     body.append(back)
+  }
+
+  /** The sixteen officers, and what the landings say about each. */
+  private renderStaff(body: HTMLElement): void {
+    const g = this.game!
+    const duty = { gate: 'gate', landing: 'landing', escort: 'escort', central: 'centre' } as Record<string, string>
+    body.innerHTML = `<p class="hint">What the landings say about the staff. Learn them: half of getting out is knowing who is where, and what they are like.</p>
+      <ul class="staff">${g.guards
+        .map((gu) => {
+          const t = TRAITS[gu.trait]
+          const state = gu.ko > 0 ? 'out cold' : gu.uniformTaken ? 'down to the vest and boxers' : gu.blindEye ? 'owes you one' : gu.wary > 0.6 ? 'watching you' : ''
+          return `<li class="${gu.trait === 'ordinary' ? 'plain' : ''}"><b>${escape(gu.name)}</b><small>${gu.block} wing ${duty[gu.duty] ?? gu.duty}${state ? `, ${state}` : ''}</small><span><i>${escape(t.title)}.</i> ${escape(t.text)}</span></li>`
+        })
+        .join('')}</ul>`
   }
 
   /** Every control, and the first-day tour again. */

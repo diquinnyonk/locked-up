@@ -1,8 +1,9 @@
 import { HEX } from '../art/palette'
 import { type Body, makeBody } from '../render/Crowd'
 import { type BlockId, type Door, TILE, blockOfZone, tileCentre, worldToTile } from '../world/Grid'
-import { OFFICER_NAMES, voiceSlug } from './names'
+import { OFFICER_NAMES, OFFICER_TRAITS, type Trait, voiceSlug } from './names'
 import { RECEPTION } from '../game/Events'
+import { ITEMS } from '../game/Items'
 import { Agent } from './Agent'
 import { type Node, type Status, bt, traced } from './BehaviourTree'
 import type { World } from './World'
@@ -60,6 +61,14 @@ export class Guard extends Agent {
   busy = false
   /** New intake: stuck in reception in the loading bay until lunch. */
   reception = false
+  /** Their way about them (see names.ts). */
+  readonly trait: Trait
+  /** Chatty: seconds left in a chat, and till the next one. */
+  chatting = 0
+  private chatIn = 30 + Math.random() * 60
+  /** Soft touch: the day the warning was last used. */
+  private warnedDay = -1
+  private sticklerCooldown = 0
   /** Had you in sight this frame. */
   seesPlayer = false
   /** Owes you one from a job: looks the other way the next time. */
@@ -92,6 +101,7 @@ export class Guard extends Agent {
     super(body, world)
     this.name = NAMES[index]
     this.voiceId = voiceSlug(this.name)
+    this.trait = OFFICER_TRAITS[index] ?? 'ordinary'
     this.block = block
     this.duty = duty
     this.post = post
@@ -129,7 +139,7 @@ export class Guard extends Agent {
     // A disguise holds at a distance. Up close, for long enough, it does not.
     if (p.disguise && !p.disguiseBlown && sees && this.distanceTo(p.body.x, p.body.z) < 3.6) {
       const base = p.disguise === 'guard' ? 0.4 : 0.3
-      this.recognise += delta * base * w.memory.disguiseRecognition(p.disguise) * (1 + this.wary) * (w.hard ? 1.25 : 1) * (p.running ? 1.8 : 1) * (w.clock.day <= NEW_FACE_DAYS ? 2.5 : 1)
+      this.recognise += delta * base * w.memory.disguiseRecognition(p.disguise) * (1 + this.wary) * (w.hard ? 1.25 : 1) * (p.running ? 1.8 : 1) * (w.clock.day <= NEW_FACE_DAYS ? 2.5 : 1) * (this.trait === 'sharp' ? 2 : 1)
       if (this.recognise >= 1) {
         p.disguiseBlown = true
         this.suspicion = 1
@@ -145,6 +155,21 @@ export class Guard extends Agent {
         w.toast('Your disguise is blown!', 'bad')
       }
     } else if (this.recognise > 0) this.recognise = Math.max(0, this.recognise - delta * 0.15)
+
+    // Chatty: every so often, a long chat, back half turned.
+    if (this.trait === 'chatty' && !w.clock.locked && !this.chasing) {
+      if (this.chatting > 0) this.chatting -= delta
+      else if ((this.chatIn -= delta) <= 0) {
+        this.chatIn = 60 + w.rng() * 60
+        this.chatting = 20
+      }
+    } else this.chatting = 0
+    // Stickler: contraband in your hands means a pat-down.
+    this.sticklerCooldown -= delta
+    if (this.trait === 'stickler' && sees && p.dodgy > 0 && !p.illegal && this.sticklerCooldown <= 0 && p.inventory.items.some((i) => i.id !== 'voucher' && ITEMS[i.id].contraband)) {
+      this.sticklerCooldown = 90
+      this.searchTarget = true
+    }
 
     const escorting = p.escortedBy === this
     if (this.ignoring > 0) this.ignoring -= delta
@@ -169,6 +194,15 @@ export class Guard extends Agent {
       w.toast(`${this.name} looks the other way. That favour is spent.`, 'good')
       return
     }
+    // Soft touch: a warning instead of a chase, once a day.
+    if (this.suspicion >= 1 && sees && p.illegal === 2 && !this.chasing && this.trait === 'soft' && this.warnedDay !== w.clock.day) {
+      this.warnedDay = w.clock.day
+      this.suspicion = 0
+      this.ignoring = 30
+      this.say(pick(w.rng, [`Go on, ${p.name}. Back where you belong, and I never saw you.`, "I'm going to count to ten, and when I open my eyes you're in your cell. One...", 'Not on my shift. Go on, hop it.']), 3)
+      w.toast(`${this.name} lets you off with a warning. That is today's.`, 'good')
+      return
+    }
     if (this.suspicion >= 1 && sees && p.illegal === 2 && !this.chasing) {
       this.chasing = true
       this.say(pick(w.rng, [`Oi! ${p.name}! Stop right there, you absolute weapon!`, 'Escape! Escape! Somebody put the kettle down and RUN!', `Stop, ${p.name}! I've got a bad knee!`, 'Code red! Code red! Somebody fetch my whistle!', `${p.name}! I can SEE you! Mostly!`]), 2.5)
@@ -183,7 +217,7 @@ export class Guard extends Agent {
   visionRange(): number {
     const night = this.world.clock.darkness
     const base = 15 - night * 7
-    return base * this.world.memory.visionScale * (this.busy ? 0.6 : 1) * (this.world.todayEvent === 'inspection' ? 1.15 : 1) * (this.world.mode === 'story' ? 0.85 : 1)
+    return base * this.world.memory.visionScale * (this.busy ? 0.6 : 1) * (this.world.todayEvent === 'inspection' ? 1.15 : 1) * (this.world.mode === 'story' ? 0.85 : 1) * (this.trait === 'sharp' ? 1.25 : 1) * (this.dozing ? 0.5 : 1)
   }
 
   canSeePlayer(): boolean {
@@ -222,6 +256,16 @@ export class Guard extends Agent {
 
   /** Half-angle of the sight cone, radians. */
   static readonly HALF_ANGLE = 1.0
+
+  /** How fast in a chase: the old and the bad-kneed slower, the hard case faster. */
+  get runScale(): number {
+    return this.trait === 'old' || this.trait === 'badKnee' ? 0.7 : this.trait === 'hard' ? 1.12 : 1
+  }
+
+  /** Night-shift napper, asleep at her post. */
+  get dozing(): boolean {
+    return this.trait === 'dozer' && this.world.clock.locked && !this.chasing && this.ko <= 0
+  }
 
   /** Is the player behind this officer, close enough to lift their keys? */
   canBePickpocketed(): boolean {
@@ -290,7 +334,7 @@ function buildGuardTree(world: World): Node<Guard> {
         if (near) g.investigate = { x: (near.tx + 0.5) * TILE, z: (near.ty + 0.5) * TILE, t: 25 }
         return 'failure'
       }
-      if (!g.lastSeen || g.lastSeen.t > 9) {
+      if (!g.lastSeen || g.lastSeen.t > (g.trait === 'hard' ? 16 : 9)) {
         g.chasing = false
         g.suspicion = 0.5
         if (g.lastSeen) g.investigate = { x: g.lastSeen.x, z: g.lastSeen.z, t: 8 }
@@ -306,7 +350,7 @@ function buildGuardTree(world: World): Node<Guard> {
         return 'success'
       }
       const target = g.lastSeen.t < 0.5 ? { x: p.body.x, z: p.body.z } : g.lastSeen
-      return g.goToWorld(target.x, target.z, RUN, 0.4)
+      return g.goToWorld(target.x, target.z, RUN * g.runScale, 0.4)
     }),
   )
 
@@ -517,6 +561,31 @@ function buildGuardTree(world: World): Node<Guard> {
     }),
   )
 
+  // The ways officers have: a break in the mess, a chat, a nap.
+  const habits = bt.sequence<Guard>(
+    'habits',
+    bt.when('on a break, chatting or dozing', (g) => {
+      const m = world.clock.minuteOfDay
+      const onBreak = g.trait === 'onBreak' && !world.clock.locked && ((m >= 600 && m < 660) || (m >= 900 && m < 960))
+      return onBreak || g.chatting > 0 || g.dozing
+    }),
+    traced('habit', (g) => {
+      if (g.chatting > 0 || g.dozing) {
+        g.stop()
+        g.busy = true
+        g.body.pose = g.dozing ? 'sit' : 'talk'
+        if (g.chatting > 0) g.lookYaw = g.body.yaw + Math.sin(g.chatting) * 1.2
+        if (g.dozing && world.rng() < 0.01) g.say('Zzz...', 2)
+        return 'running'
+      }
+      // Ms Bottomley's break: the officers' desk in the canteen, a brew, a biscuit.
+      const s = g.goTo(36, 19, WALK, 0.6)
+      g.body.pose = s === 'running' ? 'walk' : 'stand'
+      g.busy = s !== 'running'
+      return 'running'
+    }),
+  )
+
   const duty = traced<Guard>('duty', (g) => {
     g.busy = false
     const night = world.clock.locked
@@ -554,7 +623,7 @@ function buildGuardTree(world: World): Node<Guard> {
     return patrol(world, g, () => world.grid.randomTileIn(zone, world.rng), 5)
   })
 
-  return bt.select<Guard>('officer', knockedOut, chase, riot, notice, reception, sickCall, lured, search, investigate, lockCheck, bangUp, ventListen, duty)
+  return bt.select<Guard>('officer', knockedOut, chase, riot, notice, reception, sickCall, lured, search, habits, investigate, lockCheck, bangUp, ventListen, duty)
 
   function xy(tx: number, ty: number): [number, number] {
     return [(tx + 0.5) * TILE, (ty + 0.5) * TILE]

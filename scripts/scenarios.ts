@@ -1265,6 +1265,47 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   check('modes: kept in a save', b.mode === 'story' && b.memory.attemptsPerRound === 6)
 }
 
+// ---- Officers with a way about them ----
+{
+  const { game, log } = fresh()
+  const by = (name: string) => game.guards.find((g) => g.name === name)!
+  check('officers: everyone has a trait', game.guards.every((g) => !!g.trait) && by('Ms Bottomley').trait === 'onBreak' && by('Mr Crumpet').trait === 'biscuits')
+  check('officers: the old and the bad-kneed are slow in a chase', by('Mr Higginbottom').runScale < 1 && by('Ms Puddifoot').runScale < 1 && by('Mr Gristle').runScale > 1)
+  game.clock.skipTo(10 * 60 + 5)
+  const bottomley = by('Ms Bottomley')
+  const onBreak = run(game, 60, () => bottomley.zone === 'hub' && bottomley.busy)
+  check('officers: Ms Bottomley takes her break in the canteen', onBreak, bottomley.zone)
+  // Mr Crumpet and the custard creams.
+  const crumpet = by('Mr Crumpet')
+  game.player.inventory.add('biscuits')
+  ;(game as any).talkToGuard(crumpet)
+  lastTalk!.options.find((o) => o.label.includes('Custard cream'))!.run()
+  game.endConversation()
+  check('officers: custard creams buy Mr Crumpet\'s blind eye', crumpet.blindEye && !game.player.inventory.has('biscuits'))
+  // Mrs Thistlethwaite nods off at night.
+  game.clock.skipTo(23 * 60)
+  run(game, 0.3)
+  const dozer = by('Mrs Thistlethwaite')
+  check('officers: Mrs Thistlethwaite dozes on nights and sees less', dozer.dozing && dozer.visionRange() < by('Mr Pickles').visionRange())
+  check('officers: Mrs Battenberg sees furthest', by('Mrs Battenberg').visionRange() > by('Mr Pickles').visionRange())
+}
+{
+  const { game, log } = fresh()
+  const soft = game.guards.find((g) => g.trait === 'soft')!
+  game.clock.skipTo(23 * 60)
+  run(game, 0.3)
+  put(game, 64, 23)
+  run(game, 0.1)
+  const fired = run(game, 8, () => {
+    soft.stop()
+    soft.body.x = game.player.body.x + 2.5
+    soft.body.z = game.player.body.z
+    soft.body.yaw = Math.atan2(-2.5, 0)
+    return log.some((l) => l.includes('lets you off with a warning'))
+  })
+  check('officers: Mr Wellbeloved lets you off once a day', fired && !soft.chasing, log.slice(-2).join(' | '))
+}
+
 // ---- Saving and carrying on ----
 {
   const { game: a } = fresh()
