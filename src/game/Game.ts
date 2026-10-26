@@ -6,10 +6,10 @@ import { Guard, type GuardRole } from '../npc/Guard'
 import { ATTEMPTS_PER_ROUND, METHOD_NAMES, type Method, PrisonMemory } from '../npc/Memory'
 import { Prisoner } from '../npc/Prisoner'
 import { GANGS, GANG_IDS, type GangId, gangOfWing } from '../npc/Gangs'
-import type { Noise, PlayerView, Riot, SickCall, World } from '../npc/World'
+import type { Lure, Noise, PlayerView, Riot, SickCall, World } from '../npc/World'
 import { buildPrison, type Fixtures } from '../world/Build'
 import { CONE_FRONT_RAYS, CONE_RAYS, Dynamic, type LooseItem } from '../world/Dynamic'
-import { BLOCKS, type BlockId, type Door, type Grate, Grid, PLAYER_CELL, TILE, Tile, blockOfZone, tileCentre, worldToTile } from '../world/Grid'
+import { BLOCKS, type BlockId, type Door, EAST_WALL, type Grate, Grid, PLAYER_CELL, TILE, Tile, blockOfZone, tileCentre, worldToTile } from '../world/Grid'
 import { moveCircle } from '../world/Nav'
 import { Clock, RESTRICTED, allowedZones } from './Clock'
 import { Doors } from './Doors'
@@ -74,6 +74,12 @@ export class Game implements World {
   readonly bodies: Body[] = []
   riot: Riot = { active: false, x: 0, z: 0, night: false, block: null, timer: 0, byPlayer: false }
   sickCall: SickCall | null = null
+  /** An officer you have shouted into your cell. */
+  lure: Lure | null = null
+  /** An officer asleep on a sleepy sausage roll, and whose uniform you have on. */
+  private drugged: { guard: Guard; eatsIn: number } | null = null
+  private sleeper: Guard | null = null
+  private disguisedAs: string | null = null
   alarm = { active: false, timer: 0, x: 0, z: 0 }
 
   /** Speech bubbles for the UI to draw this frame. */
@@ -452,6 +458,7 @@ export class Game implements World {
     p.attempt = null
     this.methodHint = null
     this.sickCall = null
+    this.lure = null
     this.alarm.active = false
     this.climb = null
     this.keyHold = null
@@ -493,12 +500,15 @@ export class Game implements World {
     p.health = 100
   }
 
-  private finish(won: boolean, how: 'escape' | 'gang' | 'solitary' | 'guardDisguise' | 'visitorDisguise' | 'laundry', gang: GangId = 'firm'): void {
+  private finish(won: boolean, how: 'escape' | 'gang' | 'solitary' | 'guardDisguise' | 'visitorDisguise' | 'laundry' | 'staffDoor', gang: GangId = 'firm'): void {
     this.over = true
     this.input.enabled = false
     const name = this.player.name
     const tally = `Day ${this.clock.day}. ${this.memory.totalFailures} failed attempt${this.memory.totalFailures === 1 ? '' : 's'}.`
-    if (won && how === 'guardDisguise') {
+    if (won && how === 'staffDoor') {
+      const who = this.disguisedAs ?? 'an officer'
+      this.ui.end(true, 'Off shift early', `${name} unlocks the staff door with ${who}'s keys, smelling faintly of Brut, and strolls across the staff car park like they own the place.\n${tally}\nHours later ${who} wakes up in a cell in a vest and pink boxers, with sausage roll crumbs down the front.`)
+    } else if (won && how === 'guardDisguise') {
       this.ui.end(true, 'Clocked off', `${name} walks out with the day shift, nods at the gatehouse and gets a lift to the station with Mrs Battenberg, who talks about her cats for forty minutes and never once looks at your face.\n${tally}\nThe count at nine comes up one short and one uniform missing. Nobody can work out which is more embarrassing.`)
     } else if (won && how === 'visitorDisguise') {
       this.ui.end(true, 'Gone with the visitors', `${name} shuffles out in a floral frock and catches the number 47 with Big Dave's nan, who offers you a Werther's Original and says you have lovely cheekbones.\n${tally}\nThe chaplain has asked for his wig back.`)
@@ -930,6 +940,7 @@ export class Game implements World {
       }
     }
 
+    this.updateLure(delta)
     this.updateIllegal()
     p.dodgy = this.dodgyTimer > 0 || p.inventory.weapon.damage >= 4 ? 1 : 0
 
@@ -1288,6 +1299,7 @@ export class Game implements World {
       const cell = this.grid.cells.get(p.cell)!
       if (near(cell.bunks[1].x, cell.bunks[1].z, 1.6)) add('R', `Your stash (${this.stash.length}/4)`, () => this.openStash())
       if (near(cell.bunks[0].x, cell.bunks[0].z, 1.6) && this.clock.locked) add('E', 'Sleep (Z) till morning', () => this.trySleep())
+      if (!this.clock.locked && !this.lure && !p.inVent && !this.memory.lureIgnored) add('H', 'Shout for an officer: "Guv! There\'s a rat!"', () => this.shoutForOfficer())
     }
     if (inv.has('spoon') && p.zone === 'yard') add('R', 'Grind the spoon flat on the concrete', () => this.craftNamed('flatSpoon'))
     this.missions.prompts(add)
@@ -1616,6 +1628,11 @@ export class Game implements World {
 
   private useKey(door: Door, key: { id: ItemId; durability: number }): void {
     const inv = this.player.inventory
+    const p = this.player
+    if (door.kind === 'perimeter' && door.tx === EAST_WALL && key.id !== 'lockpick' && p.disguise === 'guard' && !p.disguiseBlown) {
+      this.finish(true, 'staffDoor')
+      return
+    }
     if (door.kind === 'perimeter' && key.id === 'lockpick') {
       this.toast('The gatehouse lock is too heavy to pick.', 'bad')
       return
@@ -1696,6 +1713,10 @@ export class Game implements World {
 
   private callSick(): void {
     const p = this.player
+    if (!this.clock.locked && p.zone === p.cell) {
+      this.shoutForOfficer()
+      return
+    }
     if (!this.clock.locked || p.zone !== p.cell) {
       this.toast('Fake sickness works at night, behind your door: press H to bang for the night officer.', 'neutral')
       return
@@ -1714,6 +1735,88 @@ export class Game implements World {
     this.sickCall = { cell: p.cell, responders, stage: 'called', timer: 0 }
     this.methodHint = 'sick'
     this.toast(p.frothing > 0 ? 'You bang on the door, frothing. The night officer comes running.' : 'You bang on the door and clutch your stomach. Someone is coming.', 'neutral')
+  }
+
+  /**
+   * By day, in your own cell: shout an officer in to look at a rat. He has a
+   * good look round with his back half turned, which is your moment.
+   */
+  shoutForOfficer(): void {
+    const p = this.player
+    if (this.lure || this.sickCall || p.zone !== p.cell || this.clock.locked) return
+    if (this.memory.lureIgnored) {
+      this.toast('You shout yourself hoarse about a rat. Nobody comes. They have heard about you.', 'bad')
+      return
+    }
+    const g = this.guards
+      .filter((gg) => gg.ko <= 0 && !gg.chasing && !gg.busy && !gg.uniformTaken && !this.sickCall?.responders.includes(gg))
+      .sort((a, b) => (a.block === p.block ? 0 : 1) - (b.block === p.block ? 0 : 1) || a.distanceTo(p.body.x, p.body.z) - b.distanceTo(p.body.x, p.body.z))[0]
+    if (!g) {
+      this.toast('You shout for an officer. Nobody is free.', 'neutral')
+      return
+    }
+    this.lure = { cell: p.cell, guard: g, stage: 'called', timer: 0 }
+    this.emit({ x: p.body.x, z: p.body.z, radius: 6, kind: 'shout' })
+    this.toast(`You shout through the door: "Guv! There's a rat in here the size of a dog!" ${g.name} is on the way.`, 'neutral')
+  }
+
+  /** The officer in your cell eats what you gave him, or wakes up from it. */
+  private updateLure(delta: number): void {
+    const p = this.player
+    if (this.lure && (this.lure.guard.ko > 0 || this.lure.guard.chasing)) {
+      this.lure.guard.busy = false
+      this.lure = null
+    }
+    const d = this.drugged
+    if (d) {
+      d.eatsIn -= delta
+      if (d.eatsIn <= 0) {
+        const g = d.guard
+        this.drugged = null
+        g.say('*yawns* I\'ll just... rest my eyes... for a...', 2.5)
+        g.ko = 150
+        g.hp = 10
+        g.chasing = false
+        g.busy = false
+        if (this.lure?.guard === g) this.lure = null
+        this.sleeper = g
+        this.methodHint = 'lure'
+        this.toast(`${g.name} slides down the wall, snoring. Out for hours. Take the uniform (E) and the keys (R).`, 'good')
+      }
+    }
+    // Waking up in a vest and boxers: everyone hears about the stranger in uniform.
+    const s = this.sleeper
+    if (s && s.ko <= 0) {
+      this.sleeper = null
+      s.wary = 1
+      if (s.uniformTaken) {
+        s.say('Who\'s had my trousers?! And my KEYS?!', 3)
+        if (p.disguise === 'guard' && !p.disguiseBlown && this.disguisedAs === s.name) {
+          p.disguiseBlown = true
+          this.toast(`${s.name} has woken up in your cell in a vest and pink boxers. Every officer now knows there is a stranger in a uniform.`, 'bad')
+        }
+      }
+    }
+  }
+
+  /** "Fancy a sausage roll, guv?" */
+  private offerRoll(g: Guard): void {
+    const inv = this.player.inventory
+    this.ui.closePanels()
+    if (this.memory.foodRefused) {
+      g.say("I'm not eating anything you've touched, Bandit. I've read the memo.", 3)
+      return
+    }
+    if (inv.has('sleepyRoll')) {
+      inv.remove('sleepyRoll')
+      g.say(pick2(this.rng, ["Ooh, go on then. Don't tell the Governor.", 'Is that a Greggs? For me? You shouldn\'t have. Mmf.', 'Well, it would be rude not to.']), 2.5)
+      this.drugged = { guard: g, eatsIn: 4 }
+      if (this.lure) this.lure.timer = Math.max(this.lure.timer, 8)
+      return
+    }
+    inv.remove('sausageRoll')
+    g.say('Lovely. Right, I have rounds to do.', 2.5)
+    if (this.lure?.guard === g) this.lure.timer = 0.5
   }
 
   private kickOff(): void {
@@ -1865,7 +1968,12 @@ export class Game implements World {
           ? ["Ah. You. Just the person. Keep your voice down.", "Psst. Over here. No, act natural. NATURAL.", "You look like someone who can keep their mouth shut. Can you? Good."]
           : ["Ah, the Greggs Bandit. I've got my eye on you. And on my lunch.", 'What do you want? If it is the telly remote, the answer is no.', 'Keep your nose clean and we will get along famously.', "Not now, I'm on my break. I'm always on my break.", 'Lovely weather for it. Not that you would know.', "If you're after the toilet roll, there is none. There's never any."]
     const line = lines[Math.floor(this.rng() * lines.length)]
-    this.ui.talk(g.name, line, this.missions.options(g))
+    const options = this.missions.options(g)
+    if (this.lure?.guard === g && this.lure.stage === 'inside') {
+      const inv = this.player.inventory
+      options.unshift({ label: '"Fancy a sausage roll, guv?"', enabled: inv.has('sleepyRoll') || inv.has('sausageRoll'), run: () => this.offerRoll(g) })
+    }
+    this.ui.talk(g.name, line, options)
   }
 
   talkTo(pr: Prisoner): void {
@@ -2154,6 +2262,7 @@ export class Game implements World {
       return
     }
     this.player.inventory.add('guardUniform')
+    this.disguisedAs = g.name
     this.dressGuard(g, false)
     this.dodgyTimer = 4
     this.toast(`You strip ${g.name} to his vest and a pair of pink boxers. Dignity: confiscated. Wear the uniform from your pockets (Tab).`, 'good')
@@ -2184,13 +2293,17 @@ export class Game implements World {
         break
       }
     }
-    if (p.zone === 'bay' && near(f.staffExit, 3.5)) {
-      if (p.disguise === 'guard' && !p.disguiseBlown) {
+    if (p.zone === 'changing' && near(f.staffExit, 3.5)) {
+      const keys = p.inventory.withUse('openDoor')
+      if (p.disguise === 'guard' && !p.disguiseBlown && keys && keys.id !== 'lockpick') {
+        // In uniform with keys: let yourself out, any time, like you own the place.
+        add('E', 'Let yourself out of the staff door', () => this.finish(true, 'staffDoor'))
+      } else if (p.disguise === 'guard' && !p.disguiseBlown) {
         const shift = m >= 20 * 60 + 45 && m < 21 * 60 + 20
-        add('E', shift ? 'Clock off with the day shift' : 'Staff gate (opens at shift change, 20:45 to 21:20)', () => {
+        add('E', shift ? 'Clock off with the day shift' : 'Staff door (locked: keys, or wait for shift change, 20:45 to 21:20)', () => {
           if (shift) this.sillyExit('guardDisguise')
         })
-      } else add('E', 'Staff gate: officers only', () => this.toast('Only staff leave this way. You would need to look like one.', 'neutral'))
+      } else add('E', 'Staff door: officers only', () => this.toast('Only staff leave this way. You would need to look like one, and have keys or wait for shift change.', 'neutral'))
     }
     if (p.zone === 'visits' && near(f.visitorsGate, 4)) {
       if (p.disguise === 'visitor' && !p.disguiseBlown) {

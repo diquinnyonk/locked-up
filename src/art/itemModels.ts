@@ -72,6 +72,10 @@ function parts(id: ItemId): BufferGeometry[] {
       return [cylX(0.12, 0.6, o(0, 0.12), HEX.stainedBlue, 12), cylX(0.06, 0.12, o(0.34, 0.12), HEX.stainedBlue, 10), cylX(0.065, 0.06, o(0.42, 0.12), HEX.porcelain, 10), cylX(0.124, 0.2, o(-0.04, 0.12), HEX.gateYellow, 12)]
     case 'sausageRoll':
       return [box(0.46, 0.04, 0.3, o(), HEX.porcelain), cylX(0.09, 0.36, o(0, 0.12), HEX.chipsOrange, 10), cylX(0.05, 0.37, o(0, 0.13), HEX.skinShade, 8)]
+    case 'sleepingPills':
+      return [box(0.3, 0.03, 0.22, o(), HEX.paper), ball(0.045, o(-0.06, 0.05, -0.03), HEX.porcelain, 1, 0.6, 1), ball(0.045, o(0.05, 0.05, 0.02), HEX.porcelain, 1, 0.6, 1), ball(0.045, o(0.0, 0.05, 0.07), HEX.porcelain, 1, 0.6, 1)]
+    case 'sleepyRoll':
+      return [box(0.46, 0.04, 0.3, o(), HEX.porcelain), cylX(0.09, 0.36, o(0, 0.12), HEX.chipsOrange, 10), cylX(0.05, 0.37, o(0, 0.13), HEX.skinShade, 8), ball(0.03, o(0.08, 0.21, 0.02), HEX.porcelain), ball(0.03, o(-0.07, 0.21, -0.02), HEX.porcelain)]
     case 'hymnBook':
       return [box(0.36, 0.1, 0.26, o(), HEX.bookRed), box(0.34, 0.08, 0.24, o(0.015, 0.01), HEX.paper), box(0.08, 0.102, 0.03, o(0, 0, 0), HEX.stainedGold), box(0.03, 0.102, 0.12, o(0, 0, 0), HEX.stainedGold)]
     case 'guardUniform':

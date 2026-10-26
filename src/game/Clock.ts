@@ -139,4 +139,4 @@ export function allowedZones(period: Period, block: string): Set<string> {
 }
 
 /** Places nobody is allowed without an officer, at any hour. */
-export const RESTRICTED = new Set(['maint', 'solitary', 'outside', 'mess', 'bay'])
+export const RESTRICTED = new Set(['maint', 'solitary', 'outside', 'mess', 'bay', 'governor', 'changing'])

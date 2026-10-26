@@ -9,7 +9,7 @@ import { paint, mergePainted } from '../art/paint'
 import { toon } from '../art/toonMaterial'
 import { type Place, ball, bandedBox, box, cyl, ring } from '../art/shapes'
 import { SOLID_LAYER } from '../render/CelPipeline'
-import { type Grid, MAP_H, MAP_W, PLAYER_CELL, type Rect, TILE, Tile } from './Grid'
+import { EAST_WALL, type Grid, MAP_H, MAP_W, PLAYER_CELL, type Rect, TILE, Tile } from './Grid'
 import { type AnnexFixtures, detailPass, furnishAnnexes } from './Furnish'
 import { registerSolids } from './Solids'
 
@@ -69,7 +69,7 @@ export function buildPrison(grid: Grid): { group: Group; fixtures: Fixtures } {
     tree(add, x, z, 1 + ((i * 7) % 3) * 0.2)
   }
   for (let i = 0; i < 12; i++) tree(add, 2 * TILE + ((i * 17) % 5), 10 + i * 9, 1.1)
-  for (let i = 0; i < 12; i++) tree(add, 77 * TILE + ((i * 11) % 5), 14 + i * 9, 1.0)
+  for (let i = 0; i < 12; i++) tree(add, (EAST_WALL + 3) * TILE + ((i * 11) % 5), 14 + i * 9, 1.0)
 
   // ---- Floors, one painted quad per tile, with a faint chequer ----
   for (let ty = 0; ty < MAP_H; ty++) {
@@ -281,7 +281,7 @@ export function buildPrison(grid: Grid): { group: Group; fixtures: Fixtures } {
 }
 
 function insideFootprint(tx: number, ty: number): boolean {
-  return tx > 5 && tx < 74 && ty > 5 && ty < 59
+  return tx > 5 && tx < EAST_WALL && ty > 5 && ty < 59
 }
 
 /** A wall that faces the yard or the outside world is brick, not paint. */

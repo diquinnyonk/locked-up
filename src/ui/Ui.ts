@@ -269,7 +269,8 @@ export class Ui implements UiPort {
         </ul>
         <h4>Or one of the silly ways</h4>
         <ul class="checks">
-          ${tick(inv.has('guardUniform'), "An officer's uniform", 'Clock off with the day shift at 20:45 in the loading bay.')}
+          ${tick(inv.has('guardUniform'), "An officer's uniform", 'Clock off with the day shift at 20:45 in the staff changing room, off the loading bay. With an officer\'s keys as well, the staff door lets you out any time.')}
+          ${tick(inv.has('sleepyRoll'), 'A sleepy sausage roll', m.foodRefused ? 'Burned once: officers will not eat anything you offer now.' : 'Sleeping pills from a fixer in a sausage roll. Shout an officer into your cell by day (H) and offer it to him: then his uniform and keys are yours.')}
           ${tick(inv.has('visitorDisguise'), 'Visitor disguise', 'Leave with the visitors at 15:30.')}
           ${tick(g.keith.bribedDay === g.clock.day, `${g.keith.name} on the X-ray paid off today`, `${m.xrayBribe} blue drink and ${m.xrayBribe} sausage roll, then into a laundry basket before 11:00. He sits at the X-ray in the loading bay: the blue square on your map.`)}
         </ul>
@@ -452,6 +453,8 @@ export class Ui implements UiPort {
         <li><b>Riot</b>: pay the boss of the firm that runs your wing, then press G. At night the landing goes up and the officers open the cells.</li>
         <li><b>The vent</b> behind your table. Nobody remembers it is there.</li>
       </ol>
+      <h3>The officer in your cell</h3>
+      <p class="hint">By day in your cell, press H to shout for an officer about a rat. He comes in and has a good look round with his back to you: give him a sleepy sausage roll, or a cosh round the ear. Take his uniform (E) and keys (R), and let yourself out of the staff door in the changing room. When he wakes, hours later and in his boxers, every officer knows about the stranger in uniform.</p>
       <h3>Silly ways out</h3>
       <p class="hint">Whole escapes on their own, no car needed. Odds now: officer ${Math.round(g.memory.sillyExitChance('guardDisguise') * 100)}%, visitor ${Math.round(g.memory.sillyExitChance('visitorDisguise') * 100)}%, laundry ${Math.round(g.memory.sillyExitChance('laundry') * 100)}% once ${escape(g.keith.name)} is paid. They get worse each time one is rumbled.</p>
       <h3>The firms</h3>
@@ -647,6 +650,8 @@ export class Ui implements UiPort {
     label('LIB', 59, 51.5)
     label('MESS', 65.3, 51.5)
     label('BAY', 62, 57.5)
+    label('GOV', 73.5, 51.5)
+    label('STAFF', 73, 57.5)
     return c
   }
 

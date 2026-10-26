@@ -36,6 +36,7 @@ export type ItemId =
   | 'racingPost'
   | 'blueDrink'
   | 'sausageRoll'
+  | 'sleepingPills'
   | 'hymnBook'
   // Disguises
   | 'guardUniform'
@@ -55,6 +56,7 @@ export type ItemId =
   | 'lockpick'
   | 'spear'
   | 'flag'
+  | 'sleepyRoll'
 
 export type Use = 'jamLock' | 'openVent' | 'openDoor' | 'climb' | 'signal' | 'bribe' | 'froth' | 'mould' | 'heat' | 'distract' | 'disguise'
 
@@ -102,6 +104,7 @@ export const ITEMS: Record<ItemId, ItemDef> = {
 
   blueDrink: { id: 'blueDrink', name: 'Blue drink', hex: HEX.stainedBlue, damage: 1, uses: ['bribe'], contraband: false, blurb: 'Two litres of something fizzy. Flavour: blue. Keith on the X-ray would sell his nan for one.' },
   sausageRoll: { id: 'sausageRoll', name: 'Sausage roll', hex: HEX.chipsOrange, damage: 0, uses: ['bribe'], contraband: false, blurb: 'Flaky, lukewarm, magnificent. Half of the laundry X-ray bribe.' },
+  sleepingPills: { id: 'sleepingPills', name: 'Sleeping pills', hex: HEX.porcelain, damage: 0, uses: [], contraband: true, blurb: 'A twist of paper with four little white pills in it. "Two will put a horse down," says the fixer. Mash them into something an officer would eat.' },
   hymnBook: { id: 'hymnBook', name: 'Hymn book', hex: HEX.bookRed, damage: 1, uses: [], contraband: false, blurb: 'Hymns Ancient and Modern, property of HMP Grim-on-the-Moor chapel. Somebody has drawn a moustache on every bishop.' },
   guardUniform: { id: 'guardUniform', name: "Officer's uniform", hex: HEX.guardShirt, damage: 0, uses: ['disguise'], contraband: true, blurb: 'Shirt, tie, trousers, peaked cap. Slightly too big. Smells of Brut and disappointment. Wear it (Tab).' },
   wig: { id: 'wig', name: 'Panto wig', hex: HEX.hairBlonde, damage: 0, uses: [], contraband: false, blurb: 'Big, blonde and last worn by the chaplain as Widow Twankey in 2009.' },
@@ -120,6 +123,7 @@ export const ITEMS: Record<ItemId, ItemDef> = {
   lockpick: { id: 'lockpick', name: 'Lockpick', hex: HEX.clothesYellow, damage: 0, uses: ['openDoor'], contraband: true, blurb: 'Bent wire. Slow, quiet, unreliable.', durability: 2 },
   spear: { id: 'spear', name: 'Mop spear', hex: HEX.wood, damage: 7, uses: [], contraband: true, blurb: 'A mop handle with a shiv taped on.' },
   flag: { id: 'flag', name: 'Signal flag', hex: HEX.clothesRed, damage: 0, uses: ['signal'], contraband: true, blurb: 'A sheet with a red sock sewn on. Run it up the yard flagpole.' },
+  sleepyRoll: { id: 'sleepyRoll', name: 'Sleepy sausage roll', hex: HEX.chipsOrange, damage: 0, uses: [], contraband: true, blurb: 'A sausage roll with a secret. Get an officer into your cell and offer it to him: he will be asleep in seconds, and for hours.' },
 }
 
 export interface Recipe {
@@ -143,6 +147,7 @@ export const RECIPES: Recipe[] = [
   { makes: 'spear', needs: ['mopHandle', 'shiv', 'tape'] },
   { makes: 'flag', needs: ['bedsheet', 'sock'] },
   { makes: 'visitorDisguise', needs: ['wig', 'dress'] },
+  { makes: 'sleepyRoll', needs: ['sausageRoll', 'sleepingPills'] },
 ]
 
 export const INVENTORY_SLOTS = 8

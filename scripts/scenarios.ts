@@ -821,10 +821,93 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   const exit = game.fixtures.staffExit
   game.player.body.x = exit.x
   game.player.body.z = exit.z - 1.5
-  game.player.zone = 'bay'
+  game.player.zone = 'changing'
   ;(game as any).rng = () => 0.01
   check('disguise: clock off at shift change', prompt(game, 'Clock off'))
   check('disguise: walks out with the day shift', game.over && log.some((l) => l.startsWith('[end] true Clocked off')), log.slice(-1)[0])
+}
+
+// ---- The staff wing: the Governor's office and the changing room ----
+{
+  const { game } = fresh()
+  const grid = game.grid
+  const centre = (zone: string) => {
+    const r = grid.rooms.get(zone)!.rects[0]
+    return { tx: Math.floor((r.x0 + r.x1) / 2), ty: Math.floor((r.y0 + r.y1) / 2) }
+  }
+  check('staff wing: the Governor\'s office is on the map', grid.rooms.get('governor')?.name === "Governor's office")
+  check('staff wing: so is the staff changing room', grid.rooms.get('changing')?.name === 'Staff changing room')
+  const mess = centre('mess')
+  const bay = centre('bay')
+  const office = centre('governor')
+  const changing = centre('changing')
+  const walk = (a: { tx: number; ty: number }, b: { tx: number; ty: number }) => findPath(grid, a, b, () => true)
+  check('staff wing: the office opens off the mess', !!walk(mess, { tx: 77, ty: 52 })?.length && grid.underProp(office.tx, office.ty))
+  check('staff wing: the changing room opens off the bay, through to the staff door', !!walk(bay, { tx: 79, ty: changing.ty + 0 })?.length && !!walk(bay, { tx: 79, ty: 56 })?.length)
+  check('staff wing: both are on the vents', grid.grates.some((gr) => gr.zone === 'governor') && grid.grates.some((gr) => gr.zone === 'changing'))
+  check('staff wing: both are out of bounds', game.player.zone !== 'governor' && (await import('../src/game/Clock')).RESTRICTED.has('governor') && (await import('../src/game/Clock')).RESTRICTED.has('changing'))
+}
+
+// ---- Lure an officer in, drug him, walk out in his uniform ----
+{
+  const { game, log } = fresh()
+  const inv = game.player.inventory
+  check('lure: fixers sell sleeping pills', game.prisoners.some((pr) => pr.sells.includes('sleepingPills')))
+  inv.add('sausageRoll')
+  inv.add('sleepingPills')
+  const recipe = (await import('../src/game/Items')).RECIPES.find((r) => r.makes === 'sleepyRoll')!
+  game.craft(recipe)
+  check('lure: pills in a sausage roll make a sleepy one', inv.has('sleepyRoll') && !inv.has('sausageRoll'))
+  game.clock.skipTo(10 * 60)
+  run(game, 0.2)
+  const cell = game.grid.cells.get(game.player.cell)!
+  game.player.body.x = cell.bunks[1].x + 0.4
+  game.player.body.z = cell.bunks[1].z
+  game.player.zone = game.player.cell
+  check('lure: in your cell by day you can shout for an officer', prompt(game, 'Shout for an officer') && !!game.lure)
+  const officer = game.lure!.guard
+  const inside = run(game, 90, () => game.lure?.stage === 'inside' && officer.zone === game.player.cell)
+  check('lure: an officer comes into your cell to look for the rat', inside, `${officer.name} in ${officer.zone}, lure ${game.lure?.stage}`)
+  ;(game as any).talkToGuard(officer)
+  const offer = lastTalk?.options.find((o) => o.label.includes('sausage roll'))
+  check('lure: you can offer him a sausage roll', !!offer?.enabled)
+  offer?.run()
+  run(game, 6)
+  check('lure: he eats it and falls asleep', officer.ko > 60 && !inv.has('sleepyRoll'), `ko ${officer.ko.toFixed(1)}`)
+  game.player.body.x = officer.x + 0.6
+  game.player.body.z = officer.z
+  check('lure: strip him', prompt(game, 'uniform') && inv.has('guardUniform'))
+  check('lure: and take his keys', prompt(game, 'keys') && inv.has('guardKey'))
+  game.useItem(inv.items.findIndex((i) => i.id === 'guardUniform'))
+  const exit = game.fixtures.staffExit
+  game.player.body.x = exit.x - 1
+  game.player.body.z = exit.z
+  game.player.zone = 'changing'
+  check('lure: in uniform with keys, the staff door lets you out any time', prompt(game, 'Let yourself out'))
+  check('lure: off shift early', game.over && log.some((l) => l.startsWith('[end] true Off shift early')), log.slice(-1)[0])
+}
+
+// ---- He wakes up, and they learn ----
+{
+  const { game, log } = fresh()
+  game.clock.skipTo(10 * 60)
+  run(game, 0.2)
+  const g = game.guards[0]
+  game.player.inventory.add('sleepyRoll')
+  ;(game as any).offerRoll(g)
+  run(game, 5)
+  game.player.body.x = g.x + 0.6
+  game.player.body.z = g.z
+  prompt(game, 'uniform')
+  game.useItem(game.player.inventory.items.findIndex((i) => i.id === 'guardUniform'))
+  g.ko = 0.05
+  run(game, 0.5)
+  check('lure: when he wakes in his boxers, your disguise is blown', game.player.disguiseBlown, log.slice(-1)[0])
+  game.memory.fail('lure', 0, 0)
+  game.player.inventory.add('sleepyRoll')
+  ;(game as any).offerRoll(game.guards[1])
+  run(game, 5)
+  check('lure: once burned, officers will not eat what you offer', game.guards[1].ko <= 0 && game.player.inventory.has('sleepyRoll'))
 }
 
 // ---- Visitor in a frock, rumbled ----

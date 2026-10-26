@@ -37,11 +37,11 @@ const RUN = 4.6
 
 /** What a fixer will sell you, for Greggs vouchers. */
 const STOCK: ItemId[][] = [
-  ['razor', 'lighter'],
+  ['razor', 'lighter', 'sleepingPills'],
   ['wire', 'tape'],
-  ['battery', 'lighter'],
+  ['battery', 'lighter', 'sleepingPills'],
   ['screwdriver', 'tape'],
-  ['sock', 'poolBall'],
+  ['sock', 'poolBall', 'sleepingPills'],
 ]
 
 export interface ActivitySpot {

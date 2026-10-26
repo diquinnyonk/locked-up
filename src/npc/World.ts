@@ -66,6 +66,14 @@ export interface SickCall {
   timer: number
 }
 
+/** An officer called into your cell to look at something. */
+export interface Lure {
+  cell: string
+  guard: Guard
+  stage: 'called' | 'inside'
+  timer: number
+}
+
 export interface World {
   grid: Grid
   clock: Clock
@@ -77,6 +85,7 @@ export interface World {
   noises: Noise[]
   riot: Riot
   sickCall: SickCall | null
+  lure: Lure | null
   alarm: { active: boolean; timer: number; x: number; z: number }
   /** Cells the night officer still has to try. */
   lockChecks: Door[]

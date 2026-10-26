@@ -18,7 +18,7 @@ export const CONTROLS: { keys: string[]; touch: string; what: string }[] = [
   { keys: ['J'], touch: 'Notebook', what: 'The Notebook: mission, jobs, post, notes' },
   { keys: ['M'], touch: 'Map', what: 'The big map' },
   { keys: ['Z'], touch: 'Sleep', what: 'Sleep on your bunk at night, till morning' },
-  { keys: ['H'], touch: 'Sick', what: 'Fake being ill behind your door at night' },
+  { keys: ['H'], touch: 'Shout', what: 'Fake being ill behind your door at night; by day, shout an officer into your cell' },
   { keys: ['Q'], touch: 'Soap', what: 'Chew soap, so the sickness froths' },
   { keys: ['G'], touch: 'Kick off', what: 'Start a riot, once a firm is paid to back you' },
   { keys: ['Esc'], touch: 'Menu', what: 'Pause, or close whatever is open' },

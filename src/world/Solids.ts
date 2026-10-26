@@ -151,6 +151,22 @@ export function registerSolids(grid: Grid): void {
   solid(at(65.2, 51.5).x, at(65.2, 51.5).z, 0.4, 1.6, false)
   solid(at(67, 50.5).x, at(67, 50.5).z, 2.2, 0.8)
 
+  // ---- Governor's office: the desk and its three chairs, the cabinets,
+  //      the safe, the yucca ----
+  const desk = at(75, 50.6)
+  solid(desk.x, desk.z, 3.0, 1.3)
+  bench(desk.x, desk.z - 1.1, 0.5, 0.5, 0, 1)
+  bench(desk.x - 0.8, desk.z + 1.2, 0.5, 0.5, Math.PI, 1)
+  bench(desk.x + 0.8, desk.z + 1.2, 0.5, 0.5, Math.PI, 1)
+  solid(at(72.5, 49.25).x, at(72.5, 49.25).z, 2.7, 0.6, false)
+  solid(at(78.6, 52.4).x, at(78.6, 52.4).z, 0.8, 0.7, false)
+  solid(at(78.6, 49.4).x, at(78.6, 49.4).z, 0.5, 0.5, false)
+
+  // ---- Staff changing room: lockers both sides, the bench down the middle ----
+  solid(at(74.4, 54).x, 54 * TILE + 0.35, 7, 0.6, false)
+  solid(at(74.4, 58).x, 59 * TILE - 0.35, 7, 0.6, false)
+  bench(at(75, 55.2).x, at(75, 55.2).z, 5.2, 0.5, 0, 4)
+
   // ---- Loading bay: the van, cages, pallets, the X-ray ----
   solid(at(64, 56.3).x, at(64, 56.3).z + 0.55, 2.3, 5.7)
   for (let i = 0; i < 3; i++) solid(at(60 + i * 1.2, 54.6).x, at(60 + i * 1.2, 54.6).z, 1.0, 1.0, false)

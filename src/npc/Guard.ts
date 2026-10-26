@@ -370,6 +370,12 @@ function buildGuardTree(world: World): Node<Guard> {
     traced('attend sick call', (g) => attendSick(world, g)),
   )
 
+  const lured = bt.sequence<Guard>(
+    'lured',
+    bt.when('called to a cell', (g) => world.lure?.guard === g),
+    traced('see what the fuss is', (g) => attendLure(world, g)),
+  )
+
   const search = bt.sequence<Guard>(
     'search',
     bt.when('reported', (g) => g.searchTarget),
@@ -527,7 +533,7 @@ function buildGuardTree(world: World): Node<Guard> {
     return patrol(world, g, () => world.grid.randomTileIn(zone, world.rng), 5)
   })
 
-  return bt.select<Guard>('officer', knockedOut, chase, riot, notice, sickCall, search, investigate, lockCheck, bangUp, ventListen, duty)
+  return bt.select<Guard>('officer', knockedOut, chase, riot, notice, sickCall, lured, search, investigate, lockCheck, bangUp, ventListen, duty)
 
   function xy(tx: number, ty: number): [number, number] {
     return [(tx + 0.5) * TILE, (ty + 0.5) * TILE]
@@ -570,6 +576,47 @@ function nearestGrate(world: World, x: number, z: number) {
  * officer opens the door and walks you to healthcare; the second (once they
  * have learned) hangs back by the door.
  */
+/**
+ * Called into a cell ("Guv! There's a rat in here the size of a dog!"): walk
+ * over, step in, and have a good look round, back half turned. Long enough
+ * to be offered a sausage roll, or to get a cosh round the ear.
+ */
+function attendLure(world: World, g: Guard): Status {
+  const lure = world.lure!
+  const cell = world.grid.cells.get(lure.cell)!
+  const door = cell.door
+  const outsideTy = door.ty < cell.rect.y0 ? door.ty - 1 : door.ty + 1
+  if (lure.stage === 'called') {
+    g.body.pose = 'walk'
+    const s = g.goTo(door.tx, outsideTy, WALK * 1.2, 0.6)
+    if (s !== 'running') {
+      lure.stage = 'inside'
+      lure.timer = 24
+      g.say(pick(world.rng, ["Right, what's all this then? If it's another spider, I'm off.", 'A rat, you say? Where? I hate rats. Where is it?', 'This had better be good. I left a brew for this.']), 3)
+    }
+    return 'running'
+  }
+  world.requestDoor(door, 'guard')
+  const mid = { x: ((cell.rect.x0 + cell.rect.x1 + 1) / 2) * TILE, z: ((cell.rect.y0 + cell.rect.y1 + 1) / 2) * TILE }
+  const s = g.goToWorld(mid.x, mid.z, WALK, 0.7)
+  g.body.pose = s === 'running' ? 'walk' : 'stand'
+  if (s !== 'running') {
+    // Peering into the far corner: his back is to the door. Burned once,
+    // they keep their back to the wall.
+    const away = Math.atan2(mid.x - (door.tx + 0.5) * TILE, mid.z - (door.ty + 0.5) * TILE)
+    g.busy = !world.memory.foodRefused
+    g.lookYaw = away + Math.sin(lure.timer * 0.8) * 1.1
+  }
+  lure.timer -= 1 / 6
+  if (lure.timer <= 0) {
+    g.say(pick(world.rng, ['Waste of my time. Again.', 'There is no rat. There was never a rat.', "I'm putting this in my notebook. In capitals."]), 2.5)
+    g.busy = false
+    world.lure = null
+    return 'success'
+  }
+  return 'running'
+}
+
 function attendSick(world: World, g: Guard): Status {
   const call = world.sickCall!
   const p = world.player

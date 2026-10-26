@@ -11,13 +11,16 @@
  *        [ landing ]=[ corridor N ]=[ landing ]
  *   [Solitary][Infirmary][  HUB / canteen  ][Games room][Maintenance]
  *        [ Block C ]=[ corridor S ]=[ Block D ]
- *              [        exercise yard        ]
+ *              [        exercise yard        ] [mess][Governor]
+ *                                              [bay ][changing]=staff door
  *   =========== perimeter wall ===== gatehouse ===
  *                   the road out
  */
 
 export const TILE = 2
-export const MAP_W = 80
+export const MAP_W = 86
+/** The east perimeter wall: the staff wing sits just inside it. */
+export const EAST_WALL = 80
 export const MAP_H = 72
 
 export const enum Tile {
@@ -113,8 +116,8 @@ export class Grid {
   constructor() {
     for (let y = 0; y < MAP_H; y++) {
       for (let x = 0; x < MAP_W; x++) {
-        const inside = x > 5 && x < 74 && y > 5 && y < 59
-        const ring = (x === 5 || x === 74) && y >= 5 && y <= 59 || (y === 5 || y === 59) && x >= 5 && x <= 74
+        const inside = x > 5 && x < EAST_WALL && y > 5 && y < 59
+        const ring = (x === 5 || x === EAST_WALL) && y >= 5 && y <= 59 || (y === 5 || y === 59) && x >= 5 && x <= EAST_WALL
         this.tiles[y * MAP_W + x] = ring ? Tile.Perimeter : inside ? Tile.Solid : Tile.Outside
         if (!ring && !inside) this.zoneOf[y * MAP_W + x] = 'outside'
       }
@@ -151,6 +154,10 @@ export class Grid {
     this.room('library', 'Library', [{ x0: 58, y0: 49, x1: 63, y1: 52 }], 'floorWood')
     this.room('mess', "Officers' mess", [{ x0: 65, y0: 49, x1: 69, y1: 52 }], 'floorCarpet')
     this.room('bay', 'Loading bay', [{ x0: 58, y0: 54, x1: 69, y1: 58 }], 'floorMaint')
+    // The staff wing, off the mess and the bay: the Governor's office, and
+    // the changing room with the staff door out to the car park.
+    this.room('governor', "Governor's office", [{ x0: 71, y0: 49, x1: 79, y1: 52 }], 'floorWood')
+    this.room('changing', 'Staff changing room', [{ x0: 71, y0: 54, x1: 79, y1: 58 }], 'floorTile')
 
     this.door('room', 36, 12, 'x', ['corridorN', 'showers'])
     this.door('room', 43, 12, 'x', ['corridorN', 'laundry'])
@@ -167,8 +174,12 @@ export class Grid {
     this.door('room', 57, 50, 'y', ['yard', 'library'])
     this.door('secure', 67, 53, 'x', ['bay', 'mess'])
     this.door('secure', 57, 56, 'y', ['yard', 'bay'])
-    // The staff exit from the loading bay, and the visitors' gate.
+    this.door('secure', 70, 50, 'y', ['mess', 'governor'])
+    this.door('secure', 70, 56, 'y', ['bay', 'changing'])
+    // The vehicle gate from the loading bay, the staff door out of the
+    // changing room, and the visitors' gate.
     this.door('perimeter', 64, 59, 'x', ['bay', 'outside'])
+    this.door('perimeter', EAST_WALL, 56, 'y', ['changing', 'outside'])
     this.door('perimeter', 15, 59, 'x', ['visits', 'outside'])
 
     for (let x = 24; x <= 55; x++) this.climbable.push({ tx: x, ty: 59 })
@@ -186,7 +197,8 @@ export class Grid {
     duct(19, 14, 19, 19)
     duct(16, 33, 16, 52)
     duct(63, 33, 63, 56)
-    duct(63, 51, 67, 51)
+    duct(63, 51, 75, 51)
+    duct(75, 51, 75, 56)
 
     const grate = (id: string, tx: number, ty: number) =>
       this.grates.push({ id, tx, ty, zone: this.zone(tx, ty), sealed: false, open: false })
@@ -209,6 +221,8 @@ export class Grid {
     grate('library', 63, 50)
     grate("officers' mess", 67, 51)
     grate('loading bay', 63, 56)
+    grate("Governor's office", 75, 51)
+    grate('changing room', 75, 56)
   }
 
   /**

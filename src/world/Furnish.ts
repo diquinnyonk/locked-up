@@ -1,7 +1,7 @@
 import type { BufferGeometry } from 'three'
 import { HEX } from '../art/palette'
 import { type Place, ball, box, cyl, cylX, ring } from '../art/shapes'
-import { type Grid, PLAYER_CELL, TILE } from './Grid'
+import { EAST_WALL, type Grid, PLAYER_CELL, TILE } from './Grid'
 import { WALL_H } from './Build'
 
 /**
@@ -56,7 +56,7 @@ export function furnishAnnexes(add: Add): AnnexFixtures {
     uniformRack: { x: 0, z: 0 },
     laundryBasket: { x: 0, z: 0 },
     van: { x: 0, z: 0 },
-    staffExit: { x: (64 + 0.5) * TILE, z: (58 + 0.5) * TILE },
+    staffExit: { x: (EAST_WALL - 0.5) * TILE, z: (56 + 0.5) * TILE },
     visitorsGate: { x: (15 + 0.5) * TILE, z: (58 + 0.5) * TILE },
     pews: [],
     xray: { x: 0, z: 0 },
@@ -179,6 +179,46 @@ export function furnishAnnexes(add: Add): AnnexFixtures {
   add(box(0.08, 0.6, 1.34, { ...xr, x: xr.x - 0.66, y: 0.55 }, HEX.clothesYellow), box(0.08, 0.6, 1.34, { ...xr, x: xr.x + 0.66, y: 0.55 }, HEX.clothesYellow))
   add(cyl(0.04, 0.04, 1.2, { x: xr.x + 1.4, y: 0, z: xr.z - 0.5 }, HEX.steel, 8), box(0.7, 0.5, 0.08, { x: xr.x + 1.4, y: 1.2, z: xr.z - 0.48 }, HEX.tv), box(0.6, 0.4, 0.02, { x: xr.x + 1.4, y: 1.25, z: xr.z - 0.43 }, HEX.stainedBlue))
   add(cyl(0.12, 0.1, 0.2, { x: xr.x + 1.0, y: 0.58, z: xr.z + 0.45 }, HEX.paper, 12))
+
+  // ---- The Governor's office: a desk the size of a car, a leather chair,
+  //      filing cabinets, a portrait of the Governor, a safe and a dying
+  //      yucca ----
+  const desk = at(75, 50.6)
+  add(box(3.0, 0.78, 1.3, desk, HEX.wood), box(2.6, 0.03, 1.0, { ...desk, y: 0.78 }, HEX.bookGreen))
+  add(box(0.5, 0.04, 0.35, { ...desk, y: 0.81, x: desk.x - 0.7 }, HEX.paper), box(0.35, 0.25, 0.04, { ...desk, y: 0.81, x: desk.x + 0.8, z: desk.z - 0.3 }, HEX.stainedGold))
+  add(cyl(0.05, 0.05, 0.12, { ...desk, y: 0.81, x: desk.x + 0.2 }, HEX.porcelain, 10))
+  chair(add, desk.x, desk.z - 1.1, 0, HEX.bookRed)
+  chair(add, desk.x - 0.8, desk.z + 1.2, Math.PI, HEX.steel)
+  chair(add, desk.x + 0.8, desk.z + 1.2, Math.PI, HEX.steel)
+  for (let i = 0; i < 3; i++) {
+    const c = at(71.6 + i * 0.9, 49.25)
+    add(box(0.8, 1.4, 0.6, c, HEX.steel))
+    for (let d = 0; d < 3; d++) add(box(0.5, 0.05, 0.02, { ...c, y: 0.3 + d * 0.42, z: c.z + 0.31 }, HEX.steelDark))
+  }
+  const portrait = { x: at(75, 49).x, z: 49 * TILE + 0.04 }
+  add(box(1.0, 1.2, 0.05, { ...portrait, y: 1.3 }, HEX.stainedGold), box(0.8, 1.0, 0.06, { ...portrait, y: 1.4 }, HEX.guardTrousers), ball(0.18, { x: portrait.x, y: 2.05, z: portrait.z + 0.04 }, HEX.skin))
+  const safe = at(78.6, 52.4)
+  add(box(0.8, 0.9, 0.7, safe, HEX.steelDark), cyl(0.08, 0.08, 0.04, { x: safe.x, y: 0.55, z: safe.z - 0.37 }, HEX.stainedGold, 12))
+  const yucca = at(78.6, 49.4)
+  add(cyl(0.22, 0.18, 0.45, yucca, HEX.bookRed, 12), cyl(0.04, 0.05, 0.9, { ...yucca, y: 0.45 }, HEX.wood, 6))
+  for (let i = 0; i < 5; i++) add(box(0.06, 0.5, 0.14, { x: yucca.x + Math.sin(i * 1.3) * 0.15, y: 1.2, z: yucca.z + Math.cos(i * 1.3) * 0.15, ry: i }, i % 2 ? HEX.peas : HEX.clothesYellow))
+
+  // ---- Staff changing room: lockers both sides, a bench down the middle,
+  //      a coat hook with a hi-vis, and the staff door out ----
+  for (let i = 0; i < 7; i++) {
+    for (const [ty, face] of [[54, 1], [58, 0]] as const) {
+      const l = at(71.4 + i * 1.0, ty)
+      const z = face ? ty * TILE + 0.35 : (ty + 1) * TILE - 0.35
+      add(box(0.9, 1.9, 0.6, { x: l.x, y: 0, z }, i % 3 === 1 ? HEX.bookBlue : HEX.steel))
+      add(box(0.06, 0.25, 0.03, { x: l.x + 0.3, y: 1.0, z: z + (face ? 0.31 : -0.31) }, HEX.steelDark))
+      for (let v = 0; v < 3; v++) add(box(0.5, 0.03, 0.02, { x: l.x, y: 1.55 + v * 0.07, z: z + (face ? 0.31 : -0.31) }, HEX.steelDark))
+    }
+  }
+  const bench = at(75, 55.2)
+  add(box(5.2, 0.08, 0.5, { ...bench, y: 0.42 }, HEX.wood))
+  for (const dx of [-2.2, 0, 2.2]) add(box(0.08, 0.42, 0.4, { ...bench, x: bench.x + dx }, HEX.steelDark))
+  add(box(0.5, 0.7, 0.05, { x: (EAST_WALL - 0.04) * TILE - 0.03, y: 1.2, z: at(79, 55).z, ry: Math.PI / 2 }, HEX.clothesYellow))
+  add(box(0.06, 0.4, 0.5, { x: (EAST_WALL) * TILE - 0.05, y: 1.6, z: at(79, 57.4).z }, HEX.paper))
 
   // The laundry basket you can climb into, by the laundry door.
   f.laundryBasket = { x: at(46, 11).x, z: at(46, 11).z }

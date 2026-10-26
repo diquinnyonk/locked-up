@@ -255,9 +255,22 @@ at the exit, and each one that gets rumbled makes it harder next time.
 
 | Way out | You need | When and where |
 | --- | --- | --- |
-| **Dressed as an officer** | A spare uniform from the officers' mess, or the one off an officer you have knocked out (he is left in his vest and pink boxers until morning) | Wear it (Tab) and doors open for you. Clock off through the staff gate in the loading bay at shift change, 20:45 to 21:20. Mrs Battenberg gives you a lift and talks about her cats. |
+| **Dressed as an officer** | A spare uniform from the officers' mess, or the one off an officer you have knocked out (he is left in his vest and pink boxers until morning) | Wear it (Tab) and doors open for you. Clock off through the staff door in the changing room (off the loading bay) at shift change, 20:45 to 21:20, or at any hour if you also have an officer's keys. Mrs Battenberg gives you a lift and talks about her cats. |
 | **Dressed as a visitor** | The panto wig and floral frock from the chapel's costume box, made into a visitor disguise | Wear it in the visiting hall (14:30 to 15:45) and shuffle out of the visitors' gate with everyone else at 15:30. Big Dave's nan offers you a Werther's Original. |
 | **The laundry van** | A blue drink (the vending machine in the visiting hall, 1 Greggs voucher) and a sausage roll (the canteen), to bribe Keith on the X-ray | Every basket goes through Keith's X-ray in the loading bay on its way to the van, and unbribed he always spots you ("That basket's got a skeleton in it. A WALKING skeleton."). Find him having a cuppa in the canteen at breakfast or lunch, or collecting baskets in the laundry from 10:00, and pay him off. Then climb into the big basket by the laundry door before 11:00, and the van takes you to a laundrette in Wolverhampton. |
+
+**The officer in your cell.** Buy sleeping pills from a fixer (2 Greggs
+vouchers) and mash them into a sausage roll from the canteen. By day, in your
+own cell, press H to shout for an officer ("Guv! There's a rat in here the
+size of a dog!"). He comes in and has a good look round with his back half
+turned: talk to him and offer the sleepy sausage roll, or cosh him while he
+is not looking. He sleeps for hours. Take his uniform (E) and his keys (R),
+put the uniform on, and walk to the staff changing room off the loading bay.
+In uniform with keys, the staff door lets you out at any hour ("Off shift
+early"); without keys it only opens at shift change. When he wakes up in your
+cell in his vest and boxers, every officer hears about the stranger in
+uniform and your disguise is blown. Get caught and officers stop eating what
+prisoners offer them; do it twice and nobody comes when you shout.
 
 A disguise holds at a distance, but an officer who gets a good look at you up
 close for long enough sees through it ("Madam, you appear to have a beard"),
@@ -278,9 +291,16 @@ The yard is smaller now, with an annex down each side:
 - **Library**: shelves of paperbacks and a QUIET sign.
 - **Officers' mess** (restricted): a sofa, a kettle, the biscuit tin and a rack
   of spare uniforms.
-- **Loading bay** (restricted): the laundry van, laundry cages and the staff gate.
+- **Loading bay** (restricted): the laundry van, laundry cages and the vehicle gate.
+- **Governor's office** (restricted, off the mess): a desk the size of a car, a
+  leather chair, filing cabinets, a safe, a portrait of the Governor and a
+  dying yucca.
+- **Staff changing room** (restricted, off the loading bay): lockers, a bench
+  and the staff door out to the car park.
 
-All six are on the vent network. Prisoners use the gym, library and chapel at
+The staff wing sits in a strip added along the east wall.
+
+All eight are on the vent network. Prisoners use the gym, library and chapel at
 association and yard time.
 
 ## The look
@@ -421,7 +441,7 @@ segregation indefinitely or, if a firm hates you enough, they get to you first.
 | `F` | Fight (your best weapon is used automatically) |
 | `Tab` / `I` | Pockets and crafting |
 | `Q` | Chew soap |
-| `H` | Bang the door, fake sick (night, in your cell) |
+| `H` | In your cell: shout an officer in by day, fake sick at night |
 | `G` | Kick off a riot |
 | `Z` | Sleep through the night |
 | `J` | Journal: every way out, and what they have learned |

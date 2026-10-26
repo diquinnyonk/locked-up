@@ -14,7 +14,7 @@ const BUTTONS: { label: string; action: ActionKey | 'run'; wide?: boolean }[] = 
   { label: 'Pockets', action: 'craft' },
   { label: 'Notebook', action: 'journal' },
   { label: 'Map', action: 'map' },
-  { label: 'Sick', action: 'sick' },
+  { label: 'Shout', action: 'sick' },
   { label: 'Kick off', action: 'riot' },
   { label: 'Sleep', action: 'sleep' },
   { label: 'Soap', action: 'froth' },
