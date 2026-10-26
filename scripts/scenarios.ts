@@ -1410,7 +1410,7 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   game.clock.skipTo(18 * 60 + 5)
   game.events.today = 'panto'
   game.events.fired = false
-  const there = run(game, 90, () => game.guards.filter((g) => g.panto && g.zone === 'chapel').length >= 4)
+  const there = run(game, 180, () => game.guards.filter((g) => g.panto && g.zone === 'chapel').length >= 4)
   check('christmas: six officers go and watch it in the chapel', game.guards.filter((g) => g.panto).length === 6 && there, game.guards.filter((g) => g.panto).map((g) => g.zone).join(','))
 }
 

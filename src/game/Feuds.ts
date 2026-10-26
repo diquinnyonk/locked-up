@@ -67,18 +67,26 @@ export class Feuds {
   private brawl(i: number): void {
     const g = this.game
     const [a, b] = FEUDS[i]
-    // Four a side if they can muster them: those already in the yard, and
-    // the rest come running from wherever they were.
+    // Four a side if they can muster them, all round one spot in the yard:
+    // whoever is already near, and the rest come running.
+    const at = g.grid.randomTileIn('yard', g.rng)
+    const cx0 = (at.tx + 0.5) * 2
+    const cz0 = (at.ty + 0.5) * 2
     const muster = (gang: GangId) => {
       const all = g.prisoners.filter((p) => p.gang === gang && !p.leader && p.ko <= 0 && p.cuffed <= 0)
-      const here = all.filter((p) => p.zone === 'yard')
-      const rest = all.filter((p) => p.zone !== 'yard').slice(0, Math.max(0, 4 - here.length))
-      for (const p of rest) {
-        const t = g.grid.randomTileIn('yard', g.rng)
-        p.body.x = (t.tx + 0.5) * 2
-        p.body.z = (t.ty + 0.5) * 2
+      const crew = all.slice(0, 4)
+      for (const p of crew) {
+        if (Math.hypot(p.x - cx0, p.z - cz0) < 8) continue
+        for (let tries = 0; tries < 12; tries++) {
+          const nx = cx0 + (g.rng() * 2 - 1) * 5
+          const nz = cz0 + (g.rng() * 2 - 1) * 5
+          if (g.grid.zone(Math.floor(nx / 2), Math.floor(nz / 2)) !== 'yard') continue
+          p.body.x = nx
+          p.body.z = nz
+          break
+        }
       }
-      return [...here, ...rest].slice(0, 4)
+      return crew
     }
     const side: Prisoner[] = muster(a)
     const other: Prisoner[] = muster(b)
