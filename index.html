@@ -30,8 +30,10 @@
           <input id="name" maxlength="18" placeholder="Surname will do" required />
           <fieldset id="difficulty">
             <legend>How hard</legend>
+            <label><input type="radio" name="mode" value="story" /><span><b>Story</b>: six attempts a round, officers' sight drawn, and they are slower to notice</span></label>
             <label><input type="radio" name="mode" value="normal" checked /><span><b>Normal</b>: officers' sight drawn on the floor</span></label>
             <label><input type="radio" name="mode" value="hard" /><span><b>Hard</b>: no sight guide, officers off the map, and they spot you faster</span></label>
+            <label><input type="radio" name="mode" value="hardcore" /><span><b>Hardcore</b>: Hard, one attempt, and no saving</span></label>
           </fieldset>
           <button type="submit">Begin your sentence</button>
         </form>

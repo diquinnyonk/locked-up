@@ -1,4 +1,5 @@
 import type { Game } from './Game'
+import type { Mode } from '../npc/Memory'
 import { type Records, mergeRecords, readRecords } from './Records'
 
 /**
@@ -21,7 +22,7 @@ export interface SaveFile {
   version: number
   seed: number
   savedAt: string
-  summary: { name: string; day: number; time: string; attemptsLeft: number; round: number; hard: boolean }
+  summary: { name: string; day: number; time: string; attemptsLeft: number; round: number; hard: boolean; mode?: Mode; perRound?: number; rounds?: number }
   state: SaveState
   /** Endings and records, in a downloaded file only: merged in on loading. */
   records?: Records
@@ -53,6 +54,9 @@ export function writeSave(game: Game): boolean {
         attemptsLeft: game.memory.attemptsLeft,
         round: game.memory.round,
         hard: game.hard,
+        mode: game.mode,
+        perRound: game.memory.attemptsPerRound,
+        rounds: game.memory.rounds,
       },
       state: game.toSave(),
     }

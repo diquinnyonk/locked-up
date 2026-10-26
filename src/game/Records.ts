@@ -25,6 +25,7 @@ export interface Run {
   fails: number
   day: number
   hard: boolean
+  mode?: string
 }
 
 export interface EndingRecord {

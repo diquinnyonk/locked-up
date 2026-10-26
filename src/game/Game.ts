@@ -3,7 +3,7 @@ import { HEX } from '../art/palette'
 import { Input } from '../core/Input'
 import { type Body, Crowd, makeBody } from '../render/Crowd'
 import { Guard, type GuardRole, NEW_FACE_DAYS } from '../npc/Guard'
-import { ATTEMPTS_PER_ROUND, METHOD_NAMES, type Method, PrisonMemory } from '../npc/Memory'
+import { ATTEMPTS_PER_ROUND, METHOD_NAMES, type Method, type Mode, PrisonMemory, ROUNDS } from '../npc/Memory'
 import { Prisoner } from '../npc/Prisoner'
 import { GANGS, GANG_IDS, type GangId, gangOfWing } from '../npc/Gangs'
 import type { Lure, Noise, PlayerView, Riot, SickCall, World } from '../npc/World'
@@ -400,7 +400,23 @@ export class Game implements World {
   /** Red flash for the UI, decays per frame. */
   flash = 0
   /** Hard mode: no sight-cone guide, and officers spot you faster. */
-  hard = false
+  /** Difficulty. Setting it also sets how many attempts you get. */
+  private modeValue: Mode = 'normal'
+  get mode(): Mode {
+    return this.modeValue
+  }
+  set mode(m: Mode) {
+    this.modeValue = m
+    this.memory.attemptsPerRound = m === 'story' ? 6 : m === 'hardcore' ? 1 : ATTEMPTS_PER_ROUND
+    this.memory.rounds = m === 'hardcore' ? 1 : ROUNDS
+  }
+  /** Hard or Hardcore: no sight guide, sharper officers. */
+  get hard(): boolean {
+    return this.modeValue === 'hard' || this.modeValue === 'hardcore'
+  }
+  set hard(v: boolean) {
+    this.mode = v ? 'hard' : 'normal'
+  }
 
   caught(by: Guard): void {
     if (this.over || this.punished) return
@@ -466,7 +482,7 @@ export class Game implements World {
       )
     } else {
       this.ui.card(
-        `Caught: attempt ${this.memory.attemptsUsed} of ${ATTEMPTS_PER_ROUND}`,
+        `Caught: attempt ${this.memory.attemptsUsed} of ${this.memory.attemptsPerRound}`,
         `${by.name} drags you to segregation. Contraband confiscated.\n\nThe prison learns: ${lesson.text}${sealed}`,
         6,
       )
@@ -565,13 +581,13 @@ export class Game implements World {
       end(
         false,
         `${GANGS[gang].name} got you`,
-        `Eight attempts, eight failures, and every one of them brought the screws down on the wing.\n${GANGS[gang].name} caught ${name} in the showers with nobody watching. ${this.gangLeader(gang)?.name ?? 'Their boss'} did not even look up from his tea.\nThey never found out who did it.`,
+        `${this.memory.totalFailures} attempt${this.memory.totalFailures === 1 ? '' : 's'}, and every one of them brought the screws down on the wing.\n${GANGS[gang].name} caught ${name} in the showers with nobody watching. ${this.gangLeader(gang)?.name ?? 'Their boss'} did not even look up from his tea.\nThey never found out who did it.`,
       )
     } else {
       end(
         false,
         'Segregation. Indefinitely.',
-        `Eight attempts. The governor has had enough.\n${name} is moved to the segregation unit on a closed regime: twenty-three hours a day behind the door, and an officer outside it.\nNobody is getting out of here.`,
+        `${this.memory.totalFailures} attempt${this.memory.totalFailures === 1 ? '' : 's'}. The governor has had enough.\n${name} is moved to the segregation unit on a closed regime: twenty-three hours a day behind the door, and an officer outside it.\nNobody is getting out of here.`,
       )
     }
   }
@@ -2526,7 +2542,7 @@ export class Game implements World {
   get canSave(): boolean {
     const p = this.player
     return (
-      !this.over && p.illegal === 0 && !p.attempt && !p.inVent && !p.inBasket && !p.escortedBy && !this.talkingTo &&
+      !this.over && this.mode !== 'hardcore' && p.illegal === 0 && !p.attempt && !p.inVent && !p.inBasket && !p.escortedBy && !this.talkingTo &&
       !this.riot.active && !this.sickCall && !this.lure && !this.drugged && !this.climb && !this.alarm.active &&
       !this.business && !this.cracking && !this.digging && !this.guards.some((g) => g.chasing)
     )
@@ -2537,6 +2553,7 @@ export class Game implements World {
     return {
       name: p.name,
       hard: this.hard,
+      mode: this.mode,
       minutes: this.clock.minutes,
       player: {
         x: p.body.x, z: p.body.z, zone: p.zone, health: p.health,
@@ -2577,7 +2594,7 @@ export class Game implements World {
   fromSave(s: ReturnType<Game['toSave']>): void {
     const p = this.player
     p.name = s.name
-    this.hard = s.hard
+    this.mode = s.mode ?? (s.hard ? 'hard' : 'normal')
     this.clock.minutes = s.minutes
     this.lastPeriod = this.clock.period
     this.lastMinute = this.clock.minuteOfDay

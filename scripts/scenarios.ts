@@ -1244,6 +1244,27 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   }
 }
 
+// ---- Difficulty modes ----
+{
+  const { game } = fresh()
+  game.mode = 'story'
+  check('modes: Story gives six attempts a round', game.memory.attemptsLeft === 6 && !game.hard)
+  const { game: h, log } = fresh()
+  h.mode = 'hardcore'
+  run(h, 0.2)
+  check('modes: Hardcore is Hard, with one attempt and no saving', h.hard && h.memory.attemptsLeft === 1 && h.memory.rounds === 1 && !h.canSave)
+  put(h, 64, 23)
+  run(h, 0.2)
+  h.caught(h.guards[0])
+  check('modes: caught once on Hardcore, and that is it', h.over, log.slice(-1)[0])
+  const json = JSON.parse(JSON.stringify(game.toSave()))
+  Game.seedForNext = game.seed
+  const { game: b } = fresh()
+  Game.seedForNext = null
+  b.fromSave(json)
+  check('modes: kept in a save', b.mode === 'story' && b.memory.attemptsPerRound === 6)
+}
+
 // ---- Saving and carrying on ----
 {
   const { game: a } = fresh()

@@ -1,4 +1,5 @@
 import type { DayEvent } from '../game/Events'
+import type { Mode } from './Memory'
 import type { Clock } from '../game/Clock'
 import type { Inventory } from '../game/Items'
 import type { Body } from '../render/Crowd'
@@ -96,6 +97,8 @@ export interface World {
   fixtures: Fixtures
   /** Hard mode: no sight guide, sharper officers. */
   hard: boolean
+  /** The difficulty, of which `hard` is Hard or Hardcore. */
+  readonly mode: Mode
   requestDoor(door: Door, who: 'guard' | 'prisoner' | 'player', block?: string, from?: string): boolean
   caught(by: Guard): void
   warn(by: Guard, text: string): void

@@ -35,6 +35,19 @@ export const METHOD_NAMES: Record<Method, string> = {
 export const ATTEMPTS_PER_ROUND = 4
 export const ROUNDS = 2
 
+/**
+ * How hard: Story (six attempts a round, officers slower to notice), Normal,
+ * Hard (no sight guide, sharper officers) and Hardcore (Hard, one attempt
+ * only, and no saving).
+ */
+export type Mode = 'story' | 'normal' | 'hard' | 'hardcore'
+export const MODES: { id: Mode; name: string; blurb: string }[] = [
+  { id: 'story', name: 'Story', blurb: "six attempts a round, officers' sight drawn, and they are slower to notice" },
+  { id: 'normal', name: 'Normal', blurb: "officers' sight drawn on the floor" },
+  { id: 'hard', name: 'Hard', blurb: 'no sight guide, officers off the map, and they spot you faster' },
+  { id: 'hardcore', name: 'Hardcore', blurb: 'Hard, one attempt, and no saving' },
+]
+
 export interface Lesson {
   method: Method
   text: string
@@ -43,6 +56,9 @@ export interface Lesson {
 export class PrisonMemory {
   round = 1
   attemptsUsed = 0
+  /** Set by the difficulty: four a round and two rounds, unless not. */
+  attemptsPerRound = ATTEMPTS_PER_ROUND
+  rounds = ROUNDS
   readonly used: Record<Method, number> = { key: 0, toothpaste: 0, sick: 0, riot: 0, vent: 0, wall: 0, gate: 0, guardDisguise: 0, visitorDisguise: 0, laundry: 0, lure: 0, safe: 0, tunnel: 0 }
   readonly hotspots: { x: number; z: number; weight: number }[] = []
   /** Calls flagged by the wiretap; each makes the next listener stricter. */
@@ -98,11 +114,11 @@ export class PrisonMemory {
   }
 
   get attemptsLeft(): number {
-    return ATTEMPTS_PER_ROUND - this.attemptsUsed
+    return this.attemptsPerRound - this.attemptsUsed
   }
 
   get totalFailures(): number {
-    return (this.round - 1) * ATTEMPTS_PER_ROUND + this.attemptsUsed
+    return (this.round - 1) * this.attemptsPerRound + this.attemptsUsed
   }
 
   /**
@@ -116,8 +132,8 @@ export class PrisonMemory {
     if (near) near.weight++
     else this.hotspots.push({ x, z, weight: 1 })
     this.lessons.push({ method, text: lessonFor(method, this.used[method]) })
-    if (this.attemptsUsed >= ATTEMPTS_PER_ROUND) {
-      if (this.round >= ROUNDS) return 'over'
+    if (this.attemptsUsed >= this.attemptsPerRound) {
+      if (this.round >= this.rounds) return 'over'
       this.round++
       this.attemptsUsed = 0
       return 'round'

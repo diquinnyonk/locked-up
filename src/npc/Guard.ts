@@ -153,7 +153,7 @@ export class Guard extends Agent {
     } else if (sees && p.illegal > 0 && !escorting) {
       const d = this.distanceTo(p.body.x, p.body.z)
       const range = this.visionRange()
-      const rate = (1.8 - d / range) * (p.illegal === 2 ? 1.6 : 0.7) * (1 + this.wary) * (this.busy ? 0.4 : 1) * (w.hard ? 1.25 : 1)
+      const rate = (1.8 - d / range) * (p.illegal === 2 ? 1.6 : 0.7) * (1 + this.wary) * (this.busy ? 0.4 : 1) * (w.mode === 'story' ? 0.65 : 1) * (w.hard ? 1.25 : 1)
       this.suspicion = Math.min(1, this.suspicion + delta * Math.max(0.25, rate))
     } else if (sees && p.dodgy > 0 && !escorting) {
       this.suspicion = Math.min(1, this.suspicion + delta * 0.35)
@@ -183,7 +183,7 @@ export class Guard extends Agent {
   visionRange(): number {
     const night = this.world.clock.darkness
     const base = 15 - night * 7
-    return base * this.world.memory.visionScale * (this.busy ? 0.6 : 1) * (this.world.todayEvent === 'inspection' ? 1.15 : 1)
+    return base * this.world.memory.visionScale * (this.busy ? 0.6 : 1) * (this.world.todayEvent === 'inspection' ? 1.15 : 1) * (this.world.mode === 'story' ? 0.85 : 1)
   }
 
   canSeePlayer(): boolean {

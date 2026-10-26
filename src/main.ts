@@ -3,6 +3,7 @@ import { HEX, SUN_DIRECTION, color } from './art/palette'
 import { setToonSunDirection, setWorldTint } from './art/toonMaterial'
 import { Engine } from './core/Engine'
 import { Game } from './game/Game'
+import type { Mode } from './npc/Memory'
 import { CelPipeline } from './render/CelPipeline'
 import { Ui } from './ui/Ui'
 import { Sfx } from './audio/Sfx'
@@ -55,7 +56,7 @@ if (saved) {
   document.getElementById('carry-on')!.hidden = false
   document.getElementById('or-new')!.hidden = false
   document.getElementById('carry-name')!.textContent = s.name
-  document.getElementById('carry-detail')!.textContent = `Day ${s.day}, ${s.time}. ${s.attemptsLeft} of 4 attempts left, round ${s.round} of 2. ${s.hard ? 'Hard' : 'Normal'}.`
+  document.getElementById('carry-detail')!.textContent = `Day ${s.day}, ${s.time}. ${s.attemptsLeft} of ${s.perRound ?? 4} attempts left, round ${s.round} of ${s.rounds ?? 2}. ${s.mode ? s.mode.charAt(0).toUpperCase() + s.mode.slice(1) : s.hard ? 'Hard' : 'Normal'}.`
   const carry = document.getElementById('carry-btn') as HTMLButtonElement
   carry.onclick = () => {
     sfx.unlock()
@@ -78,7 +79,7 @@ form.addEventListener('submit', (e) => {
   clearSave()
   const name = nameInput.value.trim().replace(/\s+/g, ' ').slice(0, 18) || 'Prisoner'
   game.player.name = name
-  game.hard = (form.querySelector('input[name="mode"]:checked') as HTMLInputElement | null)?.value === 'hard'
+  game.mode = ((form.querySelector('input[name="mode"]:checked') as HTMLInputElement | null)?.value ?? 'normal') as Mode
   nameInput.blur()
   sfx.unlock()
   document.getElementById('start')!.classList.add('gone')
@@ -233,7 +234,7 @@ engine.onUpdate((delta) => {
     clearSave()
     // File the ending, and say on the end screen if it was a new one.
     if (game.ending) {
-      const run = { name: game.player.name, seconds: game.playSeconds, fails: game.memory.totalFailures, day: game.clock.day, hard: game.hard }
+      const run = { name: game.player.name, seconds: game.playSeconds, fails: game.memory.totalFailures, day: game.clock.day, hard: game.hard, mode: game.mode }
       ui.endRecord(recordEnding(game.ending.id, run), run)
     }
   }

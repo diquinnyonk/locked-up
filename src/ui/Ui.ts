@@ -14,7 +14,7 @@ import { EVENT_INFO, isVisitingDay } from '../game/Events'
 import { isTouch } from './Touch'
 import { castLine, voiceFor } from '../audio/cast'
 import { keyFor } from '../audio/lineKeys'
-import { ATTEMPTS_PER_ROUND, METHOD_NAMES, ROUNDS, type Method } from '../npc/Memory'
+import { METHOD_NAMES, type Method } from '../npc/Memory'
 import { MAP_H, MAP_W, PLAYER_CELL, Tile } from '../world/Grid'
 import { GANGS, GANG_IDS, gangOfWing } from '../npc/Gangs'
 import { type BunkNote, type Letter, governorsLetter } from '../game/Post'
@@ -304,7 +304,7 @@ export class Ui implements UiPort {
     body.innerHTML = `
       <section class="mission">
         <h3 class="title">Escape HMP Grim-on-the-Moor</h3>
-        <p>Everyone in here knows your name, ${escape(p.name)}: the one who robbed the Greggs. Attempts left this round: <b>${m.attemptsLeft} of ${ATTEMPTS_PER_ROUND}</b> (round ${m.round} of ${ROUNDS}).</p>
+        <p>Everyone in here knows your name, ${escape(p.name)}: the one who robbed the Greggs. Attempts left this round: <b>${m.attemptsLeft} of ${m.attemptsPerRound}</b> (round ${m.round} of ${m.rounds}).</p>
         ${g.goals.shown && !g.goals.finished ? `<h4>First day</h4><ul class="checks">${GOALS.map((go) => tick(g.goals.done.has(go.id), go.text, go.hint)).join('')}</ul>` : ''}
         <p class="today"><b>${g.clock.weekdayName}: ${escape(EVENT_INFO[g.events.today].title)}.</b> ${escape(EVENT_INFO[g.events.today].blurb)}${isVisitingDay(g.clock.weekday) ? ' Visiting this afternoon, 14:30 to 15:45.' : ''}</p>
         <h4>Out of your cell at night</h4>
@@ -607,8 +607,8 @@ export class Ui implements UiPort {
     $('#time').textContent = `Day ${clock.day} · ${clock.text}`
     $('#period').textContent = `${clock.weekdayName}: ${clock.label}`
     $('#next').textContent = `${next.label} in ${Math.floor(next.in / 60)}h ${String(Math.floor(next.in % 60)).padStart(2, '0')}m`
-    const pips = Array.from({ length: ATTEMPTS_PER_ROUND }, (_, i) => `<span class="pip ${i < m.attemptsUsed ? 'used' : ''}"></span>`).join('')
-    $('#attempts').innerHTML = `<span class="label">Attempts</span>${pips}<span class="round">round ${m.round}/${ROUNDS}</span>`
+    const pips = Array.from({ length: m.attemptsPerRound }, (_, i) => `<span class="pip ${i < m.attemptsUsed ? 'used' : ''}"></span>`).join('')
+    $('#attempts').innerHTML = `<span class="label">Attempts</span>${pips}<span class="round">round ${m.round}/${m.rounds}</span>`
     $('#health').style.width = `${p.health}%`
 
     const suspicion = Math.max(0, ...g.guards.map((gg) => (gg.chasing ? 1 : gg.suspicion)))
