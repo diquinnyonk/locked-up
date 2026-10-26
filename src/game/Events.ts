@@ -20,13 +20,14 @@ import type { Game } from './Game'
 export type DayEvent = 'quiet' | 'shakedown' | 'lockdown' | 'inspection' | 'intake' | 'greggs' | 'fireDrill' | 'family' | 'panto'
 
 /** The day's weather. Snow only in December. */
-export type Weather = 'clear' | 'rain' | 'fog' | 'snow'
+export type Weather = 'clear' | 'rain' | 'fog' | 'snow' | 'wind'
 
 export const WEATHER_INFO: Record<Weather, string> = {
   clear: '',
   rain: 'Rain all day: it covers your footsteps outside, and officers in the yard see less.',
   fog: 'Thick fog on the moor: outside, officers can barely see half as far.',
   snow: 'Snow: footsteps are muffled outside, and the yard is white.',
+  wind: 'A gale off the moor: it howls round the yard and drowns out your footsteps. Good flying weather, if you had wings.',
 }
 
 /** How far an officer outdoors sees, and how far your steps carry outdoors, in this weather. */
@@ -34,7 +35,7 @@ export function weatherSight(w: Weather): number {
   return w === 'fog' ? 0.55 : w === 'rain' ? 0.8 : w === 'snow' ? 0.9 : 1
 }
 export function weatherSteps(w: Weather): number {
-  return w === 'rain' ? 0.5 : w === 'snow' ? 0.7 : 1
+  return w === 'rain' ? 0.5 : w === 'snow' ? 0.7 : w === 'wind' ? 0.6 : 1
 }
 
 export const EVENT_INFO: Record<DayEvent, { title: string; blurb: string }> = {
@@ -81,10 +82,10 @@ export class Events {
     for (const gu of g.guards) gu.reception = gu.panto = false
     // The weather first: clear most days, and snow instead of rain at Christmas.
     const wr = g.rng()
-    this.weather = day <= 1 ? 'clear' : wr < 0.55 ? 'clear' : wr < 0.8 ? (g.season === 'christmas' ? 'snow' : 'rain') : 'fog'
+    this.weather = day <= 1 ? 'clear' : wr < 0.47 ? 'clear' : wr < 0.68 ? (g.season === 'christmas' ? 'snow' : 'rain') : wr < 0.84 ? 'fog' : 'wind'
     if (this.weather !== 'clear') g.toast(WEATHER_INFO[this.weather], 'neutral')
     // Day one, and the Governor's opening night (he has had a word), are quiet.
-    if (day <= 1 || g.play?.isOpeningNight(day)) {
+    if (day <= 1 || g.secret?.isQuietDay(day)) {
       this.today = 'quiet'
       return
     }

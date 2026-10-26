@@ -3,7 +3,7 @@
  * localStorage apart from the saved game: finishing a sentence clears the
  * save, never the records.
  */
-export type EndingId = 'curtain' | 'escape' | 'tunnel' | 'jag' | 'staffDoor' | 'guardDisguise' | 'visitorDisguise' | 'laundry' | 'solitary' | 'gang'
+export type EndingId = 'curtain' | 'bakeoff' | 'celebrity' | 'royal' | 'greylady' | 'bins' | 'hospital' | 'court' | 'papers' | 'fireEngine' | 'glider' | 'escape' | 'tunnel' | 'jag' | 'staffDoor' | 'guardDisguise' | 'visitorDisguise' | 'laundry' | 'solitary' | 'gang'
 
 export const ENDINGS: { id: EndingId; title: string; won: boolean; hint: string; secret?: boolean }[] = [
   { id: 'escape', title: 'Free', won: true, hint: 'Somebody waiting on the road, and a way over or through the wall.' },
@@ -13,7 +13,17 @@ export const ENDINGS: { id: EndingId; title: string; won: boolean; hint: string;
   { id: 'guardDisguise', title: 'Clocked off', won: true, hint: 'Staff go home at shift change. Do you look like staff?' },
   { id: 'visitorDisguise', title: 'Gone with the visitors', won: true, hint: "The Reverend's panto box, and an afternoon with the visitors." },
   { id: 'laundry', title: 'Spin cycle', won: true, hint: 'Everything in the laundry leaves on a van, past an X-ray man with a sweet tooth.' },
+  { id: 'bins', title: 'Wheelie good', won: true, hint: 'Thursday is bin day. The bins leave. So could you.' },
+  { id: 'hospital', title: 'Nil by mouth', won: true, hint: 'Healthcare cannot fix everything. Some things need a real hospital, if you know your symptoms.' },
+  { id: 'court', title: 'Case dismissed', won: true, hint: 'Everyone deserves their day in court. Take something small in your shoe.' },
+  { id: 'papers', title: 'Paper trail', won: true, hint: 'Release papers only need the right form, the right stamp and the right signature.' },
+  { id: 'fireEngine', title: 'Blue lights', won: true, hint: 'A fire drill brings a fire engine into the yard.' },
+  { id: 'glider', title: 'Gone with the wind', won: true, hint: 'Two bedsheets, a mop handle, and a proper gale.' },
   { id: 'curtain', title: 'Curtain call', won: true, hint: 'Only some sentences have it.', secret: true },
+  { id: 'bakeoff', title: 'Star baker', won: true, hint: 'Only some sentences have it.', secret: true },
+  { id: 'celebrity', title: 'Body double', won: true, hint: 'Only some sentences have it.', secret: true },
+  { id: 'royal', title: 'By royal appointment', won: true, hint: 'Only some sentences have it.', secret: true },
+  { id: 'greylady', title: 'The Grey Lady', won: true, hint: 'Only some sentences have it.', secret: true },
   { id: 'solitary', title: 'Segregation. Indefinitely.', won: false, hint: 'Use up every attempt.' },
   { id: 'gang', title: 'A firm got you', won: false, hint: 'Make a firm hate you, then run out of road.' },
 ]

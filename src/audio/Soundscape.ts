@@ -169,7 +169,8 @@ export class Soundscape {
     const level: Record<Bed, number> = {
       hum: scene.title ? 0.25 : scene.vent ? 0.2 : outdoors ? 0.15 : scene.night ? 0.6 : 1,
       murmur: busy && !scene.vent ? 1 : 0,
-      wind: outdoors || scene.title ? (scene.night ? 0.7 : 1) : 0,
+      // A gale howls outside and moans through the building.
+      wind: scene.weather === 'wind' && !scene.title ? (outdoors ? 2.4 : 0.5) : outdoors || scene.title ? (scene.night ? 0.7 : 1) : 0,
       vent: scene.vent ? 1 : 0,
       // On the roof indoors, on everything outside.
       rain: scene.weather === 'rain' && !scene.title ? (outdoors ? 1 : scene.vent ? 0.6 : 0.3) : 0,

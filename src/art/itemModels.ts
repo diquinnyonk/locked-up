@@ -117,6 +117,18 @@ function parts(id: ItemId): BufferGeometry[] {
       return [cylX(0.04, 1.4, o(0, 0.04), HEX.wood, 8), box(0.12, 0.09, 0.1, o(0.6), HEX.steelDark), box(0.24, 0.03, 0.06, o(0.8), HEX.metal)]
     case 'flag':
       return [box(0.66, 0.08, 0.5, o(), HEX.cloth), box(0.16, 0.09, 0.3, o(0.15, 0, 0.05), HEX.clothesRed)]
+    case 'cuffKey':
+      return [ring(0.05, 0.012, o(-0.08, 0.02), HEX.clothesYellow), box(0.14, 0.02, 0.02, o(0.03, 0.02), HEX.clothesYellow), box(0.02, 0.02, 0.05, o(0.09, 0.02, 0.02), HEX.clothesYellow)]
+    case 'stamp':
+      return [box(0.18, 0.06, 0.12, o(), HEX.bookRed), cyl(0.03, 0.03, 0.14, o(0, 0.06), HEX.wood, 8), ball(0.05, o(0, 0.22), HEX.wood)]
+    case 'releaseForm':
+      return [box(0.34, 0.02, 0.44, o(), HEX.paper), box(0.24, 0.022, 0.03, o(0, 0, -0.14), HEX.ink), box(0.2, 0.022, 0.02, o(0, 0, -0.04), HEX.ink)]
+    case 'releasePapers':
+      return [box(0.34, 0.02, 0.44, o(), HEX.paper), box(0.24, 0.022, 0.03, o(0, 0, -0.14), HEX.ink), cyl(0.07, 0.07, 0.024, o(0.08, 0, 0.12), HEX.bookRed, 14)]
+    case 'glider':
+      return [box(1.2, 0.04, 0.5, o(0, 0.06), HEX.cloth), cylX(0.03, 1.2, o(0, 0.04), HEX.wood, 8), box(0.06, 0.05, 0.6, o(0, 0.06), HEX.clothesYellow)]
+    case 'cryptKey':
+      return [ring(0.08, 0.025, o(-0.16, 0.02), HEX.steelDark), box(0.3, 0.035, 0.05, o(0.05, 0.02), HEX.steelDark), box(0.05, 0.035, 0.09, o(0.18, 0.02, 0.05), HEX.steelDark)]
     default:
       return [box(0.3, 0.2, 0.3, o(), ITEMS_FALLBACK)]
   }

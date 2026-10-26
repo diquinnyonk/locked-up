@@ -45,8 +45,10 @@ export interface PlayerView {
   /** Wearing a disguise, and whether someone has seen through it. */
   disguise: 'guard' | 'visitor' | null
   disguiseBlown: boolean
-  /** Curled up in a laundry basket. */
+  /** Curled up in a laundry basket, or a wheelie bin, or a fire engine locker. */
   inBasket: boolean
+  /** Where, when it is not the laundry basket. */
+  hidingIn?: string | null
 }
 
 export interface Riot {

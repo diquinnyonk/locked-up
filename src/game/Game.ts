@@ -23,7 +23,11 @@ import { screenCall } from './Phone'
 import { Missions } from './Missions'
 import { type BunkNote, type Letter, Post } from './Post'
 import { LINES } from './Lines'
-import { DIRECTOR, PROPS_CRATE, Play } from './Play'
+import { Play } from './Play'
+import { makeSecret } from './secrets'
+import type { Secret } from './secrets/Secret'
+import { endingStory } from './EndingTexts'
+import { Routes } from './Routes'
 import { type AchievementId, unlock } from './Achievements'
 
 /** What the game needs from the interface. Implemented in ui/Ui.ts. */
@@ -144,8 +148,23 @@ export class Game implements World {
   readonly goals = new Goals()
   /** The firms' feuds with each other. */
   readonly feuds = new Feuds(this)
-  /** The secret mission: the Governor's play, in about one sentence in ten. */
-  play: Play | null = null
+  /** Bins, hospital, court, papers, fire engine, glider. */
+  readonly routes = new Routes(this)
+  /** The secret mission on this sentence, if any: about one sentence in ten. */
+  secret: Secret | null = null
+  /** The Governor's play, when that is the secret. */
+  get play(): Play | null {
+    return this.secret instanceof Play ? this.secret : null
+  }
+  set play(p: Play | null) {
+    this.secret = p
+  }
+  /**
+   * Whoever the secret brings in: a TV judge, a celebrity, a duke, a ghost.
+   * Hidden until there is one. Their look is set when the secret starts.
+   */
+  readonly guest = { body: makeBody({ visible: false }), name: '', speech: '', speechTimer: 0 }
+  private guestDressed = ''
   /** Your cellmate's story: warned they are a grass, paid off, the gift, a tip-off due. */
   readonly mate = { warned: false, paidOff: false, gift: false, tipOff: false, tipOffs: 0 }
   private vouchersSeen = -1
@@ -188,7 +207,7 @@ export class Game implements World {
     speech: '',
     speechTimer: 0,
     /** Where he is: 'office', 'car', 'tour' or 'away'. */
-    at: 'away' as 'office' | 'car' | 'tour' | 'away' | 'chapel',
+    at: 'away' as 'office' | 'car' | 'tour' | 'away' | 'event',
     tour: [] as { tx: number; ty: number }[],
     shouted: 0,
   }
@@ -291,6 +310,7 @@ export class Game implements World {
     this.bodies.push(this.keith.body)
     this.bodies.push(this.chaplain.body)
     this.bodies.push(this.governor.body)
+    this.bodies.push(this.guest.body)
 
     this.fixtures.visitTables.forEach((t, i) => {
       const look = looks[i % looks.length]
@@ -590,7 +610,7 @@ export class Game implements World {
     p.health = 100
   }
 
-  private finish(won: boolean, how: 'curtain' | 'escape' | 'gang' | 'solitary' | 'guardDisguise' | 'visitorDisguise' | 'laundry' | 'staffDoor' | 'jag' | 'tunnel', gang: GangId = 'firm'): void {
+  private finish(won: boolean, how: EndingId, gang: GangId = 'firm'): void {
     this.over = true
     this.input.enabled = false
     this.ending = { id: how === 'escape' ? 'escape' : how, won }
@@ -598,8 +618,9 @@ export class Game implements World {
     const mateLine = this.mateEpilogue(won)
     const end = (w: boolean, title: string, text: string) => this.ui.end(w, title, text + mateLine)
     const tally = `Day ${this.clock.day}. ${this.memory.totalFailures} failed attempt${this.memory.totalFailures === 1 ? '' : 's'}.`
-    if (won && how === 'curtain') {
-      end(true, 'Curtain call', `The gaolers heave the sack into the props crate to thunderous applause from six officers in the front pew. At eleven the Grimsby Rep's van rumbles out of the gate with the scenery, a papier-mâché Château d'If, and ${name}, who climbs out at a lay-by on the A1 still wearing the Abbé Faria's beard.\n${tally}\nThe Governor's review in the Bugle calls the corpse "utterly convincing, then strangely absent for the curtain call".`)
+    const story = won ? endingStory(how, name, tally) : null
+    if (story) {
+      end(true, story.title, story.text)
     } else if (won && how === 'tunnel') {
       end(true, 'Like a mole', `${name} pushes up through the soil of the allotments beyond the wall, covered in clay, under a full moon. Somebody's prize marrows break the fall.\n${tally}\nAt morning roll call an officer lifts a loose floor tile in your cell and says a word the Bugle cannot print.`)
     } else if (won && how === 'jag') {
@@ -632,6 +653,40 @@ export class Game implements World {
         `${this.memory.totalFailures} attempt${this.memory.totalFailures === 1 ? '' : 's'}. The governor has had enough.\n${name} is moved to the segregation unit on a closed regime: twenty-three hours a day behind the door, and an officer outside it.\nNobody is getting out of here.`,
       )
     }
+  }
+
+  // ---- For the routes and secret missions (src/game/Routes.ts, secrets/) ----
+
+  /** A way out that worked. */
+  escapeBy(how: EndingId): void {
+    this.sounds.push({ sound: 'good', volume: 1 })
+    this.finish(true, how)
+  }
+
+  /** A way out that did not: it counts as an attempt, and the nearest officer has you. */
+  rumbled(method: Method, line: string): void {
+    const p = this.player
+    p.inBasket = false
+    p.hidingIn = null
+    p.body.visible = true
+    p.attempt = method
+    this.methodHint = method
+    const officer = this.guards.filter((g) => g.ko <= 0).sort((a, b) => a.distanceTo(p.body.x, p.body.z) - b.distanceTo(p.body.x, p.body.z))[0]
+    officer.say(line, 3.5)
+    this.caught(officer)
+  }
+
+  /** Curl up somewhere: out of sight, and out of the way of the officers. */
+  hide(where: string): void {
+    const p = this.player
+    p.inBasket = true
+    p.hidingIn = where
+  }
+
+  /** Back to your bunk, as if you had walked there. */
+  sendToCell(): void {
+    const cell = this.grid.cells.get(this.player.cell)!
+    this.placePlayer(cell.bunks[1].x, cell.bunks[1].z)
   }
 
   private placePlayer(x: number, z: number): void {
@@ -718,7 +773,8 @@ export class Game implements World {
     this.regime()
     this.events.update()
     this.feuds.update()
-    this.play?.update()
+    this.secret?.update(delta)
+    this.routes.update()
 
     this.doors.beginFrame()
     this.updatePlayer(delta)
@@ -756,6 +812,7 @@ export class Game implements World {
     this.updateKeith(delta)
     this.updateChaplain(delta)
     this.updateGovernor(delta)
+    this.updateGuest(delta)
     this.updateDisguise(delta)
     this.dynamic.ducts.visible = this.player.inVent
     const carHere = this.carPresent
@@ -767,8 +824,6 @@ export class Game implements World {
     })
     const pb = this.player.body
     this.dynamic.setChristmas(this.season === 'christmas')
-    const pl = this.play
-    this.dynamic.setPropsCrate(PROPS_CRATE.x, PROPS_CRATE.z, !!pl && (pl.stage === 'cast' || pl.stage === 'opening'), !!pl?.cue)
     this.dynamic.updateWeather(this.weather, pb.x, pb.z, delta, (x, z) => {
       const zone = this.grid.zone(Math.floor(x / TILE), Math.floor(z / TILE))
       return zone === 'yard' || zone === 'outside'
@@ -855,7 +910,8 @@ export class Game implements World {
         this.missions.newDay()
         this.events.newDay()
         this.feuds.newDay()
-        this.play?.newDay()
+        this.secret?.newDay()
+        this.routes.newDay()
         if (this.contactNights > 0) this.contactNights--
         this.signalTonight = false
         this.flagUp = false
@@ -946,7 +1002,7 @@ export class Game implements World {
     if (p.inBasket) {
       b.visible = false
       b.speed = 0
-      this.prompts = [{ key: 'E', label: 'Climb out of the basket', run: () => this.leaveBasket() }]
+      this.prompts = [{ key: 'E', label: `Climb out of the ${p.hidingIn ?? 'basket'}`, run: () => this.leaveBasket() }]
       if (input.take('interact')) this.leaveBasket()
       p.illegal = 0
       return
@@ -1245,7 +1301,7 @@ export class Game implements World {
       const allowed = allowedZones(this.clock.period, p.block)
       const zoneBlock = blockOfZone(p.zone)
       const ownBlockCell = p.zone.startsWith('cell') && zoneBlock === p.block
-      if (p.zone !== p.cell && !allowed.has(p.zone) && !(ownBlockCell && allowed.has(`block${p.block}`))) level = 1
+      if (p.zone !== p.cell && !allowed.has(p.zone) && !(ownBlockCell && allowed.has(`block${p.block}`)) && !this.secret?.allows?.(p.zone)) level = 1
       if (p.zone === 'infirmary' && !this.sickCall) level = 1
     }
     if (this.fightingFor > 0 && !this.riot.active && level < 1) level = 1
@@ -1447,6 +1503,16 @@ export class Game implements World {
       if (!job) add('R', 'Do your business', () => this.doBusiness(loo))
       else if (job.done) add('R', 'Flush', () => this.flush())
       else add('R', 'Concentrating...', () => {})
+    }
+    // The newer routes, and whatever secret is on this sentence.
+    if (!this.seated) {
+      this.routes.prompts(add, near)
+      this.secret?.prompts(add, near)
+      const gu = this.guest
+      if (gu.body.visible && this.secret?.talkGuest && near(gu.body.x, gu.body.z, 2.0)) add('E', `Talk to ${gu.name}`, () => {
+        this.converse(gu.body)
+        this.secret!.talkGuest!()
+      })
     }
     // Any bench, chair, pew, sofa or bunk edge. Lowest of all.
     if (this.seated) add('E', this.business?.done ? 'Stand up (without flushing)' : 'Stand up', () => this.standUp())
@@ -2683,7 +2749,8 @@ export class Game implements World {
       missions: this.missions.toSave(),
       events: this.events.toSave(),
       feuds: this.feuds.toSave(),
-      play: this.play?.toSave() ?? null,
+      secret: this.secret ? { id: this.secret.id, state: this.secret.toSave() } : null,
+      routes: this.routes.toSave(),
       heist: { ...this.heist },
       tunnel: { ...this.tunnel },
       goals: this.goals.toSave(),
@@ -2714,6 +2781,8 @@ export class Game implements World {
     this.applyLook()
     this.stash.splice(0, this.stash.length, ...s.stash)
     Object.assign(this.memory, s.memory)
+    // Saves from before a route existed: it has never been used.
+    for (const k of Object.keys(METHOD_NAMES) as Method[]) this.memory.used[k] ??= 0
     this.contactNights = s.contactNights
     this.signalTonight = s.signalTonight
     this.flagUp = s.flagUp
@@ -2757,9 +2826,17 @@ export class Game implements World {
     this.missions.fromSave(s.missions)
     this.events.fromSave(s.events)
     this.feuds.fromSave(s.feuds)
-    if (s.play) {
-      this.play = new Play(this)
-      this.play.fromSave(s.play)
+    this.routes.fromSave(s.routes)
+    if (s.secret) {
+      this.secret = makeSecret(s.secret.id, this)
+      this.secret.fromSave(s.secret.state)
+    } else {
+      // Saves from when the play was the only secret.
+      const old = (s as { play?: Record<string, unknown> | null }).play
+      if (old) {
+        this.secret = new Play(this)
+        this.secret.fromSave(old)
+      }
     }
     if (s.heist) Object.assign(this.heist, s.heist)
     if (s.tunnel) Object.assign(this.tunnel, s.tunnel)
@@ -2981,9 +3058,6 @@ export class Game implements World {
         else add('E', "The Governor's safe", () => this.toast(this.safeHint(), 'neutral'))
       }
     }
-    if (p.zone === 'chapel' && this.play?.cue && near(PROPS_CRATE, 1.8)) {
-      add('E', 'Your cue: get in the sack', () => this.finish(true, 'curtain'))
-    }
     if (p.zone === 'chapel' && near(f.costumeBox, 1.8)) {
       if (this.chaplain.stage === 'done' && !(p.inventory.has('wig') && p.inventory.has('dress')) && !p.inventory.has('visitorDisguise')) {
         add('E', 'Rummage in the panto box (the Reverend lent you the key)', () => {
@@ -3040,11 +3114,13 @@ export class Game implements World {
 
   private leaveBasket(): void {
     const p = this.player
+    const where = p.hidingIn
     p.inBasket = false
+    p.hidingIn = null
     p.body.visible = true
     p.body.z += 0.8
     this.methodHint = null
-    this.toast('You climb out, covered in fluff.', 'neutral')
+    this.toast(where ? `You climb out of the ${where}.` : 'You climb out, covered in fluff.', 'neutral')
   }
 
   /** The visitors and the laundry van run to their own little timetables. */
@@ -3090,15 +3166,15 @@ export class Game implements World {
     }
     // The van leaves at eleven with whatever is in the baskets.
     const p = this.player
-    if (p.inBasket && m >= 10 * 60 + 55 && !this.vanWarned) {
+    if (p.inBasket && !p.hidingIn && m >= 10 * 60 + 55 && !this.vanWarned) {
       this.vanWarned = true
       this.toast('You hear the van reversing into the bay. Beep. Beep. Beep. Hold your breath...', 'neutral')
     }
-    if (p.inBasket && m >= 11 * 60 && this.clock.period === 'work') {
+    if (p.inBasket && !p.hidingIn && m >= 11 * 60 && this.clock.period === 'work') {
       this.vanWarned = false
       this.sillyExit('laundry')
     }
-    if (p.inBasket && this.clock.period !== 'work') {
+    if (p.inBasket && !p.hidingIn && this.clock.period !== 'work') {
       p.inBasket = false
       p.body.visible = true
     }
@@ -3239,7 +3315,8 @@ export class Game implements World {
     const weekday = this.clock.weekday < 5
     const inspection = this.events.today === 'inspection' && m >= 10 * 60 && m < 16 * 60
     const was = gv.at
-    gv.at = this.play?.directing ? 'chapel' : inspection ? 'tour' : !weekday || this.clock.locked ? 'away' : m >= 750 && m < 810 ? 'car' : m >= 570 && m < 990 ? 'office' : 'away'
+    const wanted = this.secret?.governorSpot?.() ?? null
+    gv.at = wanted ? 'event' : inspection ? 'tour' : !weekday || this.clock.locked ? 'away' : m >= 750 && m < 810 ? 'car' : m >= 570 && m < 990 ? 'office' : 'away'
     const b = gv.body
     b.visible = gv.at !== 'away'
     if (this.talkingTo !== b) {
@@ -3253,20 +3330,14 @@ export class Game implements World {
         b.z = this.fixtures.jag.z + 0.4
         b.yaw = Math.PI / 2
         b.pose = 'search'
-      } else if (gv.at === 'chapel') {
-        // Directing from the front, by the altar, facing the pews.
-        b.x = DIRECTOR.x
-        b.z = DIRECTOR.z
-        b.yaw = Math.PI / 2
-        b.pose = 'talk'
-        if (gv.speechTimer <= -6 && this.rng() < 0.01) {
-          gv.speech = pick2(this.rng, [
-            'From the top! And this time, FEEL the Château d\'If.',
-            'Mr Higginbottom, you are a gaoler, not a lollipop man.',
-            'Projection! The back pew is asleep!',
-            'Less pastry in your pockets, more Dumas in your heart.',
-            'Places, everyone! PLACES!',
-          ])
+      } else if (wanted) {
+        // Wherever the secret wants him: directing the play, meeting a duke.
+        b.x = wanted.x
+        b.z = wanted.z
+        b.yaw = wanted.yaw
+        b.pose = wanted.pose
+        if (wanted.lines?.length && gv.speechTimer <= -6 && this.rng() < 0.01) {
+          gv.speech = pick2(this.rng, wanted.lines)
           gv.speechTimer = 3.5
         }
       } else if (gv.at === 'tour') this.governorTour(delta, was !== 'tour')
@@ -3337,21 +3408,35 @@ export class Game implements World {
     }
   }
 
+  /** The secret's guest: dressed once, then wherever the secret says. */
+  private updateGuest(delta: number): void {
+    const gu = this.guest
+    const b = gu.body
+    const info = this.secret?.guestLook?.()
+    if (info && info.name !== this.guestDressed) {
+      this.guestDressed = info.name
+      gu.name = info.name
+      Object.assign(b, info.look)
+      this.crowd.paint(this.bodies.indexOf(b), b)
+    }
+    const spot = info ? (this.secret?.guestSpot?.() ?? null) : null
+    b.visible = !!spot
+    if (spot && this.talkingTo !== b) {
+      b.x = spot.x
+      b.z = spot.z
+      b.yaw = spot.yaw
+      b.pose = spot.pose
+      b.speed = 0
+    }
+    gu.speechTimer -= delta
+    if (gu.speechTimer > 0 && b.visible) this.bubbles.push({ body: b, text: gu.speech, who: null })
+  }
+
   private talkToGovernor(): void {
     const gv = this.governor
     this.converse(gv.body)
     this.achieve('governor')
-    const play = this.play
-    if (gv.at === 'chapel' && play) {
-      if (play.stage === 'notice') {
-        this.ui.talk(`${gv.name}, Director`, "Ah. You. We are casting the Abbé Faria. Old, wise, dies in Act Two, carried off in a sack. Almost no lines. Can you lie very, very still?", [
-          { label: 'Audition for the Abbé Faria', enabled: true, run: () => this.ui.talk(`${gv.name}, Director`, play.audition(), []) },
-        ])
-      } else {
-        this.ui.talk(`${gv.name}, Director`, pick2(this.rng, ['Not now, I am DIRECTING.', 'Faria! Lovely stillness yesterday. Keep it up. Or rather, down.', 'The van takes the set back after the show. The Grimsby Rep want their Château d\'If returned in one piece.']), [])
-      }
-      return
-    }
+    if (this.secret?.talkGovernor?.()) return
     const lines =
       this.memory.round > 1
         ? ["Back again. I admire persistence. I also admire concrete, and I have ordered a great deal of it.", 'You are making my prison better every time you fail. I do appreciate it.']
@@ -3371,6 +3456,10 @@ export class Game implements World {
   }
 
   private talkToChaplain(): void {
+    if (this.secret?.talkChaplain?.()) {
+      this.converse(this.chaplain.body)
+      return
+    }
     const r = this.chaplain
     const p = this.player
     const inv = p.inventory

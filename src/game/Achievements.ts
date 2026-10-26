@@ -24,6 +24,7 @@ export type AchievementId =
   | 'houdini'
   | 'everything'
   | 'curtain'
+  | 'topSecret'
 
 export const ACHIEVEMENTS: { id: AchievementId; title: string; text: string }[] = [
   { id: 'settled', title: 'Settled in', text: 'Tick off every first-day goal.' },
@@ -42,6 +43,7 @@ export const ACHIEVEMENTS: { id: AchievementId; title: string; text: string }[] 
   { id: 'hardcore', title: 'Hardcore hero', text: 'Escape on Hardcore.' },
   { id: 'daily', title: 'Daily grind', text: 'Beat a daily challenge.' },
   { id: 'curtain', title: 'Break a leg', text: "Take your cue in the Governor's play. (Not every sentence has one.)" },
+  { id: 'topSecret', title: 'Top secret', text: 'Find a secret ending. One sentence in ten has a secret, and each only ever once.' },
   { id: 'houdini', title: 'Houdini', text: 'Find every way out.' },
   { id: 'everything', title: 'Completionist', text: 'Find every ending, good and bad.' },
 ]
@@ -66,6 +68,7 @@ export function achieveAtEnd(run: { ending?: EndingId; won: boolean; fails: numb
   if (run.won && run.mode === 'hardcore') ids.push('hardcore')
   if (run.dailyMet) ids.push('daily')
   if (run.ending === 'curtain') ids.push('curtain')
+  if (ENDINGS.find((e) => e.id === run.ending)?.secret) ids.push('topSecret')
   // The secret ending is a bonus, not needed for the full set.
   const all = ENDINGS.filter((e) => !e.secret)
   if (all.filter((e) => e.won).every((e) => found.has(e.id))) ids.push('houdini')

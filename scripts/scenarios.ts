@@ -1751,7 +1751,7 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   check('play: the notice goes up at lunch on day one', play.announced && log.some((l) => l.includes('THE COUNT OF MONTE CRISTO')))
   nextDay(game)
   atChapel(game, 15 * 60, 1)
-  check('play: the Governor directs in the chapel on audition day', game.governor.at === 'chapel', game.governor.at)
+  check('play: the Governor directs in the chapel on audition day', game.governor.at === 'event' && game.player.zone === 'chapel' && Math.hypot(game.governor.body.x - game.player.body.x, game.governor.body.z - game.player.body.z) < 6, game.governor.at)
   g.talkToGovernor()
   const audition = lastTalk?.options.find((o) => o.label.includes('Audition'))
   audition?.run()
@@ -1795,9 +1795,13 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   ;(globalThis as any).localStorage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => store.set(k, v), removeItem: (k: string) => store.delete(k) }
   const { rollSecret } = await import('../src/game/Play')
   check('secret: nine times in ten it does not turn up', !rollSecret(() => 0.5) && store.size === 0)
-  check('secret: one time in ten it does, and is remembered', rollSecret(() => 0.05) && !!store.get('locked-up.secrets'))
-  check('secret: and never again in this browser', !rollSecret(() => 0.01))
-  check('secret: ?secret=play still forces it, for trying it out', rollSecret(() => 0.9, true))
+  const first = rollSecret(() => 0.05)
+  check('secret: one time in ten one does, and is remembered', !!first && !!JSON.parse(store.get('locked-up.secrets') ?? '{}')[first], String(first))
+  const got = new Set([first])
+  for (let i = 0; i < 4; i++) got.add(rollSecret(() => 0.05))
+  check('secret: each of the five turns up once', got.size === 5 && !got.has(null), [...got].join(','))
+  check('secret: and then never again in this browser', rollSecret(() => 0.01) === null)
+  check('secret: ?secret=greylady still forces one, for trying it out', rollSecret(() => 0.9, 'greylady') === 'greylady')
   delete (globalThis as any).localStorage
 }
 

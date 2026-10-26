@@ -308,7 +308,7 @@ export class Dynamic {
   private readonly drops = new Float32Array(900 * 3)
 
   /** Moves the rain or snow along, around (x, z), only where `open` says outdoors. */
-  updateWeather(kind: 'clear' | 'rain' | 'fog' | 'snow', x: number, z: number, delta: number, open: (x: number, z: number) => boolean): void {
+  updateWeather(kind: 'clear' | 'rain' | 'fog' | 'snow' | 'wind', x: number, z: number, delta: number, open: (x: number, z: number) => boolean): void {
     const n = 900
     if (!this.rain) {
       const g = new BufferGeometry()
@@ -385,6 +385,26 @@ export class Dynamic {
   }
 
   /** The hole under the loose tile by your bunk, open while you dig. */
+  private readonly props = new Map<string, Mesh>()
+
+  /**
+   * A one-off prop, built the first time it is wanted: the wheelie bins, the
+   * fire engine, a flight case. Shown or hidden, placed and turned.
+   */
+  setProp(id: string, build: () => BufferGeometry[], x: number, z: number, visible: boolean, ry = 0): void {
+    let m = this.props.get(id)
+    if (!m) {
+      if (!visible) return
+      m = new Mesh(mergePainted(build()), toon(0xffffff, { tinted: true }))
+      m.layers.enable(SOLID_LAYER)
+      this.group.add(m)
+      this.props.set(id, m)
+    }
+    m.visible = visible
+    m.position.set(x, 0.01, z)
+    m.rotation.y = ry
+  }
+
   private propsCrate: Mesh | null = null
   private sack: Mesh | null = null
 

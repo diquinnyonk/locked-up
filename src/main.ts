@@ -3,7 +3,8 @@ import { HEX, SUN_DIRECTION, color } from './art/palette'
 import { setToonSunDirection, setWorldTint } from './art/toonMaterial'
 import { Engine } from './core/Engine'
 import { Pad } from './core/Pad'
-import { Play, rollSecret } from './game/Play'
+import { rollSecret } from './game/Play'
+import { makeSecret } from './game/secrets'
 import { Game } from './game/Game'
 import type { Mode } from './npc/Memory'
 import { CelPipeline } from './render/CelPipeline'
@@ -128,7 +129,8 @@ function begin(save: SaveFile | null): void {
     game.startSentence()
     // The secret play: one sentence in ten, once per browser, never in a
     // daily (that has to be the same prison for everyone).
-    if (!game.daily && rollSecret(Math.random, params.get('secret') === 'play')) game.play = new Play(game)
+    const secret = game.daily ? null : rollSecret(Math.random, params.get('secret'))
+    if (secret) game.secret = makeSecret(secret, game)
   }
   game.input.enabled = true
   game.input.clear()

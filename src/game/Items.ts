@@ -57,6 +57,13 @@ export type ItemId =
   | 'spear'
   | 'flag'
   | 'sleepyRoll'
+  // The newer routes
+  | 'cuffKey'
+  | 'stamp'
+  | 'releaseForm'
+  | 'releasePapers'
+  | 'glider'
+  | 'cryptKey'
   // The Governor's safe
   | 'stethoscope'
   | 'masterKey'
@@ -136,6 +143,12 @@ export const ITEMS: Record<ItemId, ItemDef> = {
   stethoscope: { id: 'stethoscope', name: 'Stethoscope', hex: HEX.steel, damage: 1, uses: [], contraband: true, blurb: 'From healthcare. Press it to a safe door and listen for the tumblers. Slow, and the dial clicks.' },
   masterKey: { id: 'masterKey', name: "Governor's master key", hex: HEX.stainedGold, damage: 0, uses: ['openDoor'], contraband: true, blurb: 'Opens every door in Grim-on-the-Moor, the outer gates included. Nobody counts it at shift change, because nobody knows it exists. Old and soft brass: good for five turns, no more.', durability: MASTER_KEY_TURNS },
   jagKeys: { id: 'jagKeys', name: "The Governor's Jag keys", hex: HEX.bookGreen, damage: 0, uses: [], contraband: true, blurb: 'A leather fob with a leaping cat on it. The Jag is parked in the staff car park, just outside the staff door.' },
+  cuffKey: { id: 'cuffKey', name: 'Handcuff key', hex: HEX.metal, damage: 0, uses: [], contraband: true, blurb: 'Copper wire, bent and hardened in a flame. Small enough to hide in a shoe. Every set of cuffs in the country takes the same key.' },
+  stamp: { id: 'stamp', name: "The Governor's stamp", hex: HEX.bookRed, damage: 0, uses: [], contraband: true, blurb: 'APPROVED: R. PETTIGREW, GOVERNOR. Red ink. Smells of power.' },
+  releaseForm: { id: 'releaseForm', name: 'Blank release form', hex: HEX.paper, damage: 0, uses: [], contraband: true, blurb: 'Form HMP-R7, Discharge of a Prisoner, from the library printer. It wants a stamp and a signature.' },
+  releasePapers: { id: 'releasePapers', name: 'Forged release papers', hex: HEX.paper, damage: 0, uses: [], contraband: true, blurb: 'Stamped and signed. Hand them in at the discharge desk by the visitors\' gate. The signature had better be good.' },
+  glider: { id: 'glider', name: 'Bedsheet glider', hex: HEX.cloth, damage: 0, uses: [], contraband: true, blurb: 'Two bedsheets, a mop handle and a lot of tape. Launch it from the south edge of the yard on a properly windy day.' },
+  cryptKey: { id: 'cryptKey', name: 'Old iron key', hex: HEX.steelDark, damage: 0, uses: [], contraband: true, blurb: 'Heavy, black, and labelled in faded copperplate: CRYPT. A.G. 1887.' },
   rubble: { id: 'rubble', name: 'Rubble', hex: HEX.brickShade, damage: 1, uses: [], contraband: true, blurb: 'A sock full of brick dust and clay from your tunnel. Shake it out of your trouser legs in the yard, a little at a time.' },
 }
 
@@ -161,6 +174,9 @@ export const RECIPES: Recipe[] = [
   { makes: 'flag', needs: ['bedsheet', 'sock'] },
   { makes: 'visitorDisguise', needs: ['wig', 'dress'] },
   { makes: 'sleepyRoll', needs: ['sausageRoll', 'sleepingPills'] },
+  { makes: 'cuffKey', needs: ['wire'], tools: ['lighter'], where: 'Bend it round a biro, harden it in the flame' },
+  { makes: 'glider', needs: ['bedsheet', 'bedsheet', 'mopHandle'], tools: ['tape'] },
+  { makes: 'releasePapers', needs: ['releaseForm'], tools: ['stamp'] },
 ]
 
 export const INVENTORY_SLOTS = 8

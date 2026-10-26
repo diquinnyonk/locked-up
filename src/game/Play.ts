@@ -1,5 +1,6 @@
 import { TILE } from '../world/Grid'
 import type { Game } from './Game'
+import { type Add, type Near, SECRET_IDS, type Secret, type SecretId } from './secrets/Secret'
 
 /**
  * A secret mission: the Governor's Players present The Count of Monte
@@ -34,7 +35,8 @@ const ATTEND = 20
 export const DIRECTOR = { x: 11.8 * TILE + TILE / 2, z: 44 * TILE + TILE / 2 }
 export const PROPS_CRATE = { x: 11.6 * TILE + TILE / 2, z: 45.7 * TILE + TILE / 2 }
 
-export class Play {
+export class Play implements Secret {
+  readonly id = 'play'
   stage: PlayStage = 'notice'
   /** The notice goes up at lunchtime on the first day. */
   announced = false
@@ -82,6 +84,50 @@ export class Play {
   /** Whether `day` is opening night: nothing else is allowed to happen. */
   isOpeningNight(day: number): boolean {
     return this.announced && (this.stage === 'cast' || this.stage === 'opening') && day - this.startDay === OPENING
+  }
+
+  isQuietDay(day: number): boolean {
+    return this.isOpeningNight(day)
+  }
+
+  /** The Governor directs from the front of the chapel. */
+  governorSpot() {
+    return this.directing
+      ? {
+          ...DIRECTOR,
+          yaw: Math.PI / 2,
+          pose: 'talk' as const,
+          lines: [
+            "From the top! And this time, FEEL the Château d'If.",
+            'Mr Higginbottom, you are a gaoler, not a lollipop man.',
+            'Projection! The back pew is asleep!',
+            'Less pastry in your pockets, more Dumas in your heart.',
+            'Places, everyone! PLACES!',
+          ],
+        }
+      : null
+  }
+
+  /** Auditions and notes, in the chapel. */
+  talkGovernor(): boolean {
+    const g = this.game
+    if (!this.directing) return false
+    const name = `${g.governor.name}, Director`
+    if (this.stage === 'notice') {
+      g.ui.talk(name, 'Ah. You. We are casting the Abbé Faria. Old, wise, dies in Act Two, carried off in a sack. Almost no lines. Can you lie very, very still?', [
+        { label: 'Audition for the Abbé Faria', enabled: true, run: () => g.ui.talk(name, this.audition(), []) },
+      ])
+    } else {
+      const lines = ['Not now, I am DIRECTING.', 'Faria! Lovely stillness yesterday. Keep it up. Or rather, down.', "The van takes the set back after the show. The Grimsby Rep want their Château d'If returned in one piece."]
+      g.ui.talk(name, lines[Math.floor(g.rng() * lines.length)], [])
+    }
+    return true
+  }
+
+  prompts(add: Add, near: Near): void {
+    const g = this.game
+    g.dynamic.setPropsCrate(PROPS_CRATE.x, PROPS_CRATE.z, this.stage === 'cast' || this.stage === 'opening', this.cue)
+    if (g.player.zone === 'chapel' && this.cue && near(PROPS_CRATE.x, PROPS_CRATE.z, 1.8)) add('E', 'Your cue: get in the sack', () => g.escapeBy('curtain'))
   }
 
   /** The cue: get in the sack. */
@@ -179,7 +225,8 @@ export class Play {
     return { stage: this.stage, announced: this.announced, startDay: this.startDay, attended: [...this.attended] }
   }
 
-  fromSave(s: Partial<ReturnType<Play['toSave']>> | undefined): void {
+  fromSave(raw: Record<string, unknown> | undefined): void {
+    const s = raw as Partial<ReturnType<Play['toSave']>> | undefined
     if (!s) return
     this.stage = s.stage ?? 'notice'
     this.announced = s.announced ?? false
@@ -191,20 +238,22 @@ export class Play {
 const SECRETS = 'locked-up.secrets'
 
 /**
- * Whether this sentence gets the secret play: about one in ten, and only
- * until it has turned up once in this browser. `force` (?secret=play) is
- * for trying it out, and does not use it up.
+ * Whether this sentence gets a secret, and which: about one in ten, chosen
+ * from the ones this browser has not had yet, and remembered so each only
+ * ever turns up once. `force` (?secret=play, ?secret=greylady...) is for
+ * trying one out, and does not use it up.
  */
-export function rollSecret(random: () => number, force = false): boolean {
-  if (force) return true
+export function rollSecret(random: () => number, force: string | null = null): SecretId | null {
+  if (force && (SECRET_IDS as string[]).includes(force)) return force as SecretId
   try {
     const seen = JSON.parse(localStorage.getItem(SECRETS) ?? '{}') as Record<string, string>
-    if (seen.play) return false
-    if (random() >= 0.1) return false
-    seen.play = new Date().toISOString()
+    const left = SECRET_IDS.filter((id) => !seen[id])
+    if (!left.length || random() >= 0.1) return null
+    const id = left[Math.floor(random() * left.length)]
+    seen[id] = new Date().toISOString()
     localStorage.setItem(SECRETS, JSON.stringify(seen))
-    return true
+    return id
   } catch {
-    return false
+    return null
   }
 }

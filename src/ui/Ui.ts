@@ -337,7 +337,7 @@ export class Ui implements UiPort {
         <h3 class="title">Escape HMP Grim-on-the-Moor</h3>
         <p>Everyone in here knows your name, ${escape(p.name)}: the one who robbed the Greggs. Attempts left this round: <b>${m.attemptsLeft} of ${m.attemptsPerRound}</b> (round ${m.round} of ${m.rounds}).</p>
         ${g.goals.shown && !g.goals.finished ? `<h4>First day</h4><ul class="checks">${GOALS.map((go) => tick(g.goals.done.has(go.id), go.text, go.hint)).join('')}</ul>` : ''}
-        ${g.play?.status ? `<p class="today"><b>${escape(g.play.status.title)}.</b> ${escape(g.play.status.text)}</p>` : ''}
+        ${g.secret?.status ? `<p class="today"><b>${escape(g.secret.status.title)}.</b> ${escape(g.secret.status.text)}</p>` : ''}
         ${g.daily ? `<p class="today"><b>Daily challenge, ${escape(prettyDate(g.daily.date))}.</b> ${escape(describeDaily(g.daily))}</p>` : ''}
         <p class="today"><b>${g.clock.weekdayName}: ${escape(EVENT_INFO[g.events.today].title)}.</b> ${escape(EVENT_INFO[g.events.today].blurb)}${isVisitingDay(g.clock.weekday) ? ' Visiting this afternoon, 14:30 to 15:45.' : ''}${g.weather !== 'clear' ? ` ${escape(WEATHER_INFO[g.weather])}` : ''}</p>
         <h4>Out of your cell at night</h4>
@@ -376,6 +376,7 @@ export class Ui implements UiPort {
           ${tick(inv.has('guardUniform'), "An officer's uniform", 'Clock off with the day shift at 20:45 in the staff changing room, off the loading bay. For your first two days every officer knows your face, so a disguise does not last. With an officer\'s keys as well, the staff door lets you out any time.')}
           ${tick(inv.has('sleepyRoll'), 'A sleepy sausage roll', m.foodRefused ? 'Burned once: officers will not eat anything you offer now.' : 'Sleeping pills from a fixer in a sausage roll. Shout an officer into your cell by day (H) and offer it to him: then his uniform and keys are yours.')}
           ${tick(inv.has('visitorDisguise'), 'Visitor disguise', `The wig and frock are in the chapel's panto box: ${g.chaplain.stage === 'done' ? 'the Reverend lent you the key' : 'padlocked until the Reverend trusts you'}. Leave with the visitors at 15:30 on Tuesdays, Thursdays and weekends.`)}
+          ${g.routes.checklist(tick)}
           ${tick(g.keith.bribedDay === g.clock.day, `${g.keith.name} on the X-ray paid off today`, `${m.xrayBribe} blue drink and ${m.xrayBribe} sausage roll, then into a laundry basket before 11:00. He sits at the X-ray in the loading bay: the blue square on your map.`)}
         </ul>
       </section>`
@@ -702,7 +703,7 @@ export class Ui implements UiPort {
       : ''
     const d = g.daily
     const dailyCard = d ? `<div class="job daily"><b>Daily challenge</b>Escape by day ${d.byDay}${d.maxFails ? ', one slip allowed' : ', never caught'}.<br><small>Day ${g.clock.day}, ${g.memory.totalFailures} failed so far</small></div>` : ''
-    const ps = g.play?.status
+    const ps = g.secret?.status
     const playCard = ps ? `<div class="job daily secret"><b>${escape(ps.title)}</b>${escape(ps.text)}<br><small>A secret. Not every sentence has one.</small></div>` : ''
     const jobs =
       dailyCard +

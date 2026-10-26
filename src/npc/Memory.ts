@@ -14,7 +14,7 @@
  */
 import { GANGS, GANG_IDS, type GangId, type GangState } from './Gangs'
 
-export type Method = 'key' | 'toothpaste' | 'sick' | 'riot' | 'vent' | 'wall' | 'gate' | 'guardDisguise' | 'visitorDisguise' | 'laundry' | 'lure' | 'safe' | 'tunnel'
+export type Method = 'key' | 'toothpaste' | 'sick' | 'riot' | 'vent' | 'wall' | 'gate' | 'guardDisguise' | 'visitorDisguise' | 'laundry' | 'lure' | 'safe' | 'tunnel' | 'bins' | 'hospital' | 'court' | 'papers' | 'fireEngine' | 'glider' | 'stunt'
 
 export const METHOD_NAMES: Record<Method, string> = {
   key: 'Stolen or forged key',
@@ -30,6 +30,13 @@ export const METHOD_NAMES: Record<Method, string> = {
   lure: 'An officer lured into your cell',
   safe: "The Governor's safe",
   tunnel: 'A tunnel under the floor',
+  bins: 'In a wheelie bin',
+  hospital: 'A hospital run',
+  court: 'A day in court',
+  papers: 'Forged release papers',
+  fireEngine: 'On the fire engine',
+  glider: 'A bedsheet glider',
+  stunt: 'A one-off stunt',
 }
 
 export const ATTEMPTS_PER_ROUND = 4
@@ -59,7 +66,7 @@ export class PrisonMemory {
   /** Set by the difficulty: four a round and two rounds, unless not. */
   attemptsPerRound = ATTEMPTS_PER_ROUND
   rounds = ROUNDS
-  readonly used: Record<Method, number> = { key: 0, toothpaste: 0, sick: 0, riot: 0, vent: 0, wall: 0, gate: 0, guardDisguise: 0, visitorDisguise: 0, laundry: 0, lure: 0, safe: 0, tunnel: 0 }
+  readonly used: Record<Method, number> = Object.fromEntries(Object.keys(METHOD_NAMES).map((k) => [k, 0])) as Record<Method, number>
   readonly hotspots: { x: number; z: number; weight: number }[] = []
   /** Calls flagged by the wiretap; each makes the next listener stricter. */
   phoneFlags = 0
@@ -228,6 +235,17 @@ export class PrisonMemory {
     return 1 + this.used.laundry
   }
 
+  /** Odds for the newer one-roll routes; each one rumbled makes the next worse. */
+  routeChance(method: 'bins' | 'hospital' | 'court' | 'papers' | 'fireEngine' | 'glider'): number {
+    const first = { bins: 0.8, hospital: 0.75, court: 0.8, papers: 0.85, fireEngine: 0.75, glider: 0.8 }[method]
+    return Math.max(0.1, first - this.used[method] * 0.35)
+  }
+
+  /** Twice rumbled, and that route is shut for good. */
+  routeClosed(method: 'bins' | 'hospital' | 'court' | 'papers' | 'fireEngine' | 'glider'): boolean {
+    return this.used[method] >= 2
+  }
+
   /** The wiretap's vocabulary grows with every flagged call. */
   get phoneStrictness(): number {
     return Math.min(3, this.phoneFlags + Math.floor(this.totalFailures / 3))
@@ -266,5 +284,19 @@ function lessonFor(method: Method, times: number): string {
       return times === 1
         ? 'Keith on the X-ray has been sacked. His replacement wants two of everything.'
         : "The new X-ray operator wants three of everything, and he's watching the screen."
+    case 'bins':
+      return times === 1 ? 'The kitchen now tips every wheelie bin out by hand before collection.' : 'The bins are padlocked, and the binmen have been told about you by name.'
+    case 'hospital':
+      return times === 1 ? 'Hospital escorts handcuff patients to the trolley now.' : 'Healthcare sends nobody to the outside hospital without a doctor\'s scan. They have bought a scanner.'
+    case 'court':
+      return times === 1 ? 'Prisoners going to court have their shoes X-rayed.' : 'Your hearings are on video link now. From the library.'
+    case 'papers':
+      return times === 1 ? 'Every release is phoned through to the Governor before the gate opens.' : 'The Governor has a new stamp, kept in his pocket, and a new signature, with a flourish.'
+    case 'fireEngine':
+      return times === 1 ? 'The fire crew count their hoses and check their lockers before they leave.' : 'The fire engine now stops at the gate and is searched. The fire crew are not happy about it.'
+    case 'glider':
+      return times === 1 ? 'Bedsheets are counted every morning now.' : 'Netting along the yard wall, and bedsheets counted twice a day.'
+    case 'stunt':
+      return 'The Governor has banned anything fun. Again.'
   }
 }
