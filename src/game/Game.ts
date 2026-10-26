@@ -15,6 +15,7 @@ import { Clock, RESTRICTED, allowedZones } from './Clock'
 import { type DayEvent, Events, isVisitingDay } from './Events'
 import type { EndingId } from './Records'
 import { type GoalId, Goals } from './Goals'
+import { Feuds } from './Feuds'
 import { Doors } from './Doors'
 import { ITEMS, Inventory, type ItemId, RECIPES, type Recipe, SPAWNS, vouchers } from './Items'
 import { screenCall } from './Phone'
@@ -136,6 +137,8 @@ export class Game implements World {
   readonly events = new Events(this)
   /** First-day goals on the HUD. */
   readonly goals = new Goals()
+  /** The firms' feuds with each other. */
+  readonly feuds = new Feuds(this)
   /** Your cellmate's story: warned they are a grass, paid off, the gift, a tip-off due. */
   readonly mate = { warned: false, paidOff: false, gift: false, tipOff: false, tipOffs: 0 }
   private vouchersSeen = -1
@@ -691,6 +694,7 @@ export class Game implements World {
     this.events.tick()
     this.regime()
     this.events.update()
+    this.feuds.update()
 
     this.doors.beginFrame()
     this.updatePlayer(delta)
@@ -816,6 +820,7 @@ export class Game implements World {
         this.restock(false)
         this.missions.newDay()
         this.events.newDay()
+        this.feuds.newDay()
         if (this.contactNights > 0) this.contactNights--
         this.signalTonight = false
         this.flagUp = false
@@ -2468,6 +2473,25 @@ export class Game implements World {
           this.ui.talk(pr.name, `Pleasure doing business. Give the word (G) on ${def.wing} wing and my lads go up. You have two days.`, [])
         },
       })
+      // The feud with their rivals: fan it, or calm it.
+      const rival = GANGS[def.rival]
+      const feud = this.feuds.of(gang)
+      const truce = feud.truceUntil > this.clock.minutes
+      options.push({
+        label: `"${rival.name} are planning something, you know."`,
+        enabled: feud.brawlAt < 0,
+        run: () => this.ui.talk(pr.name, this.feuds.stir(gang), []),
+      })
+      options.push({
+        label: truce ? `A truce with ${rival.name} holds` : `Broker a truce with ${rival.name} (3 Greggs vouchers)`,
+        enabled: !truce && inv.count('voucher') >= 3,
+        run: () => {
+          for (let i = 0; i < 3; i++) inv.remove('voucher')
+          this.feuds.truce(gang)
+          this.ui.talk(pr.name, `Three days. Not a minute more. And tell ${rival.name} it was their idea.`, [])
+          this.toast(`A truce between ${def.name} and ${rival.name} for three days. Both think a bit better of you.`, 'good')
+        },
+      })
     } else {
       options.push({
         label: 'Will you back me when it kicks off?',
@@ -2611,6 +2635,7 @@ export class Game implements World {
       toiletIncidents: this.toiletIncidents,
       missions: this.missions.toSave(),
       events: this.events.toSave(),
+      feuds: this.feuds.toSave(),
       heist: { ...this.heist },
       tunnel: { ...this.tunnel },
       goals: this.goals.toSave(),
@@ -2682,6 +2707,7 @@ export class Game implements World {
     this.toiletIncidents = s.toiletIncidents
     this.missions.fromSave(s.missions)
     this.events.fromSave(s.events)
+    this.feuds.fromSave(s.feuds)
     if (s.heist) Object.assign(this.heist, s.heist)
     if (s.tunnel) Object.assign(this.tunnel, s.tunnel)
     this.goals.fromSave(s.goals)

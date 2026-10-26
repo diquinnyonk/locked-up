@@ -6,6 +6,7 @@ import { ITEMS, INVENTORY_SLOTS, type ItemId, RECIPES, vouchers } from '../game/
 import { itemIcon } from './itemIcons'
 import { CONTROLS } from './Tour'
 import { GOALS } from '../game/Goals'
+import { FEUDS } from '../game/Feuds'
 import { TRAITS } from '../npc/names'
 import { type Volumes, readVolumes } from '../audio/Soundscape'
 import { ENDINGS, type Run, duration, readRecords } from '../game/Records'
@@ -587,6 +588,11 @@ export class Ui implements UiPort {
         const backing = g.memory.backing(id, g.clock.minutes)
         return `<div class="entry"><span class="chip" style="background:${css(def.hex)}"></span><div><b>${def.name}</b>, ${def.wing} wing. Boss: ${leader ? escape(leader.name) : 'nobody'}.<p>${escape(def.blurb)}</p><small>Riot price ${vouchers(g.memory.bribePrice(id))}. Hostility ${Math.round(st.hostility * 100)}%.${backing ? ' Backing you.' : ''} Rival: ${GANGS[def.rival].name}.</small></div></div>`
       }).join('')}
+      <p class="hint">${FEUDS.map(([a, b]) => {
+        const f = g.feuds.of(a)
+        const mood = f.truceUntil > g.clock.minutes ? 'a truce holds' : f.brawlAt >= 0 ? 'it goes off in the yard today' : f.tension > 0.7 ? 'boiling' : f.tension > 0.4 ? 'simmering' : 'quiet, for now'
+        return `${GANGS[a].name} v ${GANGS[b].name}: ${mood}.`
+      }).join(' ')}</p>
       <h3>What they have learned</h3>
       ${g.memory.lessons.length ? `<ul>${g.memory.lessons.map((l) => `<li>${escape(l.text)}</li>`).join('')}</ul>` : '<p class="hint">Nothing yet. Every failed attempt teaches them.</p>'}
       ${used.length ? `<p class="hint">Methods burned: ${used.map((m) => `${METHOD_NAMES[m]} ×${g.memory.used[m]}`).join(', ')}</p>` : ''}

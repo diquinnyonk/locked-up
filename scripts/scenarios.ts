@@ -1337,6 +1337,40 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   check('governor: walks the inspector round on inspection day', gv.at === 'tour' && Math.hypot(gv.body.x - x0, gv.body.z - z0) > 2)
 }
 
+// ---- Gang feuds ----
+{
+  const { game, log } = fresh()
+  const f = game.feuds.of('firm')
+  for (let d = 0; d < 8 && f.brawlAt < 0; d++) {
+    game.clock.minutes += 1440
+    game.feuds.newDay()
+  }
+  check('feuds: bad blood builds until it boils over', f.brawlAt > 0 && log.some((l) => l.startsWith('Bad blood between')))
+  game.clock.skipTo(f.brawlAt)
+  run(game, 0.3)
+  const fighting = game.prisoners.filter((p) => p.fighting && (p.gang === 'firm' || p.gang === 'crows'))
+  check('feuds: both firms go at it in the yard', fighting.length >= 2 && fighting.some((p) => p.gang === 'firm') && fighting.some((p) => p.gang === 'crows'), `${fighting.length}`)
+  run(game, 3)
+  check('feuds: and the officers come running', game.riot.active)
+}
+{
+  const { game } = fresh()
+  const boss = game.gangLeader('lions')!
+  game.player.inventory.add('voucher')
+  game.player.inventory.add('voucher')
+  ;(game as any).talkTo(boss)
+  lastTalk!.options.find((o) => o.label.includes('Broker a truce'))!.run()
+  game.endConversation()
+  const f = game.feuds.of('northern')
+  game.clock.minutes += 1440
+  game.feuds.newDay()
+  check('feuds: a truce keeps the peace for days', f.tension === 0 && f.truceUntil > game.clock.minutes)
+  ;(game as any).talkTo(boss)
+  lastTalk!.options.find((o) => o.label.includes('planning something'))!.run()
+  game.endConversation()
+  check('feuds: or stir it up, and it goes off at the next exercise', f.brawlAt > 0 && f.truceUntil < 0)
+}
+
 // ---- Saving and carrying on ----
 {
   const { game: a } = fresh()
