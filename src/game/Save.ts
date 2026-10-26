@@ -68,3 +68,50 @@ export function clearSave(): void {
     // Nothing to clear.
   }
 }
+
+/** The save as a file to keep: locked-up-quinn-day-3.json. */
+export function downloadSave(file: SaveFile): void {
+  const blob = new Blob([JSON.stringify(file, null, 1)], { type: 'application/json' })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  const who = file.summary.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'prisoner'
+  a.download = `locked-up-${who}-day-${file.summary.day}.json`
+  document.body.append(a)
+  a.click()
+  a.remove()
+  setTimeout(() => URL.revokeObjectURL(a.href), 60000)
+}
+
+/**
+ * Checks a save file someone has picked and, if it is one, makes it the
+ * saved game. Returns what was wrong with it otherwise.
+ */
+export function importSave(text: string): SaveFile | string {
+  let file: SaveFile
+  try {
+    file = JSON.parse(text) as SaveFile
+  } catch {
+    return 'That file is not a Locked Up save: it is not JSON.'
+  }
+  if (!file || typeof file !== 'object' || typeof file.seed !== 'number' || !file.state || !file.summary) return 'That file is not a Locked Up save.'
+  if (file.version !== SAVE_VERSION) return `That save is from a different version of the game (${file.version}), and cannot be loaded.`
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify(file))
+  } catch {
+    return 'This browser will not let the game store the save (private browsing, or storage full).'
+  }
+  return file
+}
+
+/** Asks for a .json file and imports it. Calls back with the result. */
+export function pickSaveFile(done: (result: SaveFile | string) => void): void {
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = 'application/json,.json'
+  input.onchange = () => {
+    const f = input.files?.[0]
+    if (!f) return
+    f.text().then((t) => done(importSave(t)), () => done('That file could not be read.'))
+  }
+  input.click()
+}

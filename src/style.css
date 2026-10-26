@@ -179,6 +179,18 @@ kbd {
   text-transform: uppercase;
   padding: 0.7rem 1.3rem;
 }
+#load-file {
+  justify-self: start;
+  margin-bottom: 1rem;
+}
+#load-note {
+  color: var(--stamp);
+  margin: -0.6rem 0 1rem;
+  line-height: 1.45;
+}
+#load-note:empty {
+  display: none;
+}
 #or-new {
   color: var(--quiet);
   margin-bottom: 1rem;
@@ -195,6 +207,11 @@ kbd {
   border-top: 1px solid var(--paper-3);
   font-size: var(--step-small);
   color: var(--quiet);
+}
+#panel .savebuttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
 }
 #panel .savebar button {
   padding: 0.4rem 0.8rem;

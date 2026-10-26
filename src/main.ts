@@ -12,7 +12,7 @@ import { playIntro } from './ui/Intro'
 import { playTour, tourSeen } from './ui/Tour'
 import { Tile } from './world/Grid'
 import { People } from './render/People'
-import { type SaveFile, clearSave, readSave, writeSave } from './game/Save'
+import { type SaveFile, clearSave, downloadSave, pickSaveFile, readSave, writeSave } from './game/Save'
 
 /**
  * Locked Up. A UK prison break, drawn in Windward's cel style: banded toon
@@ -61,6 +61,13 @@ if (saved) {
   }
   carry.focus()
 } else nameInput.focus()
+// A save file from another device, or kept from earlier: it becomes the
+// saved game and the page starts again to build its prison.
+document.getElementById('load-file')!.onclick = () =>
+  pickSaveFile((result) => {
+    if (typeof result === 'string') document.getElementById('load-note')!.textContent = result
+    else location.reload()
+  })
 form.addEventListener('submit', (e) => {
   e.preventDefault()
   // A new sentence replaces the old save.
@@ -87,6 +94,22 @@ function begin(save: SaveFile | null): void {
   snap = true
   ui.attach(game)
   ui.onSave = () => save_()
+  ui.onDownload = () => {
+    save_()
+    const file = readSave()
+    if (file) downloadSave(file)
+    return !!file
+  }
+  ui.onImport = () => {
+    if (!confirm('Loading a save file replaces the game you are playing now. Carry on?')) return
+    pickSaveFile((result) => {
+      if (typeof result === 'string') ui.toast(result, 'bad')
+      else {
+        importing = true
+        location.reload()
+      }
+    })
+  }
   ui.onClose = () => {
     game.endConversation()
     voice.stop()
@@ -110,12 +133,14 @@ function begin(save: SaveFile | null): void {
 
 /** Saves if things are quiet enough, and remembers when. */
 function save_(): boolean {
-  if (!started || game.over || !writeSave(game)) return false
+  if (importing || !started || game.over || !writeSave(game)) return false
   const m = game.clock.minuteOfDay
   ui.savedAt = `day ${game.clock.day}, ${String(Math.floor(m / 60)).padStart(2, '0')}:${String(Math.floor(m % 60)).padStart(2, '0')}`
   return true
 }
 let saveTimer = 20
+/** A save file has just been loaded: never overwrite it on the way out. */
+let importing = false
 let ended = false
 // Leaving the page (closing the tab, switching away on a phone): save if we can.
 addEventListener('pagehide', () => save_())

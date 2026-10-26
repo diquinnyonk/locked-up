@@ -44,7 +44,11 @@ ending.
 A save keeps the seed the prison was rolled from, so the same prisoners come
 back with the same faces, tempers and firms, plus the clock, your pockets and
 stash, what the prison has learned, trust and grudges, jobs, post, loose
-items, open grilles and jammed locks. Saves stay on that device and browser.
+items, open grilles and jammed locks. Saves stay on that device and browser,
+but **Download save** in the Notebook keeps one as a `.json` file, and **Load a
+save file** (in the Notebook, or on the title screen) brings one back, on this
+device or another. Loading checks the file is a Locked Up save from this
+version, then restarts the page to rebuild that prison.
 
 ## Your first day: the tour
 

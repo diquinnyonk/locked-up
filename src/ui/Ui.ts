@@ -247,7 +247,22 @@ export class Ui implements UiPort {
       this.toast(ok ? 'Saved.' : 'Not now: you cannot save while out of bounds, in a chase, in a riot or mid-conversation.', ok ? 'good' : 'bad')
       if (ok) note.textContent = `Saved on this device: ${this.savedAt}. It saves by itself whenever things are quiet.`
     }
-    bar.append(note, save)
+    const download = document.createElement('button')
+    download.type = 'button'
+    download.className = 'ghost'
+    download.textContent = 'Download save'
+    download.onclick = () => {
+      if (!(this.onDownload?.() ?? false)) this.toast('Nothing saved yet to download. Try again somewhere quiet.', 'bad')
+    }
+    const load = document.createElement('button')
+    load.type = 'button'
+    load.className = 'ghost'
+    load.textContent = 'Load a save file'
+    load.onclick = () => this.onImport?.()
+    const buttons = document.createElement('span')
+    buttons.className = 'savebuttons'
+    buttons.append(save, download, load)
+    bar.append(note, buttons)
     body.append(bar)
   }
 
@@ -454,6 +469,10 @@ export class Ui implements UiPort {
 
   /** Set by the game: saves now if it can, and says whether it did. */
   onSave: (() => boolean) | null = null
+  /** Set by the game: downloads the save as a .json file. */
+  onDownload: (() => boolean) | null = null
+  /** Set by the game: asks for a save file and loads it. */
+  onImport: (() => void) | null = null
   /** When the game was last saved, as the clock read then ("Day 3, 14:20"). */
   savedAt = ''
 
