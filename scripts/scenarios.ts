@@ -1306,6 +1306,37 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   check('officers: Mr Wellbeloved lets you off once a day', fired && !soft.chasing, log.slice(-2).join(' | '))
 }
 
+// ---- The Governor ----
+{
+  const { game, log } = fresh()
+  const gv = game.governor
+  game.clock.skipTo(10 * 60)
+  run(game, 0.3)
+  check('governor: at his desk on a weekday morning', gv.at === 'office' && gv.body.visible)
+  game.player.body.x = game.fixtures.safe.x
+  game.player.body.z = game.fixtures.safe.z
+  run(game, 0.3)
+  check('governor: walk into his office and he shouts for security', game.alarm.active && game.guards.some((g) => g.chasing) && gv.speechTimer > 0)
+  game.clock.skipTo(12 * 60 + 40)
+  run(game, 0.2)
+  check('governor: polishing his Jag at lunch', gv.at === 'car' && Math.hypot(gv.body.x - game.fixtures.jag.x, gv.body.z - game.fixtures.jag.z) < 3)
+  game.clock.minutes += 5 * 1440
+  game.clock.skipTo(11 * 60)
+  run(game, 0.2)
+  check('governor: never in at the weekend', game.clock.weekday >= 5 && gv.at === 'away' && !gv.body.visible)
+}
+{
+  const { game } = fresh()
+  const gv = game.governor
+  game.clock.minutes += 1440
+  game.clock.skipTo(10 * 60 + 10)
+  game.events.today = 'inspection'
+  run(game, 0.2)
+  const x0 = gv.body.x, z0 = gv.body.z
+  run(game, 6)
+  check('governor: walks the inspector round on inspection day', gv.at === 'tour' && Math.hypot(gv.body.x - x0, gv.body.z - z0) > 2)
+}
+
 // ---- Saving and carrying on ----
 {
   const { game: a } = fresh()
@@ -1570,7 +1601,7 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
     game.player.attempt = 'gate'
     game.caught(game.guards[0])
   }
-  check('rounds: second round reached and then the end', log.some((l) => l.includes('All four attempts')) && log.some((l) => l.startsWith('[end] false')), log.filter((l) => l.startsWith('[end]')).join())
+  check('rounds: second round reached and then the end', log.some((l) => l.includes('A visit from the Governor')) && log.some((l) => l.startsWith('[end] false')), log.filter((l) => l.startsWith('[end]')).join())
 }
 
 // ---- Win ----

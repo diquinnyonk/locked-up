@@ -10,7 +10,7 @@ import type { Lure, Noise, PlayerView, Riot, SickCall, World } from '../npc/Worl
 import { buildPrison, type Fixtures } from '../world/Build'
 import { CONE_FRONT_RAYS, CONE_RAYS, Dynamic, type LooseItem } from '../world/Dynamic'
 import { BLOCKS, type BlockId, type Door, EAST_WALL, type Grate, Grid, PLAYER_CELL, TILE, Tile, blockOfZone, tileCentre, worldToTile } from '../world/Grid'
-import { moveCircle } from '../world/Nav'
+import { findPath, moveCircle } from '../world/Nav'
 import { Clock, RESTRICTED, allowedZones } from './Clock'
 import { type DayEvent, Events, isVisitingDay } from './Events'
 import type { EndingId } from './Records'
@@ -167,6 +167,21 @@ export class Game implements World {
     speech: '',
     speechTimer: 0,
   }
+  /**
+   * The Governor, Rupert Pettigrew. At his desk on weekdays, out polishing
+   * his Jag at lunch, walking the inspector round on inspection days, never
+   * in at weekends. If he sees you where you should not be, he shouts.
+   */
+  readonly governor = {
+    body: makeBody({ top: HEX.steelDark, trousers: HEX.steelDark, hair: HEX.hairGrey, skin: HEX.skinPale, tache: true, build: 1.15, height: 1.0 }),
+    name: 'Rupert Pettigrew',
+    speech: '',
+    speechTimer: 0,
+    /** Where he is: 'office', 'car', 'tour' or 'away'. */
+    at: 'away' as 'office' | 'car' | 'tour' | 'away',
+    tour: [] as { tx: number; ty: number }[],
+    shouted: 0,
+  }
   /** Where the Reverend's three stolen hymn books turned up. */
   static readonly HYMN_SPOTS: { zone: string; where: string }[] = [
     { zone: 'games', where: 'levelling the pool table in the games room' },
@@ -265,6 +280,7 @@ export class Game implements World {
     this.keith.body.z = this.fixtures.xray.z
     this.bodies.push(this.keith.body)
     this.bodies.push(this.chaplain.body)
+    this.bodies.push(this.governor.body)
 
     this.fixtures.visitTables.forEach((t, i) => {
       const look = looks[i % looks.length]
@@ -476,9 +492,9 @@ export class Game implements World {
     const sealed = wasVent ? '\nMaintenance welds your cell vent shut.' : ''
     if (result === 'round') {
       this.ui.card(
-        'All four attempts gone',
-        `The governor moves the officers round and starts the count again: four more attempts.\nBut they remember everything.\n\nThey learned: ${lesson.text}${sealed}`,
-        7,
+        'A visit from the Governor',
+        `Rupert Pettigrew sits on the end of your bunk in segregation and straightens his tie. "${this.memory.attemptsPerRound} more, then. They remember everything, you know. I made sure of it. Do surprise me."\n\nThey learned: ${lesson.text}${sealed}`,
+        8,
       )
     } else {
       this.ui.card(
@@ -486,6 +502,7 @@ export class Game implements World {
         `${by.name} drags you to segregation. Contraband confiscated.\n\nThe prison learns: ${lesson.text}${sealed}`,
         6,
       )
+      if (this.memory.attemptsLeft === 1 && this.memory.round === this.memory.rounds) this.toast('Slipped under your door, on headed paper: "One left. Make it a good one. R.P."', 'bad')
     }
     this.punish(by, true)
   }
@@ -710,6 +727,7 @@ export class Game implements World {
     this.updateVisitors(delta)
     this.updateKeith(delta)
     this.updateChaplain(delta)
+    this.updateGovernor(delta)
     this.updateDisguise(delta)
     this.dynamic.ducts.visible = this.player.inVent
     const carHere = this.carPresent
@@ -1115,7 +1133,7 @@ export class Game implements World {
       list.push({ b: a.body, inv: still ? 0 : 0.5, move: (dx, dz) => a.nudge(dx, dz) })
     }
     const fixed = () => {}
-    for (const b of [this.keith.body, this.chaplain.body, ...this.visitors.map((v) => v.body)]) if (upright(b)) list.push({ b, inv: 0, move: fixed })
+    for (const b of [this.keith.body, this.chaplain.body, this.governor.body, ...this.visitors.map((v) => v.body)]) if (upright(b)) list.push({ b, inv: 0, move: fixed })
 
     for (let i = 0; i < list.length; i++) {
       const A = list[i]
@@ -2907,6 +2925,8 @@ export class Game implements World {
       })
     }
     if (near(this.keith.body, 1.9) && this.keith.body.visible) add('E', `Talk to ${this.keith.name} (X-ray, hi-vis, mug)`, () => this.talkToKeith())
+    const gov = this.governor
+    if (near(gov.body, 2.0) && gov.body.visible && p.illegal === 0) add('E', 'Talk to the Governor', () => this.talkToGovernor())
     const rev = this.chaplain
     if (near(rev.body, 2.0) && rev.body.visible) {
       const hint = rev.stage === 'none' ? ' (has a job)' : rev.stage === 'hunting' && this.player.inventory.count('hymnBook') >= 3 ? ' (hand in the hymn books)' : ''
@@ -3117,6 +3137,106 @@ export class Game implements World {
       r.speechTimer = 5
     }
     if (r.speechTimer > 0 && r.body.visible) this.bubbles.push({ body: r.body, text: r.speech, who: null })
+  }
+
+  private updateGovernor(delta: number): void {
+    const gv = this.governor
+    const m = this.clock.minuteOfDay
+    const weekday = this.clock.weekday < 5
+    const inspection = this.events.today === 'inspection' && m >= 10 * 60 && m < 16 * 60
+    const was = gv.at
+    gv.at = inspection ? 'tour' : !weekday || this.clock.locked ? 'away' : m >= 750 && m < 810 ? 'car' : m >= 570 && m < 990 ? 'office' : 'away'
+    const b = gv.body
+    b.visible = gv.at !== 'away'
+    if (this.talkingTo !== b) {
+      if (gv.at === 'office') {
+        b.x = this.fixtures.govDesk.x
+        b.z = this.fixtures.govDesk.z - 0.25
+        b.yaw = 0
+        b.pose = 'sit'
+      } else if (gv.at === 'car') {
+        b.x = this.fixtures.jag.x - 1.5
+        b.z = this.fixtures.jag.z + 0.4
+        b.yaw = Math.PI / 2
+        b.pose = 'search'
+      } else if (gv.at === 'tour') this.governorTour(delta, was !== 'tour')
+    }
+    if (gv.at !== 'tour') b.speed = 0
+    // If he sees you where you should not be, he shouts for security.
+    gv.shouted -= delta
+    const p = this.player
+    const close = Math.hypot(p.body.x - b.x, p.body.z - b.z)
+    const inHisOffice = gv.at === 'office' && p.zone === 'governor'
+    const seen = b.visible && !p.inVent && p.illegal > 0 && (inHisOffice || (close < 7 && (p.zone === this.grid.zone(Math.floor(b.x / TILE), Math.floor(b.z / TILE)) || close < 4)))
+    if (seen && gv.shouted <= 0) {
+      gv.shouted = 30
+      gv.speech = pick2(this.rng, ['Can I HELP you? SECURITY!', 'Is that... the Greggs Bandit? In MY office? SECURITY!', 'Officers! OFFICERS! There is a prisoner touching my car!'])
+      gv.speechTimer = 3
+      this.alarm.active = true
+      this.alarm.x = p.body.x
+      this.alarm.z = p.body.z
+      this.alarm.timer = 20
+      const near = this.guards.filter((g) => g.ko <= 0).sort((a, c) => a.distanceTo(p.body.x, p.body.z) - c.distanceTo(p.body.x, p.body.z)).slice(0, 2)
+      for (const g of near) {
+        g.chasing = true
+        g.suspicion = 1
+        g.lastSeen = { x: p.body.x, z: p.body.z, t: 0 }
+      }
+      if (!p.attempt) p.attempt = this.methodHint ?? (p.zone === 'governor' ? 'safe' : 'gate')
+    }
+    gv.speechTimer -= delta
+    if (gv.speechTimer > 0 && b.visible) this.bubbles.push({ body: b, text: gv.speech, who: null })
+  }
+
+  /** Inspection day: the Governor walks the inspector round the landings. */
+  private governorTour(delta: number, start: boolean): void {
+    const gv = this.governor
+    const b = gv.body
+    const stops = ['blockA', 'corridorN', 'hub', 'corridorS', 'blockC', 'yard', 'blockD', 'hub', 'blockB']
+    if (start) {
+      const c = tileCentre(39, 24)
+      b.x = c.x
+      b.z = c.z
+      gv.tour = []
+    }
+    if (!gv.tour.length) {
+      const from = worldToTile(b.x, b.z)
+      const to = this.grid.randomTileIn(stops[Math.floor(this.rng() * stops.length)], this.rng)
+      gv.tour = findPath(this.grid, from, to, () => true) ?? []
+      if (!gv.tour.length) return
+    }
+    const next = tileCentre(gv.tour[0].tx, gv.tour[0].ty)
+    const dx = next.x - b.x
+    const dz = next.z - b.z
+    const d = Math.hypot(dx, dz)
+    const step = 1.3 * delta
+    if (d <= step) {
+      b.x = next.x
+      b.z = next.z
+      gv.tour.shift()
+    } else {
+      b.x += (dx / d) * step
+      b.z += (dz / d) * step
+      b.yaw = Math.atan2(dx, dz)
+    }
+    b.pose = 'walk'
+    b.speed = 1.3
+    if (gv.speechTimer <= 0 && this.rng() < delta * 0.05) {
+      gv.speech = pick2(this.rng, ['And this, Inspector, is our award-winning landing.', 'Mind the puddle. It is a feature.', 'We pride ourselves on the custard here.', 'Nobody has ever escaped. Not once. I check daily.'])
+      gv.speechTimer = 4
+    }
+  }
+
+  private talkToGovernor(): void {
+    const gv = this.governor
+    this.converse(gv.body)
+    const lines =
+      this.memory.round > 1
+        ? ["Back again. I admire persistence. I also admire concrete, and I have ordered a great deal of it.", 'You are making my prison better every time you fail. I do appreciate it.']
+        : gv.at === 'tour'
+          ? ['Inspector, this is one of our more... enterprising residents. Wave, ' + this.player.name + '.', 'Smile for the Inspector. Lovely.']
+          : ["Pettigrew. Governor. You will be the one with the pastry.", 'Keep up the good work. Whatever it is you are doing. I will find out.', 'My door is always open. Except to you. And the safe is always locked. Especially to you.']
+    this.ui.talk(`${gv.name}, Governor`, pick2(this.rng, lines), [])
   }
 
   /** Puts the three stolen hymn books out where they were last seen. */
