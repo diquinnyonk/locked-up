@@ -114,6 +114,11 @@ The end screen says when an ending is a new find or a personal best. **Endings
 and records** is on the end screen, on the title screen, and in the Notebook
 (the Endings page). Endings you have not found show only a hint.
 
+A downloaded save file carries your endings and records too. Loading it merges
+them into the records already in that browser: each ending keeps the better
+of every best and the earlier first find, counts and totals keep the larger,
+so loading the same file twice changes nothing.
+
 ## Your first day: the tour
 
 The first time you play, the game stops before day one for a walk round the

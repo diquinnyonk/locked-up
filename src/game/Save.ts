@@ -1,4 +1,5 @@
 import type { Game } from './Game'
+import { type Records, mergeRecords, readRecords } from './Records'
 
 /**
  * Saved games, kept in this browser's localStorage: one slot, written
@@ -22,6 +23,8 @@ export interface SaveFile {
   savedAt: string
   summary: { name: string; day: number; time: string; attemptsLeft: number; round: number; hard: boolean }
   state: SaveState
+  /** Endings and records, in a downloaded file only: merged in on loading. */
+  records?: Records
 }
 
 export function readSave(): SaveFile | null {
@@ -69,9 +72,9 @@ export function clearSave(): void {
   }
 }
 
-/** The save as a file to keep: locked-up-quinn-day-3.json. */
+/** The save as a file to keep, with your endings and records: locked-up-quinn-day-3.json. */
 export function downloadSave(file: SaveFile): void {
-  const blob = new Blob([JSON.stringify(file, null, 1)], { type: 'application/json' })
+  const blob = new Blob([JSON.stringify({ ...file, records: readRecords() }, null, 1)], { type: 'application/json' })
   const a = document.createElement('a')
   a.href = URL.createObjectURL(blob)
   const who = file.summary.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'prisoner'
@@ -95,12 +98,15 @@ export function importSave(text: string): SaveFile | string {
   }
   if (!file || typeof file !== 'object' || typeof file.seed !== 'number' || !file.state || !file.summary) return 'That file is not a Locked Up save.'
   if (file.version !== SAVE_VERSION) return `That save is from a different version of the game (${file.version}), and cannot be loaded.`
+  const { records, ...save } = file
   try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify(file))
+    localStorage.setItem(SAVE_KEY, JSON.stringify(save))
   } catch {
     return 'This browser will not let the game store the save (private browsing, or storage full).'
   }
-  return file
+  // The endings found elsewhere join the ones found here.
+  if (records) mergeRecords(records)
+  return save
 }
 
 /** Asks for a .json file and imports it. Calls back with the result. */

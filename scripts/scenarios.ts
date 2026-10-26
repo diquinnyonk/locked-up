@@ -1080,6 +1080,20 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   game.player.zone = 'outside'
   run(game, 0.3)
   check('records: a finished game says which ending it was', game.over && game.ending?.id === 'jag' && game.ending.won)
+  // A save file from another device brings its records with it.
+  const { mergeRecords } = await import('../src/game/Records')
+  const { importSave, SAVE_VERSION } = await import('../src/game/Save')
+  const elsewhere = JSON.parse(JSON.stringify(readRecords()))
+  elsewhere.endings.laundry.fastest = mk(400, 5, 6)
+  elsewhere.endings.jag = { first: '2026-01-01T00:00:00.000Z', count: 1, fastest: mk(700, 0, 2), fewestFails: mk(700, 0, 2), earliest: mk(700, 0, 2) }
+  elsewhere.finished = 10
+  const file = { version: SAVE_VERSION, seed: game.seed, savedAt: '', summary: { name: 'T', day: 1, time: '08:00', attemptsLeft: 4, round: 1, hard: false }, state: game.toSave(), records: elsewhere }
+  const loaded = importSave(JSON.stringify(file))
+  const merged = readRecords()
+  check('records: a save file brings its endings and bests along', typeof loaded !== 'string' && !!merged.endings.jag && merged.endings.laundry!.fastest.seconds === 400 && merged.endings.laundry!.fewestFails.fails === 1 && merged.finished === 10)
+  check('records: the stored save itself stays slim', !('records' in JSON.parse(store.get('locked-up.save')!)))
+  mergeRecords(elsewhere)
+  check('records: loading the same file twice changes nothing', JSON.stringify(readRecords()) === JSON.stringify(merged))
   delete (globalThis as any).localStorage
 }
 

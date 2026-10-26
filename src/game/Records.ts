@@ -107,3 +107,33 @@ export function duration(seconds: number): string {
   const ss = s % 60
   return h ? `${h}h ${String(m).padStart(2, '0')}m` : `${m}m ${String(ss).padStart(2, '0')}s`
 }
+
+/**
+ * Folds records from a save file into this browser's. Merging the same file
+ * twice changes nothing: counts and totals take the larger, each best the
+ * better, the first find the earlier.
+ */
+export function mergeRecords(incoming: unknown): boolean {
+  const inc = incoming as Records | null
+  if (!inc || typeof inc !== 'object' || inc.version !== 1 || typeof inc.endings !== 'object') return false
+  const r = readRecords()
+  for (const k of ['started', 'finished', 'wins', 'losses', 'attempts', 'days', 'seconds'] as const) {
+    if (typeof inc[k] === 'number') r[k] = Math.max(r[k], inc[k])
+  }
+  for (const e of ENDINGS) {
+    const theirs = inc.endings[e.id]
+    if (!theirs) continue
+    const mine = r.endings[e.id]
+    if (!mine) {
+      r.endings[e.id] = theirs
+      continue
+    }
+    mine.count = Math.max(mine.count, theirs.count)
+    if (theirs.first < mine.first) mine.first = theirs.first
+    if (theirs.fastest.seconds < mine.fastest.seconds) mine.fastest = theirs.fastest
+    if (theirs.fewestFails.fails < mine.fewestFails.fails) mine.fewestFails = theirs.fewestFails
+    if (theirs.earliest.day < mine.earliest.day) mine.earliest = theirs.earliest
+  }
+  write(r)
+  return true
+}
