@@ -1667,3 +1667,8 @@ body.panel-open #prompts {
     bottom: calc(var(--strip) + 16px + env(safe-area-inset-bottom, 0px));
   }
 }
+
+/* Sound sliders on How to play */
+#panel .volumes { display: grid; gap: 0.4rem; margin: 0.4rem 0 0.8rem; }
+#panel .volumes label { display: grid; grid-template-columns: 7.5rem 1fr; align-items: center; gap: 0.6rem; }
+#panel .volumes input { accent-color: var(--ink); width: 100%; }

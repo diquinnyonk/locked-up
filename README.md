@@ -152,6 +152,36 @@ skipped, and it is remembered on the device so it only shows once. The
 Notebook has a **How to play** page listing every control, with a button to
 take the tour again.
 
+## First-day goals
+
+Once the tour is over, a short checklist sits with your jobs (and at the top
+of the Notebook): talk to your cellmate, open the Notebook, look at the big
+map, find a fixer, get hold of another Greggs voucher, take a job. Each ticks
+itself as you do it, and the list goes when they are all done or after day two.
+
+## Your cellmate
+
+Every prison decides when it is built whether your cellmate is a grass (about
+four in ten are). A grass who knows you have something to hide (a stash, a
+tunnel, contraband in your pockets) may tip off the officers at night, and
+they come straight to your cell at unlock. Around day three a note under the
+door warns you; confront them and they will keep quiet for two Greggs
+vouchers, or once they trust you. A cellmate on side gives you a flattened
+spoon when they trust you enough, and coughs when footsteps come while you
+dig. Every ending has a last word about them.
+
+## Sound
+
+All synthesised in the browser (`src/audio/Sfx.ts`, `src/audio/Soundscape.ts`):
+effects, plus a soundscape that follows you. Indoors there is a building hum,
+the busy rooms chatter by day, the yard has wind and birds, the vents ring
+like tin, and nights are quiet but for the odd cough and distant door. Doors
+slam, keys jangle and someone shouts, off somewhere. The music is generated a
+bar at a time: a slow round of chords by day, sparse and low at night, a low
+pulse when an officer is getting suspicious, and silence in a chase, where
+the alarm does the talking. Music, room sounds and effects each have a slider
+on the Notebook's How to play page, remembered on that device.
+
 ## Post, and the notes on your bunk
 
 The post comes round every morning at unlock: a letter from home most days,

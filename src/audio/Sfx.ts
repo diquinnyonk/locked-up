@@ -3,6 +3,8 @@
  * and doors, a thump for a punch, a buzzer for the gates. WebAudio only
  * starts after a user gesture, so `unlock` is called from the title screen.
  */
+import { type Scene, Soundscape, type Volumes, readVolumes } from './Soundscape'
+
 export type Sound = 'clank' | 'fight' | 'throw' | 'alarm' | 'shout' | 'buzz' | 'caught' | 'good'
 
 export class Sfx {
@@ -10,6 +12,8 @@ export class Sfx {
   private master: GainNode | null = null
   private siren: { osc: OscillatorNode; gain: GainNode } | null = null
   private last = new Map<Sound, number>()
+  private soundscape: Soundscape | null = null
+  private volumes: Volumes = readVolumes()
 
   unlock(): void {
     if (this.ctx) return
@@ -17,8 +21,20 @@ export class Sfx {
     if (!Ctor) return
     this.ctx = new Ctor()
     this.master = this.ctx.createGain()
-    this.master.gain.value = 0.35
+    this.master.gain.value = 0.35 * this.volumes.effects
     this.master.connect(this.ctx.destination)
+    this.soundscape = new Soundscape(this.ctx, this.ctx.destination, this.volumes)
+  }
+
+  /** Where you are and how it is going, for the ambience and the music. */
+  scene(scene: Scene): void {
+    this.soundscape?.update(scene)
+  }
+
+  setVolumes(v: Volumes): void {
+    this.volumes = v
+    if (this.ctx && this.master) this.master.gain.setTargetAtTime(0.35 * v.effects, this.ctx.currentTime, 0.05)
+    this.soundscape?.setVolumes(v)
   }
 
   play(sound: Sound, volume = 1): void {

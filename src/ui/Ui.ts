@@ -6,6 +6,7 @@ import { ITEMS, INVENTORY_SLOTS, type ItemId, RECIPES, vouchers } from '../game/
 import { itemIcon } from './itemIcons'
 import { CONTROLS } from './Tour'
 import { GOALS } from '../game/Goals'
+import { type Volumes, readVolumes } from '../audio/Soundscape'
 import { ENDINGS, type Run, duration, readRecords } from '../game/Records'
 import { TUNNEL_LENGTH } from '../game/Game'
 import { recordsHtml, showRecords } from './RecordsView'
@@ -496,6 +497,28 @@ export class Ui implements UiPort {
     const touch = isTouch()
     const rows = CONTROLS.map((c) => `<li><span class="keys">${touch ? `<b>${escape(c.touch)}</b>` : c.keys.map((k) => `<kbd>${k}</kbd>`).join('')}</span><span>${escape(c.what)}</span></li>`).join('')
     body.innerHTML = `<p class="hint">Anything you can do right where you are shows at the bottom of the screen with its ${touch ? 'button' : 'key'}.</p><ul class="controls-list">${rows}</ul>`
+    // Sound: three sliders, remembered on this device.
+    const vol = readVolumes()
+    const sound = document.createElement('div')
+    sound.className = 'volumes'
+    sound.innerHTML = '<h3>Sound</h3>'
+    for (const [key, label] of [['music', 'Music'], ['ambience', 'Room sounds'], ['effects', 'Effects']] as const) {
+      const row = document.createElement('label')
+      row.innerHTML = `<span>${label}</span>`
+      const input = document.createElement('input')
+      input.type = 'range'
+      input.min = '0'
+      input.max = '1'
+      input.step = '0.05'
+      input.value = String(vol[key])
+      input.oninput = () => {
+        vol[key] = Number(input.value)
+        this.onVolumes?.({ ...vol })
+      }
+      row.append(input)
+      sound.append(row)
+    }
+    body.append(sound)
     const again = document.createElement('button')
     again.type = 'button'
     again.textContent = 'Show me round again'
@@ -514,6 +537,9 @@ export class Ui implements UiPort {
   onImport: (() => void) | null = null
   /** When the game was last saved, as the clock read then ("Day 3, 14:20"). */
   savedAt = ''
+
+  /** Set by the game: the sound sliders moved. */
+  onVolumes: ((v: Volumes) => void) | null = null
 
   /** Set by the game: runs the tour of the screen. */
   onTour: (() => void) | null = null

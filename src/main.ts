@@ -8,6 +8,7 @@ import { Ui } from './ui/Ui'
 import { Sfx } from './audio/Sfx'
 import { buildTouchControls } from './ui/Touch'
 import { Voice } from './audio/Voice'
+import { writeVolumes } from './audio/Soundscape'
 import { playIntro } from './ui/Intro'
 import { playTour, tourSeen } from './ui/Tour'
 import { Tile } from './world/Grid'
@@ -98,6 +99,10 @@ function begin(save: SaveFile | null): void {
   snap = true
   ui.attach(game)
   ui.onSave = () => save_()
+  ui.onVolumes = (v) => {
+    sfx.setVolumes(v)
+    writeVolumes(v)
+  }
   ui.onDownload = () => {
     save_()
     const file = readSave()
@@ -242,6 +247,14 @@ engine.onUpdate((delta) => {
   engine.renderer.setClearColor(clear)
   const hunted = game.alarm.active || game.guards.some((g) => g.chasing)
   sfx.setAlarm(hunted && started && !game.over)
+  sfx.scene({
+    zone: game.player.zone,
+    night: game.clock.darkness > 0.6 || game.clock.period === 'lightsOut',
+    vent: game.player.inVent,
+    tension: started ? Math.max(0, ...game.guards.map((g) => g.suspicion)) : 0,
+    chase: hunted && started && !game.over,
+    title: !started,
+  })
   for (const s of game.sounds) sfx.play(s.sound, s.volume)
   game.sounds.length = 0
   pipeline.vignette = hunted ? 1 : Math.max(...game.guards.map((g) => g.suspicion)) * 0.6
