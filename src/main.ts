@@ -328,7 +328,12 @@ engine.onUpdate((delta) => {
   // Camera: a steep three-quarter view that follows you; it orbits the yard
   // under the title screen.
   const cam = engine.camera
-  if (!started) {
+  // A film camera for the trailer capture (scripts/trailer): it takes over
+  // whenever it returns true.
+  const film = (window as unknown as { __film?: (c: typeof cam, delta: number) => boolean }).__film
+  if (film?.(cam, delta)) {
+    // The trailer is directing.
+  } else if (!started) {
     orbit += delta * 0.06
     camTarget.set(80 + Math.cos(orbit) * 30, 0, 75 + Math.sin(orbit) * 20)
     camPos.set(camTarget.x + Math.sin(orbit) * 50, 62, camTarget.z + Math.cos(orbit) * 50)

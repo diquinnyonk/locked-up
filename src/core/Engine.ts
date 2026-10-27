@@ -173,7 +173,9 @@ export class Engine {
     // A long delta after a tab switch or a stall would teleport people through
     // walls, so it is clamped rather than trusted.
     this.timer.update()
-    const delta = Math.min(this.timer.getDelta(), 0.05)
+    // Never negative either: a clock that jumps back (a capture harness
+    // faking time) would run every animation backwards.
+    const delta = Math.max(0, Math.min(this.timer.getDelta(), 0.05))
     this.adaptResolution(delta)
     this.updateFn?.(delta, this.timer.getElapsed())
     this.draw()
