@@ -313,7 +313,8 @@ export class Basketball {
         }
       }
     } else {
-      by.say(pick(g, ['Yes! YES!', 'Told you.', "And that's the game."]), 1.6)
+      const shooter = by
+      shooter.say(pick(g, ['Yes! YES!', 'Told you.', "And that's the game."]), 1.6)
     }
   }
 

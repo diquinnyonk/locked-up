@@ -9,7 +9,7 @@
  * Names and other parts filled in at runtime become {placeholders}; the
  * game matches a shown line back to its template to find the recording.
  */
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 
 const require = createRequire(import.meta.url)
@@ -26,7 +26,18 @@ export interface ScannedLine {
   pool?: string
 }
 
-const FILES = ['src/game/Game.ts', 'src/game/Missions.ts', 'src/npc/Guard.ts', 'src/npc/Prisoner.ts']
+// The Game, its feature modules (split out of it), and everyone who talks.
+const FILES = [
+  'src/game/Game.ts',
+  ...readdirSync('src/game/features')
+    .filter((f) => f.endsWith('.ts'))
+    .sort()
+    .map((f) => `src/game/features/${f}`),
+  'src/game/Basketball.ts',
+  'src/game/Missions.ts',
+  'src/npc/Guard.ts',
+  'src/npc/Prisoner.ts',
+]
 
 export function scanDialogue(): ScannedLine[] {
   const out: ScannedLine[] = []
@@ -228,9 +239,10 @@ function scanFile(file: string): ScannedLine[] {
     const prop = n.callee.property.name
     const where = methodName(enclosingFn(n))
     if (prop === 'say') {
-      const receiver = text(n.callee.object)
+      // In a feature module, `this.game.x` is what `this.x` was in the Game.
+      const receiver = text(n.callee.object).replace(/^this\.game\b/, 'this').replace(/^this\.(?=\w)/, (m) => (file.endsWith('Game.ts') ? m : ''))
       // Game.say(body, text) is the wrapper; anything else is agent.say(text).
-      if (receiver === 'this' && file.endsWith('Game.ts')) continue
+      if (receiver === 'this' && (file.endsWith('Game.ts') || file.includes('/features/'))) continue
       add(speakerOfSay(receiver), collect(n.arguments[0]), where)
     } else if (prop === 'talk' && /ui$/.test(text(n.callee.object))) {
       const lineArg = n.arguments[1]

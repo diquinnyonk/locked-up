@@ -2,15 +2,15 @@ import { type Object3D, type Scene } from 'three'
 import { HEX } from '../art/palette'
 import { Input } from '../core/Input'
 import { type Body, Crowd, makeBody } from '../render/Crowd'
-import { Guard, type GuardRole, NEW_FACE_DAYS } from '../npc/Guard'
+import { Guard, type GuardRole } from '../npc/Guard'
 import { ATTEMPTS_PER_ROUND, METHOD_NAMES, type Method, type Mode, PrisonMemory, ROUNDS } from '../npc/Memory'
 import { Prisoner } from '../npc/Prisoner'
 import { GANGS, GANG_IDS, type GangId, gangOfWing } from '../npc/Gangs'
 import type { Lure, Noise, PlayerView, Riot, SickCall, World } from '../npc/World'
 import { buildPrison, type Fixtures } from '../world/Build'
-import { CONE_FRONT_RAYS, CONE_RAYS, Dynamic, type LooseItem } from '../world/Dynamic'
-import { BLOCKS, type BlockId, type Door, EAST_WALL, type Grate, Grid, PLAYER_CELL, TILE, Tile, blockOfZone, tileCentre, worldToTile } from '../world/Grid'
-import { findPath, moveCircle } from '../world/Nav'
+import { CONE_FRONT_RAYS, CONE_RAYS, Dynamic } from '../world/Dynamic'
+import { BLOCKS, type BlockId, type Door, type Grate, Grid, PLAYER_CELL, TILE, Tile, blockOfZone, tileCentre, worldToTile } from '../world/Grid'
+import { moveCircle } from '../world/Nav'
 import { Clock, RESTRICTED, allowedZones } from './Clock'
 import { type DayEvent, Events, type Weather, isVisitingDay, weatherSteps } from './Events'
 import type { EndingId } from './Records'
@@ -18,17 +18,30 @@ import { type GoalId, Goals } from './Goals'
 import { Feuds } from './Feuds'
 import type { DailyGoal } from './Daily'
 import { Doors } from './Doors'
-import { ITEMS, Inventory, type ItemId, RECIPES, type Recipe, SPAWNS, vouchers } from './Items'
-import { screenCall } from './Phone'
+import { ITEMS, Inventory, type ItemId, SPAWNS } from './Items'
 import { Missions } from './Missions'
-import { type BunkNote, type Letter, Post } from './Post'
-import { LINES } from './Lines'
+import { type BunkNote, Post } from './Post'
 import { Play } from './Play'
 import { makeSecret } from './secrets'
 import type { Secret } from './secrets/Secret'
 import { endingStory } from './EndingTexts'
 import { Routes } from './Routes'
 import { Basketball } from './Basketball'
+import { PLAYER_SPEED, RUN_SPEED, SNEAK_SPEED, CRAWL_SPEED, mulberry32, WALL_TOP, TALK_GAP , HYMN_SPOTS } from './features/shared'
+export { TUNNEL_LENGTH } from './features/shared'
+import { Characters } from './features/Characters'
+import { SillyExits } from './features/SillyExits'
+import { CellmateStory } from './features/CellmateStory'
+import { TunnelDig } from './features/TunnelDig'
+import { SafeHeist } from './features/SafeHeist'
+import { Toilets } from './features/Toilets'
+import { Trespass } from './features/Trespass'
+import { Talk } from './features/Talk'
+import { PlayerActions } from './features/PlayerActions'
+import { Disorder } from './features/Disorder'
+import { Mail } from './features/Mail'
+import { Pockets } from './features/Pockets'
+import { PromptBuilder } from './features/PromptBuilder'
 import { type AchievementId, unlock } from './Achievements'
 
 /** What the game needs from the interface. Implemented in ui/Ui.ts. */
@@ -51,20 +64,7 @@ export interface Prompt {
   run: () => void
 }
 
-const PLAYER_SPEED = 3.2
-const RUN_SPEED = 5.4
-const SNEAK_SPEED = 1.6
-const CRAWL_SPEED = 2.0
 
-function mulberry32(seed: number): () => number {
-  return () => {
-    seed |= 0
-    seed = (seed + 0x6d2b79f5) | 0
-    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed)
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
-  }
-}
 
 export class Game implements World {
   readonly grid = new Grid()
@@ -82,6 +82,20 @@ export class Game implements World {
   /** Draws everyone. Starts as the light jointed crowd; the browser swaps in
    *  the rigged People once the page is up (see useCrowd). */
   crowd: { group: Object3D; paint(index: number, body: Body): void; update(bodies: Body[], delta: number): void }
+  // ---- Feature modules (src/game/features), sharing this state ----
+  readonly characters = new Characters(this)
+  readonly sillyExits = new SillyExits(this)
+  readonly cellmateStory = new CellmateStory(this)
+  readonly tunnelDig = new TunnelDig(this)
+  readonly safeHeist = new SafeHeist(this)
+  readonly toilets = new Toilets(this)
+  readonly trespass = new Trespass(this)
+  readonly talk = new Talk(this)
+  readonly actions = new PlayerActions(this)
+  readonly disorder = new Disorder(this)
+  readonly mail = new Mail(this)
+  readonly pockets = new Pockets(this)
+  readonly promptBuilder = new PromptBuilder(this)
   readonly guards: Guard[] = []
   readonly prisoners: Prisoner[] = []
   readonly noises: Noise[] = []
@@ -95,16 +109,16 @@ export class Game implements World {
   /** An officer you have shouted into your cell. */
   lure: Lure | null = null
   /** An officer asleep on a sleepy sausage roll, and whose uniform you have on. */
-  private drugged: { guard: Guard; eatsIn: number } | null = null
-  private sleeper: Guard | null = null
-  private disguisedAs: string | null = null
+  drugged: { guard: Guard; eatsIn: number } | null = null
+  sleeper: Guard | null = null
+  disguisedAs: string | null = null
   /** The Governor's safe: what you know of the combination, and whether it is open. */
   readonly heist = { knowA: false, knowB: false, opened: false }
   /** The tunnel under the loose tile by your bunk: metres dug. */
   readonly tunnel = { metres: 0 }
-  private digging: { x: number; z: number; noise: number; heard: number; warned: number } | null = null
+  digging: { x: number; z: number; noise: number; heard: number; warned: number } | null = null
   /** Seconds left cracking the safe by ear, and where you knelt. */
-  private cracking: { t: number; x: number; z: number; click: number } | null = null
+  cracking: { t: number; x: number; z: number; click: number } | null = null
   alarm = { active: false, timer: 0, x: 0, z: 0 }
 
   /** Speech bubbles for the UI to draw this frame. */
@@ -113,20 +127,20 @@ export class Game implements World {
   cellmate: Prisoner | null = null
 
   // Player state beyond the shared view.
-  private methodHint: Method | null = null
-  private punchTimer = 0
-  private fightingFor = 0
-  private keyHold: { door: Door; t: number } | null = null
-  private climb: { t: number; tx: number } | null = null
+  methodHint: Method | null = null
+  punchTimer = 0
+  fightingFor = 0
+  keyHold: { door: Door; t: number } | null = null
+  climb: { t: number; tx: number } | null = null
   private outsideTimer = 0
   private warnings = 0
-  private workTimer = 0
+  workTimer = 0
   private lastPeriod = ''
   private lastMinute = 0
-  private riotOpenTimer = 0
-  private riotQuiet = 0
+  riotOpenTimer = 0
+  riotQuiet = 0
   private punished = false
-  private stolenFrom: Guard | null = null
+  stolenFrom: Guard | null = null
   over = false
   /** How it ended, once it has: for the endings record. */
   ending: { id: EndingId; won: boolean } | null = null
@@ -137,10 +151,10 @@ export class Game implements World {
   contactNights = 0
   signalTonight = false
   flagUp = false
-  private carArrivesAt = -1
+  carArrivesAt = -1
   readonly stash: ItemId[] = []
   /** Time since the last thing the player did that a snitch would notice. */
-  private dodgyTimer = 0
+  dodgyTimer = 0
   readonly log: string[] = []
   readonly missions: Missions
   /** What kind of day it is: a shakedown, a lockdown, a Greggs delivery... */
@@ -167,14 +181,14 @@ export class Game implements World {
    * Hidden until there is one. Their look is set when the secret starts.
    */
   readonly guest = { body: makeBody({ visible: false }), name: '', speech: '', speechTimer: 0 }
-  private guestDressed = ''
+  guestDressed = ''
   /** Your cellmate's story: warned they are a grass, paid off, the gift, a tip-off due. */
   readonly mate = { warned: false, paidOff: false, gift: false, tipOff: false, tipOffs: 0 }
   private vouchersSeen = -1
   readonly visitors: { body: Body; seat: { x: number; z: number }; gone: boolean }[] = []
   /** The player's own clothes, for when the disguise comes off. */
-  private readonly ownLook = { top: HEX.player, trousers: HEX.prisonGreyDark, hair: HEX.hairBrown as number | null }
-  private commentTimer = 0
+  readonly ownLook = { top: HEX.player, trousers: HEX.prisonGreyDark, hair: HEX.hairBrown as number | null }
+  commentTimer = 0
   /** The laundry X-ray operator, and the day he was last paid off. */
   readonly keith = {
     body: makeBody({ top: HEX.hiVis, trousers: HEX.carDark, hair: HEX.hairGrey, skin: HEX.skinPale, build: 1.25, height: 0.95, tache: true }),
@@ -215,11 +229,7 @@ export class Game implements World {
     shouted: 0,
   }
   /** Where the Reverend's three stolen hymn books turned up. */
-  static readonly HYMN_SPOTS: { zone: string; where: string }[] = [
-    { zone: 'games', where: 'levelling the pool table in the games room' },
-    { zone: 'showers', where: 'being used as a soap dish in the showers' },
-    { zone: 'gym', where: 'propping up the bench press in the gym' },
-  ]
+  static readonly HYMN_SPOTS = HYMN_SPOTS
 
   constructor(scene: Scene, readonly ui: UiPort, name: string) {
     const built = buildPrison(this.grid)
@@ -448,7 +458,7 @@ export class Game implements World {
    *  shoulder, and the prison holds its breath until you are done. */
   talkingTo: Body | null = null
 
-  private converse(body: Body): void {
+  converse(body: Body): void {
     this.talkingTo = body
     const p = this.player.body
     p.speed = 0
@@ -561,7 +571,7 @@ export class Game implements World {
     const p = this.player
     this.punished = true
     p.inventory.confiscate()
-    if (searchCell && this.tunnel.metres > 0 && this.rng() < this.memory.tunnelFindChance) this.tunnelFound()
+    if (searchCell && this.tunnel.metres > 0 && this.rng() < this.memory.tunnelFindChance) this.tunnelDig.tunnelFound()
     if (searchCell && this.stash.length && this.rng() < 0.25 + this.memory.totalFailures * 0.08) {
       this.stash.length = 0
       this.toast('They spun your cell and found the stash.', 'bad')
@@ -613,12 +623,12 @@ export class Game implements World {
     p.health = 100
   }
 
-  private finish(won: boolean, how: EndingId, gang: GangId = 'firm'): void {
+  finish(won: boolean, how: EndingId, gang: GangId = 'firm'): void {
     this.over = true
     this.input.enabled = false
     this.ending = { id: how === 'escape' ? 'escape' : how, won }
     const name = this.player.name
-    const mateLine = this.mateEpilogue(won)
+    const mateLine = this.cellmateStory.mateEpilogue(won)
     const end = (w: boolean, title: string, text: string) => this.ui.end(w, title, text + mateLine)
     const tally = `Day ${this.clock.day}. ${this.memory.totalFailures} failed attempt${this.memory.totalFailures === 1 ? '' : 's'}.`
     const story = won ? endingStory(how, name, tally) : null
@@ -692,7 +702,7 @@ export class Game implements World {
     this.placePlayer(cell.bunks[1].x, cell.bunks[1].z)
   }
 
-  private placePlayer(x: number, z: number): void {
+  placePlayer(x: number, z: number): void {
     this.seated = null
     const b = this.player.body
     b.x = x
@@ -798,13 +808,13 @@ export class Game implements World {
     }
     for (const a of agents) a.move(delta * (this.sleeping ? 2 : 1), agents)
     this.separateBodies(agents)
-    this.updateToilets(delta)
-    this.updateTrespass(delta)
+    this.toilets.updateToilets(delta)
+    this.trespass.updateTrespass(delta)
     this.doors.update(delta)
-    this.updateRiot(delta)
+    this.disorder.updateRiot(delta)
     this.missions.update()
-    this.updateNoises(delta)
-    this.updateAlarm(delta)
+    this.disorder.updateNoises(delta)
+    this.disorder.updateAlarm(delta)
 
     // Speech bubbles near the player.
     this.bubbles.length = 0
@@ -814,12 +824,12 @@ export class Game implements World {
 
     // Visuals.
     this.updateSightGuide()
-    this.updateVisitors(delta)
-    this.updateKeith(delta)
-    this.updateChaplain(delta)
-    this.updateGovernor(delta)
-    this.updateGuest(delta)
-    this.updateDisguise(delta)
+    this.sillyExits.updateVisitors(delta)
+    this.characters.updateKeith(delta)
+    this.characters.updateChaplain(delta)
+    this.characters.updateGovernor(delta)
+    this.characters.updateGuest(delta)
+    this.sillyExits.updateDisguise(delta)
     this.dynamic.ducts.visible = this.player.inVent
     const carHere = this.carPresent
     this.dynamic.update(delta, {
@@ -909,9 +919,9 @@ export class Game implements World {
       this.lastPeriod = period
       if (previous) this.toast(`${this.clock.text}  ${this.clock.label}`, 'neutral')
       if (period === 'unlock') {
-        this.mateMorning()
-        this.deliverPost()
-        for (const g of this.guards) if (g.uniformTaken) this.dressGuard(g, true)
+        this.cellmateStory.mateMorning()
+        this.mail.deliverPost()
+        for (const g of this.guards) if (g.uniformTaken) this.sillyExits.dressGuard(g, true)
         this.restock(false)
         this.missions.newDay()
         this.events.newDay()
@@ -946,7 +956,7 @@ export class Game implements World {
   }
 
   private lightsOut(): void {
-    this.mateNight()
+    this.cellmateStory.mateNight()
     for (const d of this.grid.doors) if (d.kind === 'cell') d.locked = !d.jammed
     this.lockChecks.length = 0
     if (this.memory.lockCheckChance > 0) for (const d of this.grid.doors) if (d.kind === 'cell') this.lockChecks.push(d)
@@ -1004,18 +1014,18 @@ export class Game implements World {
       p.sneaking = !p.sneaking
       this.toast(p.sneaking ? 'Sneaking: slower, quieter, harder to spot.' : 'Walking normally.', 'neutral')
     }
-    if (input.take('froth')) this.chewSoap()
+    if (input.take('froth')) this.actions.chewSoap()
 
     if (p.inBasket) {
       b.visible = false
       b.speed = 0
-      this.prompts = [{ key: 'E', label: `Climb out of the ${p.hidingIn ?? 'basket'}`, run: () => this.leaveBasket() }]
-      if (input.take('interact')) this.leaveBasket()
+      this.prompts = [{ key: 'E', label: `Climb out of the ${p.hidingIn ?? 'basket'}`, run: () => this.sillyExits.leaveBasket() }]
+      if (input.take('interact')) this.sillyExits.leaveBasket()
       p.illegal = 0
       return
     }
     if (this.punished || this.climb) {
-      if (this.climb) this.updateClimb(delta)
+      if (this.climb) this.actions.updateClimb(delta)
       b.speed = 0
       this.prompts = []
       return
@@ -1100,7 +1110,7 @@ export class Game implements World {
     const zone = this.grid.zoneAtWorld(b.x, b.z)
     const wasIn = p.zone === p.cell
     if (zone) p.zone = zone
-    this.updateBunkNote(wasIn)
+    this.mail.updateBunkNote(wasIn)
 
     // Key holding a door open behind you.
     if (this.keyHold) {
@@ -1123,9 +1133,9 @@ export class Game implements World {
       }
     }
 
-    this.updateLure(delta)
-    this.updateHeist(delta)
-    this.updateTunnel(delta)
+    this.actions.updateLure(delta)
+    this.safeHeist.updateHeist(delta)
+    this.tunnelDig.updateTunnel(delta)
     // A Greggs voucher more than you had: earned, found or given.
     const v = this.player.inventory.count('voucher')
     if (this.vouchersSeen >= 0 && v > this.vouchersSeen) this.goal('voucher')
@@ -1158,17 +1168,17 @@ export class Game implements World {
       }
     } else this.outsideTimer = 0
 
-    this.buildPrompts()
+    this.promptBuilder.buildPrompts()
     for (const action of ['interact', 'secondary'] as const) {
       if (input.take(action)) {
         const key = action === 'interact' ? 'E' : 'R'
         this.prompts.find((pr) => pr.key === key)?.run()
       }
     }
-    if (input.take('attack')) this.attack()
-    if (input.take('sick')) this.callSick()
-    if (input.take('riot')) this.kickOff()
-    if (input.take('sleep')) this.trySleep()
+    if (input.take('attack')) this.actions.attack()
+    if (input.take('sick')) this.actions.callSick()
+    if (input.take('riot')) this.actions.kickOff()
+    if (input.take('sleep')) this.actions.trySleep()
   }
 
   /**
@@ -1204,7 +1214,7 @@ export class Game implements World {
   }
 
   private ventNoise = 0
-  private pushingDoor = 0
+  pushingDoor = 0
 
   /**
    * Nobody walks through anybody. Every standing body is a circle; any two
@@ -1271,7 +1281,7 @@ export class Game implements World {
     return true
   }
 
-  private updateIllegal(): void {
+  updateIllegal(): void {
     const p = this.player
     const b = p.body
     let level: 0 | 1 | 2 = 0
@@ -1340,424 +1350,22 @@ export class Game implements World {
   }
 
   /** Firms whose paid backing covers this wing right now. */
-  private backingFirms(wing: string): GangId[] {
+  backingFirms(wing: string): GangId[] {
     const now = this.clock.minutes
     return GANG_IDS.filter((g) => this.memory.backing(g, now) && this.prisoners.some((p) => p.gang === g && p.block === wing))
   }
 
   // ---- Prompts and actions ----
 
-  private buildPrompts(): void {
-    const p = this.player
-    const b = p.body
-    const inv = p.inventory
-    const out: Prompt[] = []
-    const near = (x: number, z: number, r: number) => Math.hypot(b.x - x, b.z - z) < r
-    const add = (key: string, label: string, run: () => void) => {
-      if (!out.some((o) => o.key === key)) out.push({ key, label, run })
-    }
-
-    if (p.inVent) {
-      for (const g of this.grid.grates) {
-        const c = tileCentre(g.tx, g.ty)
-        if (!near(c.x, c.z, 1.2)) continue
-        if (g.sealed) add('E', `Grille (${g.id}) is welded shut`, () => this.toast('Welded shut from the other side.', 'bad'))
-        else add('E', `Drop out: ${g.id}`, () => this.leaveVent(g))
-      }
-      this.prompts = out
-      return
-    }
-
-    // The silly exits come first: they are the whole point of standing there.
-    this.sillyPrompts(add)
-
-    // Loose items.
-    let nearest: LooseItem | null = null
-    let nd = 1.5
-    for (const it of this.dynamic.items) {
-      const d = Math.hypot(it.x - b.x, it.z - b.z)
-      if (d < nd) {
-        nd = d
-        nearest = it
-      }
-    }
-    // Picking things up yields the key to anything more important nearby
-    // (a door, a person, an exit), so it is added last, below.
-    const item = nearest
-    const pickup = item
-      ? () =>
-          add('E', `Pick up ${ITEMS[item.id].name}`, () => {
-            if (inv.add(item.id)) {
-              this.dynamic.removeItem(item)
-              this.toast(`${ITEMS[item.id].name}: ${ITEMS[item.id].blurb}`, 'neutral')
-              if (ITEMS[item.id].contraband) this.dodgyTimer = 3
-            } else this.toast('Your pockets are full. Craft something or drop something (Tab).', 'bad')
-          })
-      : null
-
-    // Vent grilles.
-    for (const g of this.grid.grates) {
-      const c = tileCentre(g.tx, g.ty)
-      if (!near(c.x, c.z, 1.4)) continue
-      if (g.sealed) {
-        add('E', 'The vent is welded shut', () => this.toast('Welded shut. They know about this one now.', 'bad'))
-      } else if (g.open) {
-        add('E', `Climb into the vent`, () => this.enterVent(g))
-      } else {
-        const tool = inv.withUse('openVent') ?? (inv.has('spoon') && g.id === 'your cell' ? { id: 'spoon' as ItemId, durability: 1 } : undefined)
-        if (tool) add('E', `Unscrew the vent grille (${ITEMS[tool.id].name})`, () => {
-          g.open = true
-          this.dodgyTimer = 4
-          this.emit({ x: c.x, z: c.z, radius: 4, kind: 'clank' })
-          this.toast(g.id === 'your cell' ? 'The screws are rusted half through. The grille comes away.' : 'Grille off.', 'good')
-        })
-        else add('E', 'Vent grille: you need something to undo the screws', () => this.toast('A screwdriver or a flattened spoon would do it. (The one in your cell is so rusted an ordinary spoon will turn it.)', 'neutral'))
-      }
-    }
-
-    // People.
-    const front = (x: number, z: number) => near(x, z, 1.7)
-    for (const g of this.guards) {
-      if (!front(g.x, g.z)) continue
-      if (g.ko > 0 && g.hasKeys) {
-        add('R', `Take ${g.name}'s keys`, () => this.takeKeys(g, true))
-      } else if (g.canBePickpocketed()) {
-        add('R', `Lift ${g.name}'s keys`, () => this.takeKeys(g, false))
-      }
-      if (g.ko <= 0) add('E', `Talk to ${g.name}${this.missions.hasOffer(g) ? ' (wants a word)' : ''}`, () => this.talkToGuard(g))
-      break
-    }
-    for (const pr of this.prisoners) {
-      if (pr.ko > 0 || !front(pr.x, pr.z)) continue
-      add('E', `Talk to ${pr.name}${this.missions.hasOffer(pr) ? ' (has a job)' : ''}`, () => this.talkTo(pr))
-      break
-    }
-
-    // Doors.
-    const t = worldToTile(b.x, b.z)
-    for (let dy = -1; dy <= 1; dy++) {
-      for (let dx = -1; dx <= 1; dx++) {
-        const door = this.grid.doorAtTile(t.tx + dx, t.ty + dy)
-        if (!door) continue
-        const dc = tileCentre(door.tx, door.ty)
-        if (!near(dc.x, dc.z, 2.3)) continue
-        const myDoor = door.cell === p.cell
-        if (myDoor && !this.clock.locked && door.openness > 0.5 && !door.jammed && inv.has('toothpaste')) {
-          add('R', 'Pack toothpaste into the lock', () => {
-            inv.remove('toothpaste')
-            door.jammed = true
-            this.dodgyTimer = 3
-            this.toast('You pack the strike plate with toothpaste. It will set hard by lights out.', 'good')
-          })
-        }
-        if (door.openness < 0.5) {
-          if (myDoor && this.clock.locked && door.jammed) {
-            add('E', 'Ease the door open (toothpaste)', () => {
-              this.pushingDoor = 6
-              this.methodHint = 'toothpaste'
-              this.emit({ x: dc.x, z: dc.z, radius: 3, kind: 'clank' })
-            })
-          } else if (!this.doors.isOpenByRegime(door)) {
-            const key = inv.withUse('openDoor')
-            if (key) {
-              // Key in hand at a locked door: that beats a chat with whoever
-              // is standing next to it.
-              const chat = out.findIndex((o) => o.key === 'E' && o.label.startsWith('Talk to'))
-              if (chat >= 0) out.splice(chat, 1)
-              add('E', `Unlock with ${ITEMS[key.id].name}`, () => this.useKey(door, key))
-            } else if (door.kind === 'gate' && !this.clock.locked) {
-              add('E', 'Ask to be let through', () => this.askGate(door))
-            }
-          }
-        }
-      }
-    }
-
-    // Fixtures.
-    const f = this.fixtures
-    for (const ph of f.phones) if (near(ph.x, ph.z - 0.4, 1.6) && !this.clock.locked) add('E', 'Use the phone', () => this.usePhone())
-    if (near(f.flagpole.x, f.flagpole.z, 2.2) && !this.flagUp && inv.has('flag')) add('E', 'Run the signal flag up the pole', () => this.raiseFlag())
-    if (p.zone === p.cell && this.clock.locked && inv.has('torch') && !this.signalTonight) add('R', 'Flash the torch out of the window', () => this.flashTorch())
-    if (p.zone === 'yard' && t.ty >= 57 && inv.has('grapple')) add('E', 'Throw the grapple over the wall', () => this.startClimb(t.tx))
-    if (p.zone === 'laundry' && this.clock.period === 'work') {
-      for (const w of f.washers) if (near(w.x, w.z, 1.4)) add('E', 'Work a laundry shift (+1 Greggs voucher)', () => this.work())
-    }
-    if (p.zone === p.cell && this.post.waiting) {
-      const cell = this.grid.cells.get(p.cell)!
-      if (near(cell.bunks[0].x, cell.bunks[0].z, 2.2)) {
-        // The note beats a chat with your cellmate sat on the bunk.
-        const chat = out.findIndex((o) => o.key === 'E' && o.label.startsWith('Talk to'))
-        if (chat >= 0) out.splice(chat, 1)
-        add('E', 'Read the note on your bunk', () => this.readBunkNote())
-      }
-    }
-    if (p.zone === p.cell) {
-      const cell = this.grid.cells.get(p.cell)!
-      if (near(cell.bunks[1].x, cell.bunks[1].z, 1.6)) add('R', `Your stash (${this.stash.length}/4)`, () => this.openStash())
-      this.tunnelPrompts(add)
-      if (near(cell.bunks[0].x, cell.bunks[0].z, 1.6) && this.clock.locked) add('E', 'Sleep (Z) till morning', () => this.trySleep())
-      if (!this.clock.locked && !this.lure && !p.inVent && !this.memory.lureIgnored) add('H', 'Shout for an officer: "Guv! There\'s a rat!"', () => this.shoutForOfficer())
-    }
-    if (inv.has('rubble') && p.zone === 'yard' && !this.clock.locked) add('R', `Shake the rubble out of your trouser legs (${inv.count('rubble')})`, () => this.scatterRubble())
-    if (inv.has('spoon') && p.zone === 'yard') add('R', 'Grind the spoon flat on the concrete', () => this.craftNamed('flatSpoon'))
-    this.missions.prompts(add)
-    pickup?.()
-
-    // On a toilet: do your business, then flush, or don't.
-    const loo = this.seated?.toilet
-    if (loo) {
-      const job = this.business
-      if (!job) add('R', 'Do your business', () => this.doBusiness(loo))
-      else if (job.done) add('R', 'Flush', () => this.flush())
-      else add('R', 'Concentrating...', () => {})
-    }
-    // The newer routes, and whatever secret is on this sentence.
-    // These are fixed spots and particular people, so they win over a chat
-    // with whoever is standing nearby, or something lying on the floor.
-    const claim = (key: string, label: string, run: () => void) => {
-      const i = out.findIndex((o) => o.key === key && (o.label.startsWith('Talk to') || o.label.startsWith('Pick up')))
-      if (i >= 0) out.splice(i, 1)
-      add(key, label, run)
-    }
-    if (!this.seated) {
-      const gu = this.guest
-      if (gu.body.visible && this.secret?.talkGuest && near(gu.body.x, gu.body.z, 2.0)) claim('E', `Talk to ${gu.name}`, () => {
-        this.converse(gu.body)
-        this.secret!.talkGuest!()
-      })
-      this.secret?.prompts(claim, near)
-      this.basketball.prompts(claim, near)
-      this.routes.prompts(claim, near)
-    }
-    // Any bench, chair, pew, sofa or bunk edge. Lowest of all.
-    if (this.seated) add('E', this.business?.done ? 'Stand up (without flushing)' : 'Stand up', () => this.standUp())
-    else {
-      let seat: { x: number; z: number; yaw: number } | null = null
-      let sd = 1.2
-      for (const st of this.grid.seats) {
-        const d = Math.hypot(st.x - b.x, st.z - b.z)
-        if (d < sd) {
-          sd = d
-          seat = st
-        }
-      }
-      const taken = seat && this.bodies.some((o) => o !== b && o.visible && o.pose === 'sit' && Math.hypot(o.x - seat!.x, o.z - seat!.z) < 0.45)
-      if (seat && !taken) {
-        // Right at a free seat, sitting beats a chat with whoever is next to it.
-        if (sd < 0.8) {
-          const chat = out.findIndex((o) => o.key === 'E' && o.label.startsWith('Talk to'))
-          if (chat >= 0) out.splice(chat, 1)
-        }
-        add('E', 'Sit down', () => this.sitDown(seat!))
-      }
-    }
-
-    this.prompts = out
-  }
-
   /** Where you are sitting, if you are. Move to get up. */
   seated: { x: number; z: number; yaw: number; toilet?: string } | null = null
   /** On a toilet, in progress or done. */
-  private business: { cell: string; t: number; done: boolean; witnessed: boolean; ownerSaw: boolean } | null = null
+  business: { cell: string; t: number; done: boolean; witnessed: boolean; ownerSaw: boolean } | null = null
   /** Cells with something unflushed in the toilet, and who might know. */
   readonly messes = new Map<string, { witnessed: boolean; ownerSaw: boolean; floor: boolean }>()
-  private toiletIncidents = 0
+  toiletIncidents = 0
 
-  private doBusiness(cell: string): void {
-    this.business = { cell, t: 3.5, done: false, witnessed: false, ownerSaw: false }
-    this.toast('You settle in. This could take a minute.', 'neutral')
-  }
-
-  private flush(): void {
-    this.business = null
-    this.toast(pick2(this.rng, ['You flush. The pipes groan like a dying whale.', 'Flushed. The cistern sounds like a bin lorry reversing.', 'You flush, like a decent human being.']), 'neutral')
-  }
-
-  private leaveMess(cell: string, witnessed: boolean): void {
-    const ownerSaw = this.business?.ownerSaw ?? false
-    const before = this.messes.get(cell)
-    this.messes.set(cell, { witnessed: witnessed || !!before?.witnessed, ownerSaw: ownerSaw || !!before?.ownerSaw, floor: !!before?.floor })
-    const seat = this.grid.seats.find((s) => s.toilet === cell)
-    if (seat) this.dynamic.setToiletMess(cell, seat.x, seat.z, true)
-    this.toast(cell === this.player.cell ? 'You leave it. In your own cell. Your cellmate will be thrilled.' : 'You walk away without flushing. Somebody is going to be very upset.', 'neutral')
-  }
-
-  private dropOnFloor(cell: string, seat: { x: number; z: number; yaw: number }): void {
-    const p = this.player
-    const owners = this.prisoners.filter((pr) => pr.cell.zone === cell)
-    const ownerSaw = owners.some((o) => o.zone === cell && o.ko <= 0 && o.body.pose !== 'sleep')
-    const witnessed = ownerSaw || this.watchersOf(p.body.x, p.body.z) > 0
-    const before = this.messes.get(cell)
-    this.messes.set(cell, { witnessed: witnessed || !!before?.witnessed, ownerSaw: ownerSaw || !!before?.ownerSaw, floor: true })
-    // Just in front of the bowl, where you were stood up from.
-    const fx = seat.x + Math.sin(seat.yaw) * 0.45
-    const fz = seat.z + Math.cos(seat.yaw) * 0.45
-    this.dynamic.dropFloorMess(`${cell}:floor`, fx, fz, 0.55)
-    this.sounds.push({ sound: 'clank', volume: 0.3 })
-    this.toast(pick2(this.rng, ['You stand up mid-business. It drops straight onto the floor. Splat.', 'You get up too soon. Gravity does the rest. On the floor. In his cell.', 'Halfway through, you stand. It lands on the lino with a noise you will never forget.']), 'bad')
-  }
-
-  /** Who could have seen you go: anyone with eyes on you nearby. */
-  private watchersOf(x: number, z: number, except?: Prisoner): number {
-    let n = 0
-    for (const a of [...this.prisoners, ...this.guards]) {
-      if (a === except || a.ko > 0 || a.body.pose === 'sleep') continue
-      if (Math.hypot(a.x - x, a.z - z) < 12 && this.grid.sightClear(a.x, a.z, x, z)) n++
-    }
-    return n
-  }
-
-  private updateToilets(delta: number): void {
-    const p = this.player
-    const job = this.business
-    if (job && !job.done) {
-      job.t -= delta
-      if (job.t <= 0) {
-        job.done = true
-        const owners = this.prisoners.filter((pr) => pr.cell.zone === job.cell)
-        job.ownerSaw = owners.some((o) => o.zone === job.cell && o.ko <= 0 && o.body.pose !== 'sleep')
-        job.witnessed = job.ownerSaw || this.watchersOf(p.body.x, p.body.z) > 0
-        this.toast(pick2(this.rng, ['Job done. Grim.', 'There. Better out than in.', 'Done. You would not want to be the next one in here.']), 'neutral')
-      }
-    }
-    // Shivs go away once the fight and the hunt are over.
-    for (const pr of this.prisoners) {
-      pr.hunt = Math.max(0, pr.hunt - delta)
-      if (pr.ko > 0) pr.hunt = 0
-      if (pr.armed && !pr.fighting && pr.hunt <= 0) {
-        pr.armed = false
-        pr.body.shiv = false
-      }
-    }
-    // An owner coming home to it.
-    for (const [cell, mess] of this.messes) {
-      if (this.business?.cell === cell && !this.business.done) continue
-      if (this.seated?.toilet === cell) continue
-      const owner = this.prisoners.find((pr) => pr.cell.zone === cell && pr.zone === cell && pr.ko <= 0 && pr.body.pose !== 'sleep' && !pr.fighting)
-      if (!owner) continue
-      this.messes.delete(cell)
-      this.dynamic.setToiletMess(cell, 0, 0, false)
-      this.dynamic.hideFloorMess(`${cell}:floor`)
-      this.discoverMess(owner, cell, mess)
-    }
-  }
-
-  private discoverMess(owner: Prisoner, cell: string, mess: { witnessed: boolean; ownerSaw: boolean; floor: boolean }): void {
-    const p = this.player
-    const near = Math.hypot(owner.x - p.body.x, owner.z - p.body.z) < 12
-    // On his floor is worse than in his toilet: he looks harder, and for longer.
-    const floor = mess.floor
-    const chance = cell === p.cell || mess.ownerSaw ? 1 : Math.min(0.97, 0.25 + (floor ? 0.2 : 0) + (mess.witnessed ? 0.45 : 0) + (near ? 0.25 : 0) + this.toiletIncidents * 0.1)
-    const what = floor ? 'what you left on his floor' : 'what you left in his toilet'
-    this.toiletIncidents++
-    owner.trust = Math.max(0, owner.trust - 0.3)
-    if (this.rng() < chance) {
-      owner.grudge = 1
-      if (owner.gang) this.memory.annoy(owner.gang, 0.08)
-      owner.say(floor ? `ON MY FLOOR?! ...${p.name}. It was YOU.` : `WHO DID THIS?! ...${p.name}. It was YOU.`, 3.5)
-      if (owner.temperament === 'old' && !floor) {
-        this.toast(`${owner.name} found ${what} and knows it was you. He is too old to fight, but he will never forgive you.`, 'bad')
-        return
-      }
-      if (owner.temperament === 'snitch' && !floor) {
-        owner.report = true
-        this.toast(`${owner.name} found ${what}, knows it was you, and is off to tell an officer.`, 'bad')
-        return
-      }
-      // On the floor, even the old boys and the grasses come for you.
-      owner.hunt = floor ? 200 : 120
-      if (owner.temperament === 'hothead' || owner.temperament === 'gang' || this.rng() < (floor ? 0.5 : 0.25)) {
-        owner.armed = true
-        owner.body.shiv = true
-      }
-      this.toast(`${owner.name} found ${what}. He knows it was you, and he is coming${owner.armed ? ' with a shiv' : ''}.`, 'bad')
-      return
-    }
-    // Wrong man: somebody nearby gets the blame, and the fists.
-    const victim = this.prisoners
-      .filter((o) => o !== owner && o.ko <= 0 && o.cuffed <= 0 && !o.fighting && o.body.visible && o.distanceTo(owner.x, owner.z) < 16)
-      .sort((a, b) => a.distanceTo(owner.x, owner.z) - b.distanceTo(owner.x, owner.z))[0]
-    if (victim && owner.temperament !== 'old') {
-      owner.say(`WHO DID THIS?! ...Was it YOU, ${victim.name}?!`, 3)
-      owner.fighting = true
-      owner.fightTarget = victim
-      victim.fighting = true
-      victim.fightTarget = owner
-      this.toast(`${owner.name} found ${what} and blames ${victim.name}. Fists are flying.`, 'good')
-    } else {
-      owner.say('WHO DID THIS?! I will find out. I WILL find out.', 3)
-      this.toast(`${owner.name} found ${what}. He has no idea who did it. Yet.`, 'neutral')
-    }
-  }
-
-  /**
-   * Standing in somebody else's cell while they are in it. They tell you to
-   * leave; stay, and what happens next depends on the man.
-   */
-  private updateTrespass(delta: number): void {
-    const p = this.player
-    const where = p.zone
-    const inside = where.startsWith('cell') && where !== p.cell && !p.inVent && !this.over && !this.talkingTo
-    for (const pr of this.prisoners) {
-      const home = pr.cell.zone
-      const watching = inside && home === where && pr.zone === home && pr.ko <= 0 && pr.cuffed <= 0 && pr.body.pose !== 'sleep' && !pr.fighting
-      if (!watching) {
-        if (pr.trespass > 0 && home !== where && pr.ko <= 0 && pr.zone === home && pr.trespass < 50) pr.say('And stay out.', 2)
-        pr.trespass = 0
-        continue
-      }
-      if (pr.trespass === 0) {
-        pr.face(p.body.x, p.body.z)
-        pr.say(
-          pr.temperament === 'hothead'
-            ? `Oi. ${p.name}. Out of my cell. NOW.`
-            : pr.temperament === 'old'
-              ? 'Can I help you, young man? This is my cell.'
-              : pr.temperament === 'snitch'
-                ? "You're not meant to be in here. I'm just saying."
-                : pick2(this.rng, [`What you doing in my cell, ${p.name}?`, 'Oi. Out. This is my peter.', 'You lost? This is my cell. Get out.']),
-          3,
-        )
-      }
-      pr.trespass += delta
-      const patience = pr.temperament === 'hothead' ? 2.5 : pr.temperament === 'gang' ? 4 : 5.5
-      if (pr.trespass < patience || pr.trespass >= 50) continue
-      pr.trespass = 50
-      pr.grudge = Math.min(1, pr.grudge + 0.2)
-      pr.trust = Math.max(0, pr.trust - 0.15)
-      switch (pr.temperament) {
-        case 'old':
-          pr.say('Some of us have to live here, you know. I shall be writing to my MP.', 3)
-          this.toast(`${pr.name} is very disappointed in you.`, 'neutral')
-          break
-        case 'snitch':
-          pr.say("Right. I'm telling.", 2.5)
-          pr.report = true
-          this.toast(`${pr.name} has gone to tell an officer you were in his cell.`, 'bad')
-          break
-        case 'hothead':
-          this.trespassFight(pr, true, "You're getting cut.")
-          break
-        case 'gang':
-          this.trespassFight(pr, pr.leader || pr.grudge > 0.4, `Nobody walks into a ${pr.gang ? GANGS[pr.gang].name : 'firm'} cell.`)
-          break
-        default:
-          this.trespassFight(pr, false, 'Right. You asked for it.')
-      }
-    }
-  }
-
-  private trespassFight(pr: Prisoner, shiv: boolean, line: string): void {
-    pr.say(line, 2.5)
-    pr.armed = shiv
-    pr.body.shiv = shiv
-    pr.fighting = true
-    pr.fightTarget = 'player'
-    pr.hunt = 20
-    this.toast(shiv ? `${pr.name} has pulled a shiv. Get out of his cell!` : `${pr.name} is coming at you. Get out of his cell!`, 'bad')
-  }
-
-  private sitDown(seat: { x: number; z: number; yaw: number }): void {
+  sitDown(seat: { x: number; z: number; yaw: number }): void {
     const b = this.player.body
     this.seated = seat
     b.x = seat.x
@@ -1768,357 +1376,33 @@ export class Game implements World {
     b.speed = 0
   }
 
-  private standUp(): void {
+  standUp(): void {
     if (!this.seated) return
     // Walked off without flushing: it stays there for its owner to find.
     // Stood up halfway through: it lands on the floor.
     const job = this.business
-    if (job?.done) this.leaveMess(job.cell, job.witnessed)
-    else if (job && this.seated) this.dropOnFloor(job.cell, this.seated)
+    if (job?.done) this.toilets.leaveMess(job.cell, job.witnessed)
+    else if (job && this.seated) this.toilets.dropOnFloor(job.cell, this.seated)
     this.business = null
     this.seated = null
     this.player.body.pose = 'stand'
     this.grid.pushOutOfProps(this.player.body, 0.34)
   }
 
-  private chewSoap(): void {
-    const p = this.player
-    if (!p.inventory.has('soap')) {
-      this.toast('You need a bar of soap to chew.', 'neutral')
-      return
-    }
-    p.inventory.remove('soap')
-    p.frothing = 150
-    this.toast('You chew the soap. Foul. You are foaming at the mouth: very convincing.', 'good')
-  }
-
-  private enterVent(g: Grate): void {
-    const p = this.player
-    const c = tileCentre(g.tx, g.ty)
-    p.inVent = true
-    p.body.x = c.x
-    p.body.z = c.z
-    this.methodHint = this.methodHint ?? 'vent'
-    this.toast('In the ducts. Running is loud; sneaking (C) is quiet. Officers below can hear you.', 'neutral')
-  }
-
-  private leaveVent(g: Grate): void {
-    const p = this.player
-    const c = tileCentre(g.tx, g.ty)
-    // Someone standing right under it?
-    const under = this.guards.find((gg) => gg.ko <= 0 && Math.hypot(gg.x - c.x, gg.z - c.z) < 2)
-    p.inVent = false
-    g.open = true
-    p.body.x = c.x
-    p.body.z = c.z + 0.4
-    p.body.y = 0
-    if (under) {
-      under.say('Well, well. Look what crawled out.', 2.5)
-      this.caught(under)
-    }
-  }
-
-  private takeKeys(g: Guard, knockedOut: boolean): void {
-    const p = this.player
-    if (p.inventory.full) {
-      this.toast('No room in your pockets.', 'bad')
-      return
-    }
-    const chance = knockedOut ? 1 : this.memory.pickpocketChance * (1 - g.wary * 0.6) * (g.busy ? 1.6 : 1)
-    if (this.rng() < chance) {
-      g.hasKeys = false
-      this.stolenFrom = g
-      p.inventory.add('guardKey')
-      this.dodgyTimer = 2
-      this.toast(`You have ${g.name}'s keys. They will notice at the next shift change. Press a mould into soap to keep a copy.`, 'good')
-    } else {
-      g.say('Oi! Get your hands off!', 2.5)
-      g.suspicion = 1
-      g.chasing = true
-      g.lastSeen = { x: p.body.x, z: p.body.z, t: 0 }
-      g.wary = Math.min(1, g.wary + 0.3)
-      this.methodHint = 'key'
-      p.attempt = p.attempt ?? 'key'
-    }
-  }
-
-  private useKey(door: Door, key: { id: ItemId; durability: number }): void {
-    const inv = this.player.inventory
-    const p = this.player
-    if (door.kind === 'perimeter' && door.tx === EAST_WALL && key.id !== 'lockpick' && p.disguise === 'guard' && !p.disguiseBlown) {
-      this.finish(true, 'staffDoor')
-      return
-    }
-    if (door.kind === 'perimeter' && key.id === 'lockpick') {
-      this.toast('The gatehouse lock is too heavy to pick.', 'bad')
-      return
-    }
-    if (key.id === 'lockpick' && this.rng() < 0.4) {
-      this.toast('The pick slips. Try again.', 'bad')
-      this.emit({ x: (door.tx + 0.5) * TILE, z: (door.ty + 0.5) * TILE, radius: 4, kind: 'clank' })
-      if (inv.wear(key)) this.toast('The lockpick snaps.', 'bad')
-      return
-    }
-    this.keyHold = { door, t: 4 }
-    this.sounds.push({ sound: 'buzz', volume: 0.8 })
-    if (door.cell === this.player.cell && this.clock.locked) this.methodHint = 'key'
-    else if (!this.methodHint) this.methodHint = door.kind === 'gate' || door.kind === 'perimeter' ? 'key' : this.methodHint
-    this.emit({ x: (door.tx + 0.5) * TILE, z: (door.ty + 0.5) * TILE, radius: 3, kind: 'clank' })
-    if (key.id === 'masterKey') {
-      if (inv.wear(key)) this.toast("The master key snaps in the lock after this turn. Old brass: the Governor never needed it this much.", 'bad')
-      else if (key.durability === 1) this.toast('The master key is bending. One more turn, and that will be it.', 'bad')
-      else this.toast(`The master key turns. It is soft old brass: ${key.durability} turns left in it.`, 'neutral')
-    } else if (key.id !== 'guardKey' && inv.wear(key)) this.toast(`The ${ITEMS[key.id].name.toLowerCase()} snaps in the lock after this turn.`, 'bad')
-  }
-
-  private askGate(door: Door): void {
-    const ok = this.doors.request(door, 'player', this.player.block, false, this.player.zone)
-    if (ok) this.keyHold = { door, t: 2.5 }
-    else {
-      const g = this.guards.filter((gg) => gg.ko <= 0).sort((a, b) => a.distanceTo(this.player.body.x, this.player.body.z) - b.distanceTo(this.player.body.x, this.player.body.z))[0]
-      g?.say(`Not now, ${this.player.name}. You're not on the movement list.`, 2.5)
-      this.toast('Only officers can open gates. They only open them for wherever the regime sends you.', 'neutral')
-    }
-  }
-
-  private attack(): void {
-    if (this.punchTimer > 0) return
-    const p = this.player
-    const b = p.body
-    if (p.inVent) return
-    this.punchTimer = 0.55
-    const weapon = p.inventory.weapon
-    const fx = Math.sin(b.yaw)
-    const fz = Math.cos(b.yaw)
-    const inFront = (x: number, z: number) => {
-      const dx = x - b.x
-      const dz = z - b.z
-      const d = Math.hypot(dx, dz)
-      return d < 1.7 && (dx * fx + dz * fz) / Math.max(0.01, d) > 0.2
-    }
-    this.fightingFor = 2.5
-    b.pose = 'fight'
-    b.poseTime = 0
-    this.emit({ x: b.x, z: b.z, radius: 12, kind: 'fight' })
-    for (const g of this.guards) {
-      if (g.ko > 0 || !inFront(g.x, g.z)) continue
-      const sneak = !g.canSeePlayer() || g.busy
-      g.hp -= weapon.damage * (sneak ? 2 : 1)
-      if (g.hp <= 0) {
-        g.ko = 30
-        g.hp = 10
-        g.wary = 1
-        this.achieve('knockout')
-        g.chasing = false
-        this.toast(`${g.name} goes down${weapon.id ? ` (${ITEMS[weapon.id].name})` : ''}. Grab the keys (R) before anyone sees.`, 'good')
-      } else {
-        g.say('Assaulting an officer?!', 2)
-        g.suspicion = 1
-        g.chasing = true
-        g.lastSeen = { x: b.x, z: b.z, t: 0 }
-      }
-      this.methodHint = this.methodHint ?? (this.riot.active ? 'riot' : 'gate')
-      p.attempt = p.attempt ?? this.methodHint
-      return
-    }
-    for (const pr of this.prisoners) {
-      if (pr.ko > 0 || !inFront(pr.x, pr.z)) continue
-      const down = pr.hit(weapon.damage, 'player')
-      if (down) this.toast(`${pr.name} is out cold.`, 'neutral')
-      this.lastFightByPlayer = 20
-      return
-    }
-  }
-
   lastFightByPlayer = 0
-
-  private callSick(): void {
-    const p = this.player
-    if (!this.clock.locked && p.zone === p.cell) {
-      this.shoutForOfficer()
-      return
-    }
-    if (!this.clock.locked || p.zone !== p.cell) {
-      this.toast('Fake sickness works at night, behind your door: press H to bang for the night officer.', 'neutral')
-      return
-    }
-    if (this.sickCall) return
-    if (this.memory.sickIgnored && p.frothing <= 0) {
-      this.toast('You bang and groan. Nobody comes. They have heard it too many times.', 'bad')
-      return
-    }
-    const block = p.block
-    const responders = this.guards
-      .filter((g) => g.ko <= 0 && (g.block === block || g.duty === 'central'))
-      .sort((a, b) => (a.duty === 'landing' ? -1 : 0) - (b.duty === 'landing' ? -1 : 0))
-      .slice(0, this.memory.sickResponders)
-    if (!responders.length) return
-    this.sickCall = { cell: p.cell, responders, stage: 'called', timer: 0 }
-    this.methodHint = 'sick'
-    this.toast(p.frothing > 0 ? 'You bang on the door, frothing. The night officer comes running.' : 'You bang on the door and clutch your stomach. Someone is coming.', 'neutral')
-  }
-
-  /**
-   * By day, in your own cell: shout an officer in to look at a rat. He has a
-   * good look round with his back half turned, which is your moment.
-   */
-  shoutForOfficer(): void {
-    const p = this.player
-    if (this.lure || this.sickCall || p.zone !== p.cell || this.clock.locked) return
-    if (this.memory.lureIgnored) {
-      this.toast('You shout yourself hoarse about a rat. Nobody comes. They have heard about you.', 'bad')
-      return
-    }
-    const g = this.guards
-      .filter((gg) => gg.ko <= 0 && !gg.chasing && !gg.busy && !gg.uniformTaken && !this.sickCall?.responders.includes(gg))
-      .sort((a, b) => (a.block === p.block ? 0 : 1) - (b.block === p.block ? 0 : 1) || a.distanceTo(p.body.x, p.body.z) - b.distanceTo(p.body.x, p.body.z))[0]
-    if (!g) {
-      this.toast('You shout for an officer. Nobody is free.', 'neutral')
-      return
-    }
-    this.lure = { cell: p.cell, guard: g, stage: 'called', timer: 0 }
-    this.emit({ x: p.body.x, z: p.body.z, radius: 6, kind: 'shout' })
-    this.toast(`You shout through the door: "Guv! There's a rat in here the size of a dog!" ${g.name} is on the way.`, 'neutral')
-  }
-
-  /** The officer in your cell eats what you gave him, or wakes up from it. */
-  private updateLure(delta: number): void {
-    const p = this.player
-    if (this.lure && (this.lure.guard.ko > 0 || this.lure.guard.chasing)) {
-      this.lure.guard.busy = false
-      this.lure = null
-    }
-    const d = this.drugged
-    if (d) {
-      d.eatsIn -= delta
-      if (d.eatsIn <= 0) {
-        const g = d.guard
-        this.drugged = null
-        g.say('*yawns* I\'ll just... rest my eyes... for a...', 2.5)
-        this.achieve('sausage')
-        g.ko = 150
-        g.hp = 10
-        g.chasing = false
-        g.busy = false
-        if (this.lure?.guard === g) this.lure = null
-        this.sleeper = g
-        this.methodHint = 'lure'
-        this.toast(`${g.name} slides down the wall, snoring. Out for hours. Take the uniform (E) and the keys (R).`, 'good')
-      }
-    }
-    // Waking up in a vest and boxers: everyone hears about the stranger in uniform.
-    const s = this.sleeper
-    if (s && s.ko <= 0) {
-      this.sleeper = null
-      s.wary = 1
-      if (s.uniformTaken) {
-        s.say('Who\'s had my trousers?! And my KEYS?!', 3)
-        if (p.disguise === 'guard' && !p.disguiseBlown && this.disguisedAs === s.name) {
-          p.disguiseBlown = true
-          this.toast(`${s.name} has woken up in your cell in a vest and pink boxers. Every officer now knows there is a stranger in a uniform.`, 'bad')
-        }
-      }
-    }
-  }
 
   // ---- Your cellmate ----
 
-  /** Some cellmates are grasses: the prison decides when it is built. */
-  get cellmateGrass(): boolean {
-    return mulberry32(this.seed * 13 + 5)() < 0.4
-  }
-
   /** A grass still talking: not paid off, and not won over. */
-  private get mateTalking(): boolean {
+  get mateTalking(): boolean {
     const m = this.cellmate
-    return !!m && this.cellmateGrass && !this.mate.paidOff && m.trust < 0.6
+    return !!m && this.cellmateStory.cellmateGrass && !this.mate.paidOff && m.trust < 0.6
   }
 
   /** On side, and awake: coughs when footsteps come while you dig. */
-  private get mateLookout(): boolean {
+  get mateLookout(): boolean {
     const m = this.cellmate
-    return !!m && !this.cellmateGrass && m.trust >= 0.6 && m.ko <= 0
-  }
-
-  /** Lights out: a grass with something to tell decides whether to. */
-  private mateNight(): void {
-    const p = this.player
-    const hiding = this.stash.length > 0 || this.tunnel.metres > 0 || p.inventory.items.some((i) => ITEMS[i.id].contraband)
-    if (this.mateTalking && hiding && this.rng() < 0.5) this.mate.tipOff = true
-  }
-
-  /** Unlock: officers come straight to your cell, and a friend slips you a note. */
-  private mateMorning(): void {
-    const m = this.cellmate
-    if (!m) return
-    if (this.mate.tipOff) {
-      this.mate.tipOff = false
-      this.mate.tipOffs++
-      this.toast('Two officers come straight to your cell at unlock. Somebody tipped them off.', 'bad')
-      if (this.stash.length && this.rng() < 0.6) {
-        this.stash.length = 0
-        this.toast('They go straight to the loose brick. Your stash is gone.', 'bad')
-      }
-      if (this.tunnel.metres > 0 && this.rng() < 0.6) this.tunnelFound()
-      const g = this.guards.filter((gg) => gg.ko <= 0 && gg.block === this.player.block).sort((a, b) => a.distanceTo(this.player.body.x, this.player.body.z) - b.distanceTo(this.player.body.x, this.player.body.z))[0]
-      if (g) g.searchTarget = true
-    }
-    if (this.cellmateGrass && !this.mate.warned && (this.clock.day >= 3 || this.mate.tipOffs > 0)) {
-      this.mate.warned = true
-      this.toast(`A note pushed under your door: "${m.name} is a grass. Watch your stash. A friend."`, 'bad')
-    }
-  }
-
-  private mateOptions(m: Prisoner): { label: string; enabled: boolean; run: () => void }[] {
-    const inv = this.player.inventory
-    const out: { label: string; enabled: boolean; run: () => void }[] = []
-    if (this.mate.warned && !this.mate.paidOff) {
-      out.push({
-        label: '"Have you been grassing on me?"',
-        enabled: true,
-        run: () => {
-          if (m.trust >= 0.6) {
-            this.mate.paidOff = true
-            this.ui.talk(m.name, 'Used to. They squeezed me: extra visits, a telly maybe. Not any more. You have been good to me.', [])
-            return
-          }
-          this.ui.talk(m.name, 'Alright, alright. They squeeze me: extra visits, a telly maybe. Make it worth my while and my memory goes very bad.', [
-            {
-              label: 'Pay for their silence (2 Greggs vouchers)',
-              enabled: inv.count('voucher') >= 2,
-              run: () => {
-                inv.remove('voucher')
-                inv.remove('voucher')
-                this.mate.paidOff = true
-                m.trust = Math.max(m.trust, 0.65)
-                this.ui.talk(m.name, "Saw nothing. Heard nothing. Can't even remember your name. What's your name?", [])
-              },
-            },
-          ])
-        },
-      })
-    }
-    if (!this.cellmateGrass && !this.mate.gift && m.trust >= 0.7) {
-      out.push({
-        label: '"You alright?"',
-        enabled: true,
-        run: () => {
-          this.mate.gift = true
-          if (!inv.add('flatSpoon')) this.dynamic.spawnItem('flatSpoon', this.player.body.x + 0.5, this.player.body.z, this.player.zone)
-          this.ui.talk(m.name, "Found this in the shower drain. For whatever you're doing at night. I never saw a thing. And I'll cough if anyone comes.", [])
-        },
-      })
-    }
-    return out
-  }
-
-  /** The last word on your cellmate, for the end screen. */
-  private mateEpilogue(won: boolean): string {
-    const m = this.cellmate
-    if (!m) return ''
-    if (this.cellmateGrass && !this.mate.paidOff) return `\n${m.name} was moved to an enhanced wing the next day, with a telly. Funny, that.`
-    if (m.trust >= 0.7) return won ? `\n${m.name} told the morning count you were on the toilet, and bought you an extra hour.` : `\n${m.name} saved you a biscuit every day.`
-    return ''
+    return !!m && !this.cellmateStory.cellmateGrass && m.trust >= 0.6 && m.ko <= 0
   }
 
   /** A first-day goal done. */
@@ -2133,13 +1417,13 @@ export class Game implements World {
   // ---- The tunnel under the loose tile ----
 
   /** The loose floor tile beside your bunk, in the open where you can see it. */
-  private get tunnelSpot(): { x: number; z: number } {
+  get tunnelSpot(): { x: number; z: number } {
     const cell = this.grid.cells.get(this.player.cell)!
     return { x: cell.rect.x0 * TILE + 1.85, z: ((cell.rect.y0 + cell.rect.y1 + 1) / 2) * TILE }
   }
 
   /** Metres a second for whatever you are digging with. */
-  private get digTool(): { name: string; rate: number } | null {
+  get digTool(): { name: string; rate: number } | null {
     const inv = this.player.inventory
     if (inv.has('screwdriver')) return { name: 'screwdriver', rate: 1 / 9 }
     if (inv.has('flatSpoon')) return { name: 'flattened spoon', rate: 1 / 12 }
@@ -2147,574 +1431,7 @@ export class Game implements World {
     return null
   }
 
-  private tunnelPrompts(add: (key: string, label: string, run: () => void) => void): void {
-    const p = this.player
-    const spot = this.tunnelSpot
-    if (!this.clock.locked || p.inVent || Math.hypot(p.body.x - spot.x, p.body.z - spot.z) > 1.3) return
-    if (this.memory.tunnelBlocked) {
-      add('E', 'The loose tile (solid concrete under it now)', () => this.toast('They poured concrete under every cell floor. This way is closed for good.', 'bad'))
-      return
-    }
-    const t = this.tunnel
-    if (t.metres >= TUNNEL_LENGTH) add('E', 'Crawl out through the tunnel', () => this.finish(true, 'tunnel'))
-    else if (this.digging) add('E', `Digging: ${t.metres.toFixed(1)} of ${TUNNEL_LENGTH} metres (step away to stop)`, () => this.stopDigging('You slide the tile back over the hole.'))
-    else {
-      const tool = this.digTool
-      add('E', tool ? `Dig under the loose tile (${tool.name}): ${t.metres.toFixed(1)} of ${TUNNEL_LENGTH} metres` : 'A loose floor tile: you need something to dig with', () => this.startDigging())
-    }
-  }
-
-  private startDigging(): void {
-    const p = this.player
-    const tool = this.digTool
-    if (!tool) {
-      this.toast('Under the loose tile is soft old clay. A spoon would do it, slowly. A screwdriver, less slowly.', 'neutral')
-      return
-    }
-    const mate = this.cellmate
-    if (mate && mate.ko <= 0 && mate.trust < TUNNEL_TRUST) {
-      mate.say(pick2(this.rng, ["Not in my cell you don't. Not for free.", 'You dig a hole, I go down with you. Make it worth my while.']), 3)
-      this.toast(`${mate.name} will grass on a tunnel unless they trust you. Greggs vouchers help.`, 'bad')
-      return
-    }
-    if (p.inventory.full) {
-      this.toast('Your pockets are full. Rubble has to go somewhere: get rid of it in the yard first.', 'bad')
-      return
-    }
-    this.digging = { x: p.body.x, z: p.body.z, noise: 1, heard: 0, warned: 0 }
-    this.toast(this.tunnel.metres === 0 ? 'You prise up the loose tile by your bunk and start on the clay underneath.' : `You lift the tile. ${this.tunnel.metres.toFixed(1)} metres so far.`, 'neutral')
-  }
-
-  private stopDigging(why: string): void {
-    this.digging = null
-    if (why) this.toast(why, 'neutral')
-  }
-
-  private updateTunnel(delta: number): void {
-    const p = this.player
-    const spot = this.tunnelSpot
-    const d = this.digging
-    this.dynamic.setTunnelHole(spot.x, spot.z, !!d && this.tunnel.metres > 0.05)
-    if (!d) return
-    if (!this.clock.locked || p.zone !== p.cell || p.inVent || Math.hypot(p.body.x - d.x, p.body.z - d.z) > 0.7) {
-      this.stopDigging('You slide the tile back over the hole.')
-      return
-    }
-    const tool = this.digTool
-    if (!tool) return this.stopDigging('Nothing left to dig with.')
-    p.body.pose = 'search'
-    const before = Math.floor(this.tunnel.metres)
-    this.tunnel.metres = Math.min(TUNNEL_LENGTH, this.tunnel.metres + delta * tool.rate)
-    const after = Math.floor(this.tunnel.metres)
-    if (after > before) {
-      p.inventory.add('rubble')
-      const milestone = TUNNEL_MILESTONES[after]
-      if (milestone) this.toast(milestone, 'good')
-      if (this.tunnel.metres >= TUNNEL_LENGTH) return this.stopDigging('')
-      if (p.inventory.full) return this.stopDigging('Your pockets are bulging with rubble. Shake it out in the yard tomorrow.')
-    }
-    // Scraping carries. An officer near your door for long enough hears it.
-    d.noise -= delta
-    if (d.noise <= 0) {
-      d.noise = 3
-      this.emit({ x: p.body.x, z: p.body.z, radius: 4, kind: 'clank' })
-    }
-    // Night officers pass about ten metres off; one who stops long enough to
-    // listen hears it. You get footsteps first, once each time one comes.
-    const near = this.guards.filter((g) => g.ko <= 0 && Math.hypot(g.x - p.body.x, g.z - p.body.z) < 11.5)
-    const close = this.guards.some((g) => g.ko <= 0 && Math.hypot(g.x - p.body.x, g.z - p.body.z) < 16)
-    if (close && d.warned <= 0) {
-      d.warned = 1
-      this.toast(this.mateLookout ? `${this.cellmate!.name} coughs. Footsteps on the landing: step away from the hole until they pass.` : 'Footsteps on the landing. Step away from the hole until they pass.', 'bad')
-    } else if (!close) d.warned = 0
-    if (near.length) d.heard += delta
-    else d.heard = Math.max(0, d.heard - delta * 0.5)
-    // A cellmate on side covers the scraping with a coughing fit.
-    if (d.heard > (this.mateLookout ? 6 : 4)) {
-      const g = near[0]
-      g.say(pick2(this.rng, ['What is that scraping? ...Right. Lights on. Stand AWAY from that floor.', "Are you DIGGING? In MY landing? With a SPOON?"]), 3)
-      this.methodHint = 'tunnel'
-      p.attempt = 'tunnel'
-      this.digging = null
-      this.caught(g)
-    }
-  }
-
-  /** A search finds the hole under the loose tile. */
-  tunnelFound(): void {
-    if (this.tunnel.metres <= 0) return
-    this.tunnel.metres = 0
-    this.memory.used.tunnel++
-    this.toast('They found the hole under the loose tile, and filled it with concrete. Back to the start.', 'bad')
-  }
-
-  private scatterRubble(): void {
-    const inv = this.player.inventory
-    const n = inv.count('rubble')
-    for (let i = 0; i < n; i++) inv.remove('rubble')
-    this.dodgyTimer = 2
-    const seen = this.guards.find((g) => g.ko <= 0 && g.canSeePlayer() && g.distanceTo(this.player.body.x, this.player.body.z) < 7)
-    if (seen) {
-      seen.suspicion = Math.max(seen.suspicion, 0.6)
-      seen.wary = Math.min(1, seen.wary + 0.15)
-      this.toast(`You shake ${n} lot${n === 1 ? '' : 's'} of rubble out of your trouser legs. ${seen.name} is looking at the little piles round your feet.`, 'bad')
-    } else this.toast(`You shake ${n} lot${n === 1 ? '' : 's'} of rubble out of your trouser legs and scuff it into the tarmac.`, 'good')
-  }
-
   // ---- The Governor's safe ----
-
-  /**
-   * Four digits: his mother's birthday (in the desk diary) and the number on
-   * his Jag's private plate (Keith sees it every day). A new combination
-   * every time someone is caught at it.
-   */
-  get safeCode(): string {
-    const r = mulberry32(this.seed * 31 + 7 + this.memory.used.safe * 7919)
-    const day = 10 + Math.floor(r() * 19)
-    const plate = 10 + Math.floor(r() * 90)
-    return `${day}${plate}`
-  }
-
-  private safeHint(): string {
-    const h = this.heist
-    const code = this.safeCode
-    if (h.knowA) return `A heavy old safe with a four-digit dial. You know it starts ${code.slice(0, 2)}. The rest? Something the Governor loves more than his mother.`
-    if (h.knowB) return `A heavy old safe with a four-digit dial. You know it ends ${code.slice(2)}. The start must be on his desk somewhere.`
-    return 'A heavy old safe with a four-digit dial. The Governor would pick numbers he cannot forget. Or a stethoscope from healthcare would let you hear the tumblers.'
-  }
-
-  private readDiary(): void {
-    this.heist.knowA = true
-    const day = this.safeCode.slice(0, 2)
-    this.toast(`The desk diary: "Mother's birthday" circled on the ${day}th, underlined three times, with "SAFE?? NO, TOO OBVIOUS" crossed out next to it. That is the first half: ${day}.`, 'good')
-  }
-
-  private startCracking(): void {
-    const b = this.player.body
-    this.cracking = { t: 30, x: b.x, z: b.z, click: 4 }
-    this.toast('Stethoscope to the door, dial in your fingers. Thirty seconds, and keep still: every click carries.', 'neutral')
-  }
-
-  private updateHeist(delta: number): void {
-    const p = this.player
-    if (p.zone === 'governor' && !this.methodHint) this.methodHint = 'safe'
-    const c = this.cracking
-    if (c) {
-      if (Math.hypot(p.body.x - c.x, p.body.z - c.z) > 1 || p.zone !== 'governor') {
-        this.cracking = null
-        this.toast('You lose the count. Start again.', 'bad')
-      } else {
-        c.t -= delta
-        c.click -= delta
-        if (c.click <= 0) {
-          c.click = 5
-          this.emit({ x: p.body.x, z: p.body.z, radius: 7, kind: 'clank' })
-        }
-        if (c.t <= 0) {
-          this.cracking = null
-          this.openSafe()
-        }
-      }
-    }
-    // Once burned, an officer looks into the office every hour.
-    const m = this.clock.minuteOfDay
-    if (this.memory.used.safe >= 1 && Math.floor(m / 60) !== Math.floor((m - delta * 2) / 60)) {
-      const office = this.grid.rooms.get('governor')!.rects[0]
-      const spot = { x: ((office.x0 + office.x1) / 2) * TILE, z: (office.y1 - 0.5) * TILE }
-      const g = this.guards.filter((gg) => gg.ko <= 0 && !gg.chasing && !gg.busy && !gg.investigate).sort((a, b) => a.distanceTo(spot.x, spot.z) - b.distanceTo(spot.x, spot.z))[0]
-      if (g) g.investigate = { x: spot.x, z: spot.z, t: 12 }
-    }
-  }
-
-  private openSafe(): void {
-    const p = this.player
-    const inv = p.inventory
-    this.heist.opened = true
-    this.achieve('safe')
-    this.dodgyTimer = 5
-    this.sounds.push({ sound: 'good', volume: 0.8 })
-    const give = (id: ItemId) => {
-      if (!inv.add(id)) this.dynamic.spawnItem(id, p.body.x + 0.5, p.body.z + 0.3, p.zone)
-    }
-    give('masterKey')
-    give('jagKeys')
-    for (let i = 0; i < 6; i++) give('voucher')
-    this.toast("The door swings open. The Governor's master key (good for five turns), the keys to his Jag, and six Greggs vouchers in an envelope marked PETTY CASH (PASTRY).", 'good')
-    // Your file: through the shredder, and the prison forgets one lesson.
-    const last = this.memory.lessons.pop()
-    if (last) {
-      this.memory.used[last.method] = Math.max(0, this.memory.used[last.method] - 1)
-      this.toast(`And a brown folder with your name on it. You feed it through the Governor's shredder. They have forgotten: ${last.text}`, 'good')
-    } else this.toast('And a brown folder with your name on it, still thin. You shred it anyway, for the joy of it.', 'neutral')
-  }
-
-  /** "Fancy a sausage roll, guv?" */
-  private offerRoll(g: Guard): void {
-    const inv = this.player.inventory
-    this.ui.closePanels()
-    if (this.memory.foodRefused) {
-      g.say("I'm not eating anything you've touched, Bandit. I've read the memo.", 3)
-      return
-    }
-    if (inv.has('sleepyRoll')) {
-      inv.remove('sleepyRoll')
-      g.say(pick2(this.rng, ["Ooh, go on then. Don't tell the Governor.", 'Is that a Greggs? For me? You shouldn\'t have. Mmf.', 'Well, it would be rude not to.']), 2.5)
-      this.drugged = { guard: g, eatsIn: 4 }
-      if (this.lure) this.lure.timer = Math.max(this.lure.timer, 8)
-      return
-    }
-    inv.remove('sausageRoll')
-    g.say('Lovely. Right, I have rounds to do.', 2.5)
-    if (this.lure?.guard === g) this.lure.timer = 0.5
-  }
-
-  private kickOff(): void {
-    const p = this.player
-    const supporters = this.prisoners.filter((pr) => pr.block === p.block && pr.supporter)
-    const need = this.memory.riotSupportNeeded
-    if (this.riot.active) return
-    const firm = gangOfWing(p.block)
-    if (!this.backingFirms(p.block).length) {
-      const leader = this.gangLeader(firm)
-      this.toast(`Nobody on this landing moves without ${GANGS[firm].name} saying so. Pay ${leader?.name ?? 'their boss'} first (${vouchers(this.memory.bribePrice(firm))}).`, 'bad')
-      return
-    }
-    if (this.clock.locked) {
-      if (p.zone !== p.cell) return
-      if (supporters.length < need) {
-        this.toast(`You shout through the hatch. ${supporters.length} answer. You need ${need}: pay another firm, or win over more of the landing with Greggs vouchers.`, 'bad')
-        return
-      }
-      const landing = this.grid.rooms.get(`block${p.block}`)!.rects[0]
-      this.riot = {
-        active: true,
-        night: true,
-        block: p.block,
-        x: ((landing.x0 + landing.x1) / 2 + 0.5) * TILE,
-        z: (landing.y0 + 1.5) * TILE,
-        timer: 55,
-        byPlayer: true,
-      }
-      this.riotOpenTimer = 30
-      this.methodHint = 'riot'
-      this.toast('The landing goes up: doors banging, a mattress on fire. The officers are coming in to pull out ringleaders...', 'good')
-      this.achieve('riot')
-      return
-    }
-    // By day: your backers start swinging at whoever is nearest.
-    const near = supporters.filter((pr) => pr.distanceTo(p.body.x, p.body.z) < 14 && pr.ko <= 0)
-    if (near.length < Math.ceil(need / 2)) {
-      this.toast(`Nobody near enough backs you (${near.length}/${Math.ceil(need / 2)}).`, 'bad')
-      return
-    }
-    for (const s of near) {
-      const target = this.prisoners.find((o) => !o.supporter && o.ko <= 0 && o.distanceTo(s.x, s.z) < 10)
-      if (target) {
-        s.fighting = true
-        s.fightTarget = target
-        target.fighting = true
-        target.fightTarget = s
-      }
-    }
-    this.lastFightByPlayer = 20
-    this.toast('"Kick off!" Your lot pile in.', 'good')
-    this.achieve('riot')
-  }
-
-  private trySleep(): void {
-    const p = this.player
-    if (!this.clock.locked || p.zone !== p.cell) {
-      this.toast('You can only sleep in your cell after lights out.', 'neutral')
-      return
-    }
-    this.sleeping = true
-    this.seated = null
-    const cell = this.grid.cells.get(p.cell)!
-    p.body.x = cell.bunks[0].x
-    p.body.z = cell.bunks[0].z + 1.1
-    p.body.pose = 'sleep'
-    p.body.y = 1.72
-    p.body.yaw = 0
-    this.toast('You sleep. (Move to wake.)', 'neutral')
-  }
-
-  private work(): void {
-    if (this.workTimer > this.clock.minutes) {
-      this.toast('You have done a shift already. Come back later.', 'neutral')
-      return
-    }
-    this.workTimer = this.clock.minutes + 90
-    if (this.player.inventory.add('voucher')) this.toast('Folded sheets for an hour and a half. Paid in a Greggs voucher.', 'good')
-    this.clock.minutes += 30
-  }
-
-  private raiseFlag(): void {
-    this.player.inventory.remove('flag')
-    this.flagUp = true
-    this.signalTonight = true
-    this.dodgyTimer = 6
-    this.toast('The flag goes up. Out on the road, someone will have seen it. They will come tonight.', 'good')
-    const seen = this.guards.find((g) => g.canSeePlayer())
-    if (seen) {
-      seen.say("Who put that up there?", 2.5)
-      seen.suspicion = Math.max(seen.suspicion, 0.6)
-      seen.searchTarget = true
-    }
-  }
-
-  private flashTorch(): void {
-    this.signalTonight = true
-    this.carArrivesAt = this.clock.minutes + 40
-    this.toast('Three long flashes from the window. Far off, headlights blink twice. They are coming.', 'good')
-  }
-
-  private startClimb(tx: number): void {
-    this.climb = { t: 3.5, tx }
-    this.methodHint = 'wall'
-    this.player.body.pose = 'wave'
-    this.player.body.yaw = 0
-    this.emit({ x: this.player.body.x, z: this.player.body.z, radius: 8, kind: 'clank' })
-    this.toast('The hook catches. You climb...', 'neutral')
-  }
-
-  private updateClimb(delta: number): void {
-    const c = this.climb!
-    c.t -= delta
-    this.player.body.y = Math.min(4.6, (3.5 - c.t) * 1.4)
-    this.updateIllegal()
-    if (c.t <= 0) {
-      this.climb = null
-      this.player.inventory.remove('grapple')
-      this.placePlayer((c.tx + 0.5) * TILE, 60.7 * TILE)
-      this.player.zone = 'outside'
-      this.toast('Over the wall! Now get to the road.', 'good')
-    }
-  }
-
-  private usePhone(): void {
-    this.player.body.pose = 'phone'
-    this.ui.phone((message) => {
-      const result = screenCall(message, this.memory.phoneStrictness)
-      if (result.ok) {
-        this.contactNights = 3
-        this.toast('Contact made. A car will wait on the road outside the wall the next three nights.', 'good')
-      } else if (result.flagged) {
-        this.memory.phoneFlags++
-        this.toast(`The duty officer was listening: "${result.flagged}" got the call cut. They will listen harder now.`, 'bad')
-        const g = this.guards.filter((gg) => gg.ko <= 0).sort((a, b) => a.distanceTo(this.player.body.x, this.player.body.z) - b.distanceTo(this.player.body.x, this.player.body.z))[0]
-        if (g) g.searchTarget = true
-      }
-      return result.reply
-    })
-  }
-
-  private talkToGuard(g: Guard): void {
-    g.stop()
-    this.converse(g.body)
-    const offer = this.missions.hasOffer(g)
-    const lines =
-      g.wary > 0.6
-        ? ["I've got my eye on you. Both of them. This one's glass.", "Don't even think about it. I can see you thinking. Your lips move.", 'Move along before I find a reason.']
-        : offer
-          ? ["Ah. You. Just the person. Keep your voice down.", "Psst. Over here. No, act natural. NATURAL.", "You look like someone who can keep their mouth shut. Can you? Good."]
-          : ["Ah, the Greggs Bandit. I've got my eye on you. And on my lunch.", 'What do you want? If it is the telly remote, the answer is no.', 'Keep your nose clean and we will get along famously.', "Not now, I'm on my break. I'm always on my break.", 'Lovely weather for it. Not that you would know.', "If you're after the toilet roll, there is none. There's never any."]
-    const line = lines[Math.floor(this.rng() * lines.length)]
-    const options = this.missions.options(g)
-    // Mr Crumpet's sweet tooth.
-    if (g.trait === 'biscuits' && !g.blindEye) {
-      const inv = this.player.inventory
-      options.unshift({
-        label: '"Custard cream, guv? Whole packet."',
-        enabled: inv.has('biscuits'),
-        run: () => {
-          inv.remove('biscuits')
-          g.blindEye = true
-          this.ui.talk(g.name, "Well. I never say no to a custard cream. And I never see anything with my mouth full. Funny, that.", [])
-          this.toast(`${g.name} will look the other way, once.`, 'good')
-        },
-      })
-    }
-    if (this.lure?.guard === g && this.lure.stage === 'inside') {
-      const inv = this.player.inventory
-      options.unshift({ label: '"Fancy a sausage roll, guv?"', enabled: inv.has('sleepyRoll') || inv.has('sausageRoll'), run: () => this.offerRoll(g) })
-    }
-    this.ui.talk(g.name, line, options)
-  }
-
-  talkTo(pr: Prisoner): void {
-    pr.stop()
-    this.converse(pr.body)
-    if (pr.isCellmate) this.goal('cellmate')
-    if (pr.sells.length) this.goal('fixer')
-    const inv = this.player.inventory
-    const options: { label: string; enabled: boolean; run: () => void }[] = []
-    const refresh = () => this.talkTo(pr)
-    options.push({
-      label: 'Give a Greggs voucher',
-      enabled: inv.has('voucher'),
-      run: () => {
-        inv.remove('voucher')
-        pr.trust = Math.min(1, pr.trust + (pr.gang ? 0.12 : 0.22))
-        pr.grudge = Math.max(0, pr.grudge - 0.2)
-        if (pr.gang) this.memory.annoy(pr.gang, -0.05)
-        pr.say('Cheers.', 1.5)
-        refresh()
-      },
-    })
-    for (const item of pr.sells) {
-      // Pills only for people the fixer knows: a voucher or two as a gift first.
-      const wary = item === 'sleepingPills' && pr.trust < PILLS_TRUST
-      options.push({
-        label: wary ? `Buy ${ITEMS[item].name} (they do not know you well enough yet)` : `Buy ${ITEMS[item].name} (2 Greggs vouchers)`,
-        enabled: !wary && inv.count('voucher') >= 2 && !inv.full,
-        run: () => {
-          inv.remove('voucher')
-          inv.remove('voucher')
-          inv.add(item)
-          pr.trust = Math.min(1, pr.trust + 0.05)
-          this.toast(`Bought: ${ITEMS[item].name}.`, 'good')
-          refresh()
-        },
-      })
-    }
-    if (pr.gang && pr.leader) {
-      const gang = pr.gang
-      const def = GANGS[gang]
-      const price = this.memory.bribePrice(gang)
-      const state = this.memory.gangs[gang]
-      const backing = this.memory.backing(gang, this.clock.minutes)
-      options.push({
-        label: backing ? `${def.name} are already with you` : `Pay ${def.name} to back a riot (${vouchers(price)})`,
-        enabled: !backing && inv.count('voucher') >= price,
-        run: () => {
-          if (state.hostility >= 0.7) {
-            this.ui.talk(pr.name, `After what you have done to my lads? Not for all the sausage rolls in Grim-on-the-Moor.`, [])
-            return
-          }
-          for (let i = 0; i < price; i++) inv.remove('voucher')
-          this.memory.pay(gang, this.clock.minutes)
-          this.toast(`${def.name} will back you for two days. ${GANGS[def.rival].name} will hear about it.`, 'good')
-          this.ui.talk(pr.name, `Pleasure doing business. Give the word (G) on ${def.wing} wing and my lads go up. You have two days.`, [])
-        },
-      })
-      // The feud with their rivals: fan it, or calm it.
-      const rival = GANGS[def.rival]
-      const feud = this.feuds.of(gang)
-      const truce = feud.truceUntil > this.clock.minutes
-      options.push({
-        label: `"${rival.name} are planning something, you know."`,
-        enabled: feud.brawlAt < 0,
-        run: () => {
-          this.ui.talk(pr.name, this.feuds.stir(gang), [])
-          this.achieve('stir')
-        },
-      })
-      options.push({
-        label: truce ? `A truce with ${rival.name} holds` : `Broker a truce with ${rival.name} (3 Greggs vouchers)`,
-        enabled: !truce && inv.count('voucher') >= 3,
-        run: () => {
-          for (let i = 0; i < 3; i++) inv.remove('voucher')
-          this.feuds.truce(gang)
-          this.achieve('peace')
-          this.ui.talk(pr.name, `Three days. Not a minute more. And tell ${rival.name} it was their idea.`, [])
-          this.toast(`A truce between ${def.name} and ${rival.name} for three days. Both think a bit better of you.`, 'good')
-        },
-      })
-    } else {
-      options.push({
-        label: 'Will you back me when it kicks off?',
-        enabled: true,
-        run: () => {
-          const yes = pr.supporter
-          let line: string
-          if (pr.gang) {
-            const leader = this.gangLeader(pr.gang)
-            line = yes ? `${leader?.name ?? 'The boss'} says we are on. Give the word.` : `Not my call. Talk to ${leader?.name ?? 'the boss'} on ${GANGS[pr.gang].wing} wing.`
-          } else line = yes ? "I've got your back. Say the word (G) and I'm in." : pr.temperament === 'snitch' ? 'Sorry mate, not my thing.' : 'Do I look like your mate? Make it worth my while.'
-          this.ui.talk(pr.name, line, [])
-        },
-      })
-    }
-    options.push({ label: 'Ask about the firms', enabled: true, run: () => this.ui.talk(pr.name, this.firmsGossip(), []) })
-    options.unshift(...this.missions.options(pr))
-    options.push({ label: 'Ask what they have heard', enabled: true, run: () => this.ui.talk(pr.name, this.gossip(pr), []) })
-    if (pr.isCellmate) options.push({ label: 'Ask about the cell', enabled: true, run: () => this.ui.talk(pr.name, cellmateTip(this.memory.round), []) })
-    if (pr.isCellmate) options.push(...this.mateOptions(pr))
-    const greeting =
-      pr.grudge > 0.5
-        ? pick2(this.rng, ['What do YOU want?', 'Oh, it is you. Marvellous. Smashing. Go away.'])
-        : pr.gang
-          ? pr.leader
-            ? `You know who I am. ${GANGS[pr.gang].name} run ${GANGS[pr.gang].wing} wing.`
-            : pick2(this.rng, ['You lost?', 'You look like you want something. Everyone wants something.'])
-          : pr.temperament === 'fixer'
-            ? pick2(this.rng, ['Looking for something? I can get things. Not Freddos. Never ask me for Freddos.', "Psst. Batteries, wire, a lighter, a screwdriver. Cash or Greggs vouchers. Mostly vouchers. Only vouchers."])
-            : pr.isCellmate
-              ? `Alright, ${this.player.name}.`
-              : pick2(this.rng, ['Oi oi, it\'s the Greggs Bandit!', 'Is it true you nicked a festive bake? In OCTOBER? Respect.', 'My cousin works in that Greggs. She has nightmares.', 'Alright?', 'Y\'alright, our kid?', 'Wotcha.', 'Ey up.', 'Alright, chief? Kettle on?', 'Do I know you? I feel like I know you. Did you do my mum\'s guttering?'])
-    const firm = pr.gang ? `, ${pr.leader ? 'boss of ' : ''}${GANGS[pr.gang].name}` : ''
-    const trust = `${firm}${pr.supporter ? ' (backs you)' : pr.grudge > 0.5 ? ' (holds a grudge)' : ''}`
-    this.ui.talk(`${pr.name}${trust}`, greeting, options)
-  }
-
-  private gossip(pr: Prisoner): string {
-    const lessons = this.memory.lessons
-    if (lessons.length && this.rng() < 0.7) {
-      const l = lessons[Math.floor(this.rng() * lessons.length)]
-      return `Word is ${l.text.charAt(0).toLowerCase()}${l.text.slice(1)} All since your little stunt.`
-    }
-    const tips = [
-      "The screws carry the keys on their belts. Get behind one while he's arguing about the footy.",
-      "Toothpaste in the strike plate sets like concrete. Door looks locked. It isn't. Whitening AND escaping.",
-      'Bang on your door at night like you are dying and they have to take you to healthcare. Make it a good groan. They score you.',
-      'Proper kick-off on the landing and every screw in the place comes running. Doors get left open. Kettles get left on.',
-      'Phones are taped. Never say when. Never say how. Talk about your nan. Everybody talks about their nan.',
-      'Lads used to run a red rag up the yard flagpole for their people on the road. Like semaphore, but dodgier.',
-      "Maintenance has every tool you could want. Shame it's behind a red door. Shame about a lot of things.",
-      'The vents run over everything except the cells. Except some cells... I have said too much. I always say too much.',
-      'Two sheets knotted make a rope. Bend a fork and tape it on and it is a hook. Blue Peter taught me that. Sort of.',
-      'Soap takes a key impression lovely. Melt a fork into it with a lighter. Do not do it in the canteen. Ask me how I know.',
-      'Chew soap before you fake it. Froth sells it. Tastes like a disappointing Tuesday.',
-      'Officers get bored. Bored officers want favours. Do one and they might not see you. Once.',
-      "Never trust a man who says 'with all due respect'. Or a man in maroon. Or the fish pie.",
-    ]
-    if (pr.gang) return this.memory.gangs[pr.gang].hostility > 0.4 ? 'Every time you mess about, the screws come down on all of us. Keep it up.' : 'Mind your own.'
-    return tips[Math.floor(this.rng() * tips.length)]
-  }
-
-  private firmsGossip(): string {
-    const lines = GANG_IDS.map((g) => {
-      const def = GANGS[g]
-      const leader = this.gangLeader(g)
-      return `${def.name} run ${def.wing} wing, ${leader?.name ?? 'nobody'} in charge. ${def.blurb}`
-    })
-    return `${lines.join(' ')} Nobody kicks off without the firm that runs the landing. Pay the boss, and mind who you pay: the Firm and the Crows hate each other, and so do the Lions and the Mob.`
-  }
-
-  openStash(): void {
-    const inv = this.player.inventory
-    const options = [
-      ...inv.items.map((it) => ({
-        label: `Hide ${ITEMS[it.id].name}`,
-        enabled: this.stash.length < 4,
-        run: () => {
-          this.stash.push(it.id)
-          inv.remove(it.id)
-          this.openStash()
-        },
-      })),
-      ...this.stash.map((id, i) => ({
-        label: `Take ${ITEMS[id].name}`,
-        enabled: !inv.full,
-        run: () => {
-          this.stash.splice(i, 1)
-          inv.add(id)
-          this.openStash()
-        },
-      })),
-    ]
-    this.ui.talk('Loose brick behind the table', 'Four slots. Officers search cells after an attempt; they do not always find it.', options)
-  }
 
   // ---- Post and the notes on your bunk ----
 
@@ -2793,7 +1510,7 @@ export class Game implements World {
     p.disguise = s.player.disguise
     p.disguiseBlown = s.player.disguiseBlown
     p.sneaking = s.player.sneaking
-    this.applyLook()
+    this.sillyExits.applyLook()
     this.stash.splice(0, this.stash.length, ...s.stash)
     Object.assign(this.memory, s.memory)
     // Saves from before a route existed: it has never been used.
@@ -2811,7 +1528,7 @@ export class Game implements World {
       if (!g) return
       g.wary = o.wary
       g.hasKeys = o.hasKeys
-      if (o.uniformTaken) this.dressGuard(g, false)
+      if (o.uniformTaken) this.sillyExits.dressGuard(g, false)
     })
     s.prisoners.forEach((o, i) => {
       const pr = this.prisoners[i]
@@ -2867,51 +1584,10 @@ export class Game implements World {
   }
 
   startSentence(): void {
-    this.deliverPost()
+    this.mail.deliverPost()
   }
 
-  private deliverPost(): void {
-    const arrived = this.post.deliver(this.clock.day, this.player.name)
-    if (arrived.length) {
-      this.toast(`Post: ${arrived.length === 1 ? `a letter from ${arrived[0].from}` : `${arrived.length} letters`}. Read it in your notebook (J, then Post).`, 'good')
-      this.sounds.push({ sound: 'good', volume: 0.5 })
-    }
-  }
-
-  /** Opens a letter: anything the censor missed goes in your pockets. */
-  readLetter(letter: Letter): void {
-    if (letter.read) return
-    letter.read = true
-    if (letter.gift) {
-      for (let i = 0; i < letter.gift.count; i++) {
-        if (!this.player.inventory.add(letter.gift.item)) this.dynamic.spawnItem(letter.gift.item, this.player.body.x, this.player.body.z + 0.6, this.player.zone)
-      }
-      this.toast(letter.gift.line, 'good')
-    }
-  }
-
-  /**
-   * Someone slips a note onto your bunk while you are out: once a day, after
-   * unlock, never while you are in. When you come back it is waiting.
-   */
-  private updateBunkNote(wasInCell: boolean): void {
-    const p = this.player
-    const cell = this.grid.cells.get(p.cell)!
-    if (p.zone !== p.cell && !this.clock.locked && this.clock.minuteOfDay > 9 * 60) this.post.leaveNote(this.clock.day)
-    if (!wasInCell && p.zone === p.cell && this.post.waiting && !this.noteAnnounced) {
-      this.noteAnnounced = true
-      this.toast('Somebody has been in. There is a note on your bunk.', 'neutral')
-    }
-    if (!this.post.waiting) this.noteAnnounced = false
-    this.dynamic.setBunkNote(cell.bunks[0].x + 0.1, cell.bunks[0].z + 0.4, !!this.post.waiting)
-  }
-
-  private noteAnnounced = false
-
-  private readBunkNote(): void {
-    const note = this.post.pickUp()
-    if (note) this.ui.showNote(note)
-  }
+  noteAnnounced = false
 
   // ---- Silly ways out ----
 
@@ -2935,342 +1611,7 @@ export class Game implements World {
   /** The daily challenge, when that is what this is. */
   daily: DailyGoal | null = null
 
-  private toggleDisguise(kind: 'guard' | 'visitor'): void {
-    const p = this.player
-    if (p.disguise === kind) {
-      p.disguise = null
-      p.disguiseBlown = false
-      this.applyLook()
-      this.toast('You change back into your prison greys.', 'neutral')
-      return
-    }
-    p.disguise = kind
-    p.disguiseBlown = false
-    for (const g of this.guards) g.recognise = 0
-    this.applyLook()
-    this.dodgyTimer = 3
-    this.toast(
-      kind === 'guard'
-        ? "You are now an officer. Walk like you are on overtime: doors open for you. Don't let anyone get a long look at your face."
-        : 'You are now a visitor. Stunning. Get to the visiting hall and leave with the others when visiting ends at 15:30.',
-      'good',
-    )
-  }
-
-  /** Puts the player's body in whatever they are wearing. */
-  private applyLook(): void {
-    const p = this.player
-    const b = p.body
-    const own = this.ownLook
-    b.top = own.top
-    b.trousers = own.trousers
-    b.hair = own.hair
-    b.cap = false
-    b.uniform = false
-    b.skirt = null
-    b.longHair = false
-    if (p.disguise === 'guard') {
-      b.top = HEX.guardShirt
-      b.trousers = HEX.guardTrousers
-      b.cap = true
-      b.uniform = true
-    } else if (p.disguise === 'visitor') {
-      b.top = HEX.dress
-      b.skirt = HEX.dress
-      b.hair = HEX.hairBlonde
-      b.longHair = true
-    }
-    this.crowd?.paint(0, b)
-  }
-
-  /** Clothes confiscated or lost: the disguise goes with them. */
-  private updateDisguise(delta: number): void {
-    const p = this.player
-    if (p.disguise) {
-      const item = p.disguise === 'guard' ? 'guardUniform' : 'visitorDisguise'
-      if (!p.inventory.has(item)) {
-        p.disguise = null
-        p.disguiseBlown = false
-        this.applyLook()
-      }
-    }
-    // The lads have opinions about your outfit.
-    this.commentTimer -= delta
-    if (p.disguise && this.commentTimer <= 0) {
-      this.commentTimer = 4
-      const near = this.prisoners.find((pr) => pr.ko <= 0 && pr.distanceTo(p.body.x, p.body.z) < 4)
-      if (near && this.rng() < 0.5) {
-        near.say(
-          p.disguise === 'guard'
-            ? pick2(this.rng, ['Evening, officer... hang on.', "Since when do they let screws wear trainers?", 'Is that you? It is, isn\'t it. Say nothing. Say NOTHING.'])
-            : pick2(this.rng, ['Nice frock.', 'Alright, darling? ...Oh no.', 'Is that the panto wig? Bold.', "You've got lovely ankles, I'll give you that."]),
-          2.5,
-        )
-      }
-    }
-  }
-
-  private takeUniform(g: Guard): void {
-    if (this.player.inventory.full) {
-      this.toast('No room in your pockets for a whole uniform.', 'bad')
-      return
-    }
-    this.player.inventory.add('guardUniform')
-    this.disguisedAs = g.name
-    this.achieve('dressed')
-    this.dressGuard(g, false)
-    this.dodgyTimer = 4
-    this.toast(`You strip ${g.name} to his vest and a pair of pink boxers. Dignity: confiscated. Wear the uniform from your pockets (Tab).`, 'good')
-  }
-
-  /** Strip an officer to vest and boxers, or dress him again at unlock. */
-  private dressGuard(g: Guard, dressed: boolean): void {
-    g.uniformTaken = !dressed
-    g.wary = dressed ? g.wary : 1
-    const b = g.body
-    b.top = dressed ? HEX.guardShirt : 0xf6f6f6
-    b.trousers = dressed ? HEX.guardTrousers : HEX.boa
-    b.cap = dressed
-    b.uniform = dressed
-    this.crowd.paint(this.bodies.indexOf(b), b)
-    if (dressed) g.say('Right. New uniform. Nobody mention the boxers.', 3)
-  }
-
-  private sillyPrompts(add: (key: string, label: string, run: () => void) => void): void {
-    const p = this.player
-    const b = p.body
-    const f = this.fixtures
-    const m = this.clock.minuteOfDay
-    const near = (pt: { x: number; z: number }, r: number) => Math.hypot(b.x - pt.x, b.z - pt.z) < r
-    for (const g of this.guards) {
-      if (g.ko > 0 && !g.uniformTaken && !p.inventory.has('guardUniform') && near(g.body, 1.8)) {
-        add('E', `Nick ${g.name}'s uniform`, () => this.takeUniform(g))
-        break
-      }
-    }
-    if (p.zone === 'changing' && near(f.staffExit, 3.5)) {
-      const keys = p.inventory.withUse('openDoor')
-      if (p.disguise === 'guard' && !p.disguiseBlown && keys && keys.id !== 'lockpick') {
-        // In uniform with keys: let yourself out, any time, like you own the place.
-        add('E', 'Let yourself out of the staff door', () => this.finish(true, 'staffDoor'))
-      } else if (p.disguise === 'guard' && !p.disguiseBlown) {
-        const shift = m >= 20 * 60 + 45 && m < 21 * 60 + 20
-        add('E', shift ? 'Clock off with the day shift' : 'Staff door (locked: keys, or wait for shift change, 20:45 to 21:20)', () => {
-          if (shift) this.sillyExit('guardDisguise')
-        })
-      } else if (!keys || keys.id === 'lockpick') add('E', 'Staff door: officers only', () => this.toast('Only staff leave this way. You would need to look like one, and have keys or wait for shift change.', 'neutral'))
-      // With a key and no uniform, the door's own unlock prompt takes it from here.
-    }
-    // The Governor's office: the desk diary and the safe.
-    if (p.zone === 'governor') {
-      const h = this.heist
-      if (!h.knowA && near(f.govDesk, 1.6)) add('E', "Read the Governor's desk diary", () => this.readDiary())
-      if (near(f.safe, 1.6)) {
-        if (h.opened) add('E', "The Governor's safe (open, and empty)", () => this.toast('Nothing left but a smell of cigars and a Greggs receipt.', 'neutral'))
-        else if (this.cracking) add('E', `Cracking the safe by ear: ${Math.ceil(this.cracking.t)}s, keep still`, () => {})
-        else if (h.knowA && h.knowB) add('E', `Open the safe (${this.safeCode})`, () => this.openSafe())
-        else if (p.inventory.has('stethoscope')) add('E', 'Crack the safe by ear (stethoscope)', () => this.startCracking())
-        else add('E', "The Governor's safe", () => this.toast(this.safeHint(), 'neutral'))
-      }
-    }
-    if (p.zone === 'chapel' && near(f.costumeBox, 1.8)) {
-      if (this.chaplain.stage === 'done' && !(p.inventory.has('wig') && p.inventory.has('dress')) && !p.inventory.has('visitorDisguise')) {
-        add('E', 'Rummage in the panto box (the Reverend lent you the key)', () => {
-          const inv = p.inventory
-          for (const id of ['wig', 'dress'] as ItemId[]) if (!inv.has(id) && !inv.add(id)) this.dynamic.spawnItem(id, b.x + 0.5, b.z, p.zone)
-          this.toast('A panto wig, a floral frock and a smell of 2009. Put them together in your pockets (Tab) for a visitor disguise.', 'good')
-        })
-      } else if (this.chaplain.stage !== 'done') add('E', 'The panto box (padlocked)', () => this.toast('The panto box is padlocked, and the Reverend wears the key on a string round his neck. Do him a favour and he might lend it.', 'neutral'))
-    }
-    if (p.zone === 'visits' && this.events.nanHere) add('E', 'Sit with your nan', () => this.events.sitWithNan())
-    if (p.zone === 'visits' && near(f.visitorsGate, 4)) {
-      if (p.disguise === 'visitor' && !p.disguiseBlown) {
-        const visitDay = isVisitingDay(this.clock.weekday)
-        const out = visitDay && m >= 15 * 60 + 25 && m < 15 * 60 + 45
-        add('E', out ? 'Shuffle out with the visitors' : visitDay ? "Visitors' gate (visitors leave at 15:30)" : "Visitors' gate (no visits today: Tuesdays, Thursdays and weekends)", () => {
-          if (out) this.sillyExit('visitorDisguise')
-        })
-      }
-    }
-    if (p.zone === 'laundry' && near(f.laundryBasket, 2)) {
-      const before = this.clock.period === 'work' && m < 11 * 60
-      add('E', before ? 'Climb into the laundry basket (the van leaves at 11:00)' : 'Laundry basket (the van takes them at 11:00 during work)', () => {
-        if (!before) return
-        p.inBasket = true
-        this.methodHint = 'laundry'
-        const paid = this.keith.bribedDay === this.clock.day
-        this.toast(
-          paid
-            ? `You burrow under a pile of damp towels. Somebody's sock is in your ear. ${this.keith.name} has been paid. Now wait for the van.`
-            : `You burrow under the towels... but every basket goes through ${this.keith.name}'s X-ray on the way out, and nobody has bought him off. Climb out (E) unless you fancy your chances.`,
-          paid ? 'neutral' : 'bad',
-        )
-      })
-    }
-    if (near(this.keith.body, 1.9) && this.keith.body.visible) add('E', `Talk to ${this.keith.name} (X-ray, hi-vis, mug)`, () => this.talkToKeith())
-    const gov = this.governor
-    if (near(gov.body, 2.0) && gov.body.visible && p.illegal === 0) add('E', 'Talk to the Governor', () => this.talkToGovernor())
-    const rev = this.chaplain
-    if (near(rev.body, 2.0) && rev.body.visible) {
-      const hint = rev.stage === 'none' ? ' (has a job)' : rev.stage === 'hunting' && this.player.inventory.count('hymnBook') >= 3 ? ' (hand in the hymn books)' : ''
-      add('E', `Talk to ${rev.name}${hint}`, () => this.talkToChaplain())
-    }
-    const vend = { x: (21 + 0.5) * 2, z: (49.2 + 0.5) * 2 + 0.6 }
-    if (p.zone === 'visits' && near(vend, 1.6) && !this.clock.locked) {
-      add('R', 'Vending machine: blue drink (1 Greggs voucher)', () => {
-        if (!p.inventory.has('voucher')) return this.toast('No Greggs vouchers. The machine stares at you.', 'bad')
-        if (p.inventory.full) return this.toast('No room in your pockets.', 'bad')
-        p.inventory.remove('voucher')
-        p.inventory.add('blueDrink')
-        this.toast('Clunk. One blue drink. The label just says BLUE.', 'good')
-      })
-    }
-  }
-
-  private leaveBasket(): void {
-    const p = this.player
-    const where = p.hidingIn
-    p.inBasket = false
-    p.hidingIn = null
-    p.body.visible = true
-    p.body.z += 0.8
-    this.methodHint = null
-    this.toast(where ? `You climb out of the ${where}.` : 'You climb out, covered in fluff.', 'neutral')
-  }
-
-  /** The visitors and the laundry van run to their own little timetables. */
-  private updateVisitors(delta: number): void {
-    const m = this.clock.minuteOfDay
-    const visiting = this.visitingTime
-    const leaving = m >= 15 * 60 + 30
-    const gate = this.grid.doorAtTile(15, 59)
-    if (visiting && leaving && gate) this.doors.hold(gate)
-    for (const v of this.visitors) {
-      const b = v.body
-      if (!visiting) {
-        b.visible = false
-        v.gone = false
-        b.x = v.seat.x
-        b.z = v.seat.z
-        continue
-      }
-      if (v.gone) continue
-      b.visible = true
-      if (!leaving) {
-        b.x = v.seat.x
-        b.z = v.seat.z
-        b.yaw = 0
-        b.pose = 'sit'
-        b.speed = 0
-        continue
-      }
-      const target = { x: this.fixtures.visitorsGate.x, z: this.fixtures.visitorsGate.z + 2 }
-      const dx = target.x - b.x
-      const dz = target.z - b.z
-      const d = Math.hypot(dx, dz)
-      if (d < 0.5) {
-        v.gone = true
-        b.visible = false
-        continue
-      }
-      b.pose = 'walk'
-      b.speed = 1.6
-      b.x += (dx / d) * 1.6 * delta
-      b.z += (dz / d) * 1.6 * delta
-      b.yaw = Math.atan2(dx, dz)
-    }
-    // The van leaves at eleven with whatever is in the baskets.
-    const p = this.player
-    if (p.inBasket && !p.hidingIn && m >= 10 * 60 + 55 && !this.vanWarned) {
-      this.vanWarned = true
-      this.toast('You hear the van reversing into the bay. Beep. Beep. Beep. Hold your breath...', 'neutral')
-    }
-    if (p.inBasket && !p.hidingIn && m >= 11 * 60 && this.clock.period === 'work') {
-      this.vanWarned = false
-      this.sillyExit('laundry')
-    }
-    if (p.inBasket && !p.hidingIn && this.clock.period !== 'work') {
-      p.inBasket = false
-      p.body.visible = true
-    }
-  }
-
-  private vanWarned = false
-
-  /**
-   * One roll of the dice at the silly exits. Better odds the first time;
-   * the prison remembers each one that got rumbled.
-   */
-  private sillyExit(method: 'guardDisguise' | 'visitorDisguise' | 'laundry'): void {
-    const p = this.player
-    this.methodHint = method
-    p.attempt = method
-    // The laundry only ever works if the X-ray man is looking at his phone.
-    const xrayFooled = method !== 'laundry' || this.keith.bribedDay === this.clock.day
-    // A brand new face fools nobody for long: worse odds in your first days.
-    const fresh = method !== 'laundry' && this.clock.day <= NEW_FACE_DAYS ? 0.5 : 1
-    if (xrayFooled && this.rng() < this.memory.sillyExitChance(method) * fresh) {
-      this.sounds.push({ sound: 'good', volume: 1 })
-      this.finish(true, method)
-      return
-    }
-    p.inBasket = false
-    p.body.visible = true
-    if (method === 'laundry') {
-      const bay = this.fixtures.van
-      p.body.x = bay.x - 1.5
-      p.body.z = bay.z
-      p.zone = 'bay'
-    }
-    if (method === 'laundry') {
-      this.keithSays(
-        xrayFooled
-          ? "I KNOW I said I'd look away but the governor was standing RIGHT behind me."
-          : pick2(this.rng, ["That basket's got a skeleton in it. A WALKING skeleton.", "Twenty-two years. Phones in pies, a ferret in a duvet, and now YOU."]),
-      )
-      if (xrayFooled) {
-        this.keith.name = this.memory.used.laundry === 0 ? 'Brenda' : 'Clive'
-        this.keith.bribedDay = -1
-      }
-    }
-    const officer = this.guards.filter((g) => g.ko <= 0).sort((a, b) => a.distanceTo(p.body.x, p.body.z) - b.distanceTo(p.body.x, p.body.z))[0]
-    officer.say(
-      method === 'guardDisguise'
-        ? pick2(this.rng, [`Hang about. ${officer.colleague()} is six foot four with a moustache. You are neither.`, "Warrant card? ...That's a Tesco Clubcard."])
-        : method === 'visitorDisguise'
-          ? pick2(this.rng, ['Madam, you have a prison number on your neck. And a beard.', "Lovely to see you, Mrs... Mrs... that's a pillowcase, not a handbag."])
-          : pick2(this.rng, ['This pillowcase is breathing.', "Since when do towels wear trainers?"]),
-      3.5,
-    )
-    this.caught(officer)
-  }
-
-  private keithSays(text: string): void {
-    this.keith.speech = text
-    this.keith.speechTimer = 3.5
-  }
-
-  /**
-   * The X-ray operator's day: a cuppa in the canteen at breakfast and lunch,
-   * collecting baskets from the laundry before the van, and the rest of the
-   * time sat at his machine in the bay doing the crossword.
-   */
-  private updateKeith(delta: number): void {
-    const k = this.keith
-    const m = this.clock.minuteOfDay
-    const period = this.clock.period
-    let spot = { x: this.fixtures.xray.x, z: this.fixtures.xray.z, pose: 'sit' as const as 'sit' | 'stand' | 'search' }
-    if (period === 'breakfast' || period === 'lunch') spot = { x: 45 * 2, z: 27 * 2, pose: 'sit' }
-    else if (period === 'work' && m >= 10 * 60) spot = { x: this.fixtures.laundryBasket.x - 3.4, z: this.fixtures.laundryBasket.z - 1.8, pose: 'search' }
-    k.body.visible = !this.clock.locked
-    k.body.x = spot.x
-    k.body.z = spot.z
-    k.body.pose = spot.pose
-    k.body.speed = 0
-    k.body.yaw = period === 'work' ? Math.PI / 2 : 0
-    if (k.speechTimer > 0) k.speechTimer -= delta
-    if (k.speechTimer > 0) this.bubbles.push({ body: k.body, text: k.speech, who: null })
-  }
+  vanWarned = false
 
   /** Swaps how people are drawn, repainting everyone into the new crowd. */
   useCrowd(next: Game['crowd']): void {
@@ -3295,477 +1636,128 @@ export class Game implements World {
     return out
   }
 
-  private updateChaplain(delta: number): void {
-    const r = this.chaplain
-    const period = this.clock.period
-    // In his chapel all day, behind the altar, facing the pews. Lunch with
-    // the lads in the canteen, because he believes in it.
-    const altar = this.fixtures.altar
-    let spot = { x: altar.x + 1.2, z: altar.z, yaw: Math.PI / 2, pose: 'stand' as 'stand' | 'sit' | 'talk' }
-    if (period === 'lunch') spot = { x: 46 * 2, z: 27 * 2, yaw: 0, pose: 'sit' }
-    r.body.visible = !this.clock.locked
-    if (this.talkingTo !== r.body) {
-      r.body.x = spot.x
-      r.body.z = spot.z
-      r.body.yaw = spot.yaw
-      r.body.pose = spot.pose
-    }
-    r.body.speed = 0
-    r.speechTimer -= delta
-    if (r.speechTimer <= 0 && r.body.visible && Math.hypot(this.player.body.x - r.body.x, this.player.body.z - r.body.z) < 7 && this.rng() < delta * 0.08) {
-      r.speech = pick2(this.rng, [
-        'Lovely to see a new face. Well. An old face. A face.',
-        'Panto auditions Thursday. We need a back half of a horse.',
-        'The Lord moves in mysterious ways. So does the tea trolley.',
-        'Choir at four. Bring your lungs.',
-      ])
-      r.speechTimer = 5
-    }
-    if (r.speechTimer > 0 && r.body.visible) this.bubbles.push({ body: r.body, text: r.speech, who: null })
-  }
-
-  private updateGovernor(delta: number): void {
-    const gv = this.governor
-    const m = this.clock.minuteOfDay
-    const weekday = this.clock.weekday < 5
-    const inspection = this.events.today === 'inspection' && m >= 10 * 60 && m < 16 * 60
-    const was = gv.at
-    const wanted = this.secret?.governorSpot?.() ?? null
-    gv.at = wanted ? 'event' : inspection ? 'tour' : !weekday || this.clock.locked ? 'away' : m >= 750 && m < 810 ? 'car' : m >= 570 && m < 990 ? 'office' : 'away'
-    const b = gv.body
-    b.visible = gv.at !== 'away'
-    if (this.talkingTo !== b) {
-      if (gv.at === 'office') {
-        b.x = this.fixtures.govDesk.x
-        b.z = this.fixtures.govDesk.z - 0.25
-        b.yaw = 0
-        b.pose = 'sit'
-      } else if (gv.at === 'car') {
-        b.x = this.fixtures.jag.x - 1.5
-        b.z = this.fixtures.jag.z + 0.4
-        b.yaw = Math.PI / 2
-        b.pose = 'search'
-      } else if (wanted) {
-        // Wherever the secret wants him: directing the play, meeting a duke.
-        b.x = wanted.x
-        b.z = wanted.z
-        b.yaw = wanted.yaw
-        b.pose = wanted.pose
-        if (wanted.lines?.length && gv.speechTimer <= -6 && this.rng() < 0.01) {
-          gv.speech = pick2(this.rng, wanted.lines)
-          gv.speechTimer = 3.5
-        }
-      } else if (gv.at === 'tour') this.governorTour(delta, was !== 'tour')
-    }
-    if (gv.at !== 'tour') b.speed = 0
-    // If he sees you where you should not be, he shouts for security.
-    gv.shouted -= delta
-    const p = this.player
-    const close = Math.hypot(p.body.x - b.x, p.body.z - b.z)
-    const inHisOffice = gv.at === 'office' && p.zone === 'governor'
-    const seen = b.visible && !p.inVent && p.illegal > 0 && (inHisOffice || (close < 7 && (p.zone === this.grid.zone(Math.floor(b.x / TILE), Math.floor(b.z / TILE)) || close < 4)))
-    if (seen && gv.shouted <= 0) {
-      gv.shouted = 30
-      gv.speech = pick2(this.rng, ['Can I HELP you? SECURITY!', 'Is that... the Greggs Bandit? In MY office? SECURITY!', 'Officers! OFFICERS! There is a prisoner touching my car!'])
-      gv.speechTimer = 3
-      this.alarm.active = true
-      this.alarm.x = p.body.x
-      this.alarm.z = p.body.z
-      this.alarm.timer = 20
-      const near = this.guards.filter((g) => g.ko <= 0).sort((a, c) => a.distanceTo(p.body.x, p.body.z) - c.distanceTo(p.body.x, p.body.z)).slice(0, 2)
-      for (const g of near) {
-        g.chasing = true
-        g.suspicion = 1
-        g.lastSeen = { x: p.body.x, z: p.body.z, t: 0 }
-      }
-      if (!p.attempt) p.attempt = this.methodHint ?? (p.zone === 'governor' ? 'safe' : 'gate')
-    }
-    gv.speechTimer -= delta
-    if (gv.speechTimer > 0 && b.visible) this.bubbles.push({ body: b, text: gv.speech, who: null })
-  }
-
-  /** Inspection day: the Governor walks the inspector round the landings. */
-  private governorTour(delta: number, start: boolean): void {
-    const gv = this.governor
-    const b = gv.body
-    const stops = ['blockA', 'corridorN', 'hub', 'corridorS', 'blockC', 'yard', 'blockD', 'hub', 'blockB']
-    if (start) {
-      const c = tileCentre(39, 24)
-      b.x = c.x
-      b.z = c.z
-      gv.tour = []
-    }
-    if (!gv.tour.length) {
-      const from = worldToTile(b.x, b.z)
-      const to = this.grid.randomTileIn(stops[Math.floor(this.rng() * stops.length)], this.rng)
-      gv.tour = findPath(this.grid, from, to, () => true) ?? []
-      if (!gv.tour.length) return
-    }
-    const next = tileCentre(gv.tour[0].tx, gv.tour[0].ty)
-    const dx = next.x - b.x
-    const dz = next.z - b.z
-    const d = Math.hypot(dx, dz)
-    const step = 1.3 * delta
-    if (d <= step) {
-      b.x = next.x
-      b.z = next.z
-      gv.tour.shift()
-    } else {
-      b.x += (dx / d) * step
-      b.z += (dz / d) * step
-      b.yaw = Math.atan2(dx, dz)
-    }
-    b.pose = 'walk'
-    b.speed = 1.3
-    if (gv.speechTimer <= 0 && this.rng() < delta * 0.05) {
-      gv.speech = pick2(this.rng, ['And this, Inspector, is our award-winning landing.', 'Mind the puddle. It is a feature.', 'We pride ourselves on the custard here.', 'Nobody has ever escaped. Not once. I check daily.'])
-      gv.speechTimer = 4
-    }
-  }
-
-  /** The secret's guest: dressed once, then wherever the secret says. */
-  private updateGuest(delta: number): void {
-    const gu = this.guest
-    const b = gu.body
-    const info = this.secret?.guestLook?.()
-    if (info && info.name !== this.guestDressed) {
-      this.guestDressed = info.name
-      gu.name = info.name
-      Object.assign(b, info.look)
-      this.crowd.paint(this.bodies.indexOf(b), b)
-    }
-    const spot = info ? (this.secret?.guestSpot?.() ?? null) : null
-    b.visible = !!spot
-    if (spot && this.talkingTo !== b) {
-      b.x = spot.x
-      b.z = spot.z
-      b.yaw = spot.yaw
-      b.pose = spot.pose
-      b.speed = 0
-    }
-    gu.speechTimer -= delta
-    if (gu.speechTimer > 0 && b.visible) this.bubbles.push({ body: b, text: gu.speech, who: null })
-  }
-
-  private talkToGovernor(): void {
-    const gv = this.governor
-    this.converse(gv.body)
-    this.achieve('governor')
-    if (this.secret?.talkGovernor?.()) return
-    const lines =
-      this.memory.round > 1
-        ? ["Back again. I admire persistence. I also admire concrete, and I have ordered a great deal of it.", 'You are making my prison better every time you fail. I do appreciate it.']
-        : gv.at === 'tour'
-          ? ['Inspector, this is one of our more... enterprising residents. Wave, ' + this.player.name + '.', 'Smile for the Inspector. Lovely.']
-          : ["Pettigrew. Governor. You will be the one with the pastry.", 'Keep up the good work. Whatever it is you are doing. I will find out.', 'My door is always open. Except to you. And the safe is always locked. Especially to you.']
-    this.ui.talk(`${gv.name}, Governor`, pick2(this.rng, lines), [])
-  }
-
-  /** Puts the three stolen hymn books out where they were last seen. */
-  private scatterHymnBooks(): void {
-    for (const spot of Game.HYMN_SPOTS) {
-      const t = this.grid.randomTileIn(spot.zone, this.rng)
-      const c = tileCentre(t.tx, t.ty)
-      this.dynamic.spawnItem('hymnBook', c.x + (this.rng() - 0.5) * 0.8, c.z + (this.rng() - 0.5) * 0.8, spot.zone)
-    }
-  }
-
-  private talkToChaplain(): void {
-    if (this.secret?.talkChaplain?.()) {
-      this.converse(this.chaplain.body)
-      return
-    }
-    const r = this.chaplain
-    const p = this.player
-    const inv = p.inventory
-    const title = `${r.name}, chaplain`
-    this.converse(r.body)
-    if (r.stage === 'none') {
-      this.ui.talk(
-        title,
-        LINES['chaplain.intro'].text,
-        [
-          {
-            label: 'Take the job: find three hymn books',
-            enabled: true,
-            run: () => {
-              r.stage = 'hunting'
-              this.scatterHymnBooks()
-              this.ui.talk(
-                title,
-                LINES['chaplain.accept'].text,
-                [],
-                'chaplain.accept',
-              )
-              this.toast('New job: The Missing Hymn Books. Find three hymn books for the Reverend.', 'good')
-            },
-          },
-          {
-            label: 'What do I get?',
-            enabled: true,
-            run: () =>
-              this.ui.talk(
-                title,
-                LINES['chaplain.reward'].text,
-                [],
-                'chaplain.reward',
-              ),
-          },
-        ],
-        'chaplain.intro',
-      )
-      return
-    }
-    if (r.stage === 'hunting') {
-      const have = inv.count('hymnBook')
-      if (have >= 3) {
-        this.ui.talk(title, LINES['chaplain.found'].text, [
-          {
-            label: 'Hand over the hymn books',
-            enabled: true,
-            run: () => {
-              for (let i = 0; i < 3; i++) inv.remove('hymnBook')
-              r.stage = 'done'
-              r.alibi = true
-              this.toast('The Reverend presses a little brass key into your hand: "For the panto box. Wardrobe needs a volunteer."', 'good')
-              let paid = 0
-              for (let i = 0; i < 3; i++) if (inv.add('voucher')) paid++
-              for (let i = paid; i < 3; i++) this.dynamic.spawnItem('voucher', p.body.x + 0.6, p.body.z + 0.4 * i, p.zone)
-              this.ui.talk(
-                title,
-                LINES['chaplain.thanks'].text,
-                [],
-                'chaplain.thanks',
-              )
-              this.toast(`Job done: The Missing Hymn Books. ${vouchers(3)}, and the Reverend owes you one alibi.`, 'good')
-            },
-          },
-        ], 'chaplain.found')
-      } else {
-        this.ui.talk(title, LINES['chaplain.waiting'].text, [], 'chaplain.waiting')
-        if (have) this.toast(`Hymn books found: ${have} of 3.`, 'neutral')
-      }
-      return
-    }
-    const after = r.alibi ? pick2(this.rng, ['chaplain.after.1', 'chaplain.after.2'] as const) : 'chaplain.spent'
-    this.ui.talk(title, LINES[after].text, [], after)
-  }
-
-  private talkToKeith(): void {
-    this.converse(this.keith.body)
-    const k = this.keith
-    const inv = this.player.inventory
-    const need = this.memory.xrayBribe
-    const paid = k.bribedDay === this.clock.day
-    const keith = k.name === 'Keith'
-    const intro = keith ? LINES['keith.intro'].text : `${k.name}. I replaced Keith. Keith is now "between opportunities". I am not Keith. I want ${need} of everything.`
-    const voice = paid ? 'keith.paid' : keith ? 'keith.intro' : undefined
-    this.ui.talk(`${k.name}, X-ray operator`, paid ? LINES['keith.paid'].text : intro, [
-      {
-        label: `Slip ${k.name} ${need} blue drink${need > 1 ? 's' : ''} and ${need} sausage roll${need > 1 ? 's' : ''}`,
-        enabled: !paid && inv.count('blueDrink') >= need && inv.count('sausageRoll') >= need,
-        run: () => {
-          for (let i = 0; i < need; i++) {
-            inv.remove('blueDrink')
-            inv.remove('sausageRoll')
-          }
-          k.bribedDay = this.clock.day
-          const take = pick2(this.rng, ['keith.bribed.1', 'keith.bribed.2'] as const)
-          this.ui.talk(`${k.name}, X-ray operator`, LINES[take].text, [], take)
-          this.toast(`${k.name} is paid off for today. Get in a laundry basket before 11:00.`, 'good')
-        },
-      },
-      {
-        label: 'Ask about the Governor',
-        enabled: true,
-        run: () => {
-          const plate = this.safeCode.slice(2)
-          this.heist.knowB = true
-          this.ui.talk(`${k.name}, X-ray operator`, `The Governor? Green Jag, private plate: R P ${plate}. Polishes it in the staff car park every lunchtime. Says it's the only thing in here that doesn't answer back.`, [])
-          this.toast(`R P ${plate}. A man who puts his initials on his car puts his numbers everywhere. Second half of the combination: ${plate}?`, 'good')
-        },
-      },
-      {
-        label: 'Ask what he fancies',
-        enabled: true,
-        run: () =>
-          need > 1
-            ? this.ui.talk(`${k.name}, X-ray operator`, `A blue drink. The proper blue, from the vending machine in visits. And a sausage roll from the canteen. ${need} of each, mind. Inflation.`, [])
-            : this.ui.talk(`${k.name}, X-ray operator`, LINES['keith.wants'].text, [], 'keith.wants'),
-      },
-    ], voice)
-  }
-
   // ---- Crafting (called by the UI) ----
-
-  craftable(recipe: Recipe): boolean {
-    if (recipe.makes === 'flatSpoon' && this.player.zone !== 'yard') return false
-    return this.player.inventory.canCraft(recipe)
-  }
-
-  craft(recipe: Recipe): void {
-    if (!this.craftable(recipe)) return
-    this.player.inventory.craft(recipe)
-    this.dodgyTimer = 5
-    this.toast(`Made: ${ITEMS[recipe.makes].name}. ${ITEMS[recipe.makes].blurb}`, 'good')
-  }
-
-  private craftNamed(id: ItemId): void {
-    const r = RECIPES.find((rr) => rr.makes === id)
-    if (r && this.craftable(r)) this.craft(r)
-  }
-
-  drop(index: number): void {
-    const it = this.player.inventory.items[index]
-    if (!it) return
-    this.player.inventory.items.splice(index, 1)
-    this.dynamic.spawnItem(it.id, this.player.body.x, this.player.body.z + 0.6, this.player.zone)
-  }
-
-  useItem(index: number): void {
-    const it = this.player.inventory.items[index]
-    if (!it) return
-    if (it.id === 'guardUniform' || it.id === 'visitorDisguise') this.toggleDisguise(it.id === 'guardUniform' ? 'guard' : 'visitor')
-    else if (it.id === 'soap') this.chewSoap()
-    else if (ITEMS[it.id].uses.includes('distract')) {
-      // Throw it ahead: officers go and look.
-      const b = this.player.body
-      const x = b.x + Math.sin(b.yaw) * 7
-      const z = b.z + Math.cos(b.yaw) * 7
-      this.player.inventory.items.splice(index, 1)
-      this.dynamic.spawnItem(it.id, x, z, this.grid.zoneAtWorld(x, z))
-      this.emit({ x, z, radius: 12, kind: 'throw' })
-      this.toast('Clatter. Heads turn.', 'neutral')
-    } else this.toast(ITEMS[it.id].blurb, 'neutral')
-  }
 
   // ------------------------------------------------------------------
   // Riots, noise, alarms
   // ------------------------------------------------------------------
 
-  private updateRiot(delta: number): void {
-    this.lastFightByPlayer = Math.max(0, this.lastFightByPlayer - delta)
-    if (this.riot.active && this.riot.night) {
-      this.riot.timer -= delta
-      if (this.riot.timer <= 0) {
-        this.riot.active = false
-        this.toast('The landing is quiet again. Officers count heads.', 'neutral')
-      }
-      return
-    }
-    const fighters = this.prisoners.filter((p) => p.fighting && p.ko <= 0)
-    if (!this.riot.active) {
-      if (fighters.length >= 3) {
-        const cx = fighters.reduce((s, f) => s + f.x, 0) / fighters.length
-        const cz = fighters.reduce((s, f) => s + f.z, 0) / fighters.length
-        const close = fighters.filter((f) => Math.hypot(f.x - cx, f.z - cz) < 14)
-        if (close.length >= 3) {
-          this.riot = { active: true, night: false, block: null, x: cx, z: cz, timer: 60, byPlayer: this.lastFightByPlayer > 0 }
-          this.riotQuiet = 0
-          this.toast(this.riot.byPlayer ? 'It has gone off! Officers are running in from everywhere. Doors are being left open...' : 'A fight has broken out.', this.riot.byPlayer ? 'good' : 'neutral')
-          if (this.riot.byPlayer) this.methodHint = 'riot'
-          this.emit({ x: cx, z: cz, radius: 40, kind: 'alarm' })
-        }
-      }
-      return
-    }
-    this.riot.timer -= delta
-    if (fighters.length) {
-      this.riot.x += (fighters[0].x - this.riot.x) * delta * 0.5
-      this.riot.z += (fighters[0].z - this.riot.z) * delta * 0.5
-    }
-    this.riotQuiet = fighters.length < 2 ? this.riotQuiet + delta : 0
-    if (this.riotQuiet > 5 || this.riot.timer <= 0) {
-      this.riot.active = false
-      for (const f of fighters) f.subdue()
-      this.toast('The disturbance is over.', 'neutral')
-      if (this.riot.byPlayer && this.methodHint === 'riot' && !this.player.attempt) this.methodHint = null
-    }
+
+  // ---- Pass-throughs to the feature modules, for the UI, tests and scripts ----
+
+  attack(...args: Parameters<PlayerActions['attack']>): ReturnType<PlayerActions['attack']> {
+    return this.actions.attack(...args)
   }
 
-  private updateNoises(delta: number): void {
-    for (let i = this.noises.length - 1; i >= 0; i--) {
-      const n = this.noises[i]
-      if (n.age === 0) {
-        // Fresh noise: the nearest free officer in earshot comes to look.
-        if (n.kind === 'clank' || n.kind === 'throw') {
-          let best: Guard | null = null
-          let bd = Infinity
-          for (const g of this.guards) {
-            if (g.ko > 0 || g.chasing || g.busy || this.sickCall?.responders.includes(g)) continue
-            // The nosy hear it from much further off.
-            const d = Math.hypot(g.x - n.x, g.z - n.z) / (g.trait === 'nosy' ? 1.6 : 1)
-            if (d < n.radius && d < bd) {
-              bd = d
-              best = g
-            }
-          }
-          if (best && !best.investigate) {
-            // In the ducts, the sound comes out of the nearest grille.
-            if (this.player.inVent && n.kind === 'clank') {
-              let gr = this.grid.grates[0]
-              let gd = Infinity
-              for (const g of this.grid.grates) {
-                const d = Math.hypot((g.tx + 0.5) * TILE - n.x, (g.ty + 0.5) * TILE - n.z)
-                if (d < gd) {
-                  gd = d
-                  gr = g
-                }
-              }
-              const c = tileCentre(gr.tx, gr.ty)
-              best.investigate = { x: c.x, z: c.z, t: 6 + this.memory.ventListening * 10 }
-              best.say('What was that? ...In the vents?', 2)
-            } else {
-              best.investigate = { x: n.x, z: n.z, t: 4 }
-              best.say(n.kind === 'throw' ? 'Who threw that?' : 'Hello?', 1.5)
-            }
-          }
-        }
-      }
-      n.age += delta
-      if (n.age > 0.2) this.noises.splice(i, 1)
-    }
+  buildPrompts(...args: Parameters<PromptBuilder['buildPrompts']>): ReturnType<PromptBuilder['buildPrompts']> {
+    return this.promptBuilder.buildPrompts(...args)
   }
 
-  private updateAlarm(delta: number): void {
-    if (!this.alarm.active) return
-    this.alarm.timer -= delta
-    // Officers nearby join the hunt.
-    for (const g of this.guards) {
-      if (g.chasing || g.ko > 0) continue
-      if (Math.hypot(g.x - this.alarm.x, g.z - this.alarm.z) < 30 && !g.investigate) g.investigate = { x: this.alarm.x, z: this.alarm.z, t: 6 }
-    }
-    if (this.alarm.timer <= 0 || !this.guards.some((g) => g.chasing)) {
-      if (this.alarm.timer <= 0) this.alarm.active = false
-    }
+  callSick(...args: Parameters<PlayerActions['callSick']>): ReturnType<PlayerActions['callSick']> {
+    return this.actions.callSick(...args)
   }
-}
 
-const WALL_TOP = 2.75
-/** How far apart two people stand to talk. */
-/** Metres from under your bunk to the allotments beyond the wall. */
-export const TUNNEL_LENGTH = 30
-/** How far your cellmate must trust you before they will sleep over a tunnel. */
-const TUNNEL_TRUST = 0.4
-const TUNNEL_MILESTONES: Record<number, string> = {
-  5: 'Five metres. Down through the floor and into the old foundations.',
-  10: 'Ten metres. You break into an old Victorian drain. It smells like the canteen.',
-  15: 'Halfway. Somewhere above you, the yard. You can hear the flagpole halyard tapping.',
-  20: 'Twenty metres. The drain narrows. You are under the yard now.',
-  25: 'Twenty-five metres. Footings of the outer wall. You go under them.',
-  30: 'Thirty metres. Cold air, and the smell of compost. You are under the allotments beyond the wall. Crawl out tonight.',
-}
+  get cellmateGrass() {
+    return this.cellmateStory.cellmateGrass
+  }
 
-/** How much a fixer must trust you before selling sleeping pills. */
-const PILLS_TRUST = 0.4
-const TALK_GAP = 1.9
+  craft(...args: Parameters<Pockets['craft']>): ReturnType<Pockets['craft']> {
+    return this.pockets.craft(...args)
+  }
 
-function cellmateTip(round: number): string {
-  return round === 1
-    ? "See that grille behind the table? Maintenance never put it on the list. Screws are rusted to nothing; a spoon'd turn them. Goes up into the ducts. Don't get caught in there, mind, or they'll weld it."
-    : "They've been at all the locks since you started. Keep your head down for a day or two. They forget faster than you think. They don't, actually."
-}
+  craftable(...args: Parameters<Pockets['craftable']>): ReturnType<Pockets['craftable']> {
+    return this.pockets.craftable(...args)
+  }
 
-function pick2<T>(rng: () => number, list: T[]): T {
-  return list[Math.floor(rng() * list.length)]
+  drop(...args: Parameters<Pockets['drop']>): ReturnType<Pockets['drop']> {
+    return this.pockets.drop(...args)
+  }
+
+  enterVent(...args: Parameters<PlayerActions['enterVent']>): ReturnType<PlayerActions['enterVent']> {
+    return this.actions.enterVent(...args)
+  }
+
+  kickOff(...args: Parameters<PlayerActions['kickOff']>): ReturnType<PlayerActions['kickOff']> {
+    return this.actions.kickOff(...args)
+  }
+
+  leaveMess(...args: Parameters<Toilets['leaveMess']>): ReturnType<Toilets['leaveMess']> {
+    return this.toilets.leaveMess(...args)
+  }
+
+  mateEpilogue(...args: Parameters<CellmateStory['mateEpilogue']>): ReturnType<CellmateStory['mateEpilogue']> {
+    return this.cellmateStory.mateEpilogue(...args)
+  }
+
+  mateMorning(...args: Parameters<CellmateStory['mateMorning']>): ReturnType<CellmateStory['mateMorning']> {
+    return this.cellmateStory.mateMorning(...args)
+  }
+
+  mateNight(...args: Parameters<CellmateStory['mateNight']>): ReturnType<CellmateStory['mateNight']> {
+    return this.cellmateStory.mateNight(...args)
+  }
+
+  offerRoll(...args: Parameters<PlayerActions['offerRoll']>): ReturnType<PlayerActions['offerRoll']> {
+    return this.actions.offerRoll(...args)
+  }
+
+  readLetter(...args: Parameters<Mail['readLetter']>): ReturnType<Mail['readLetter']> {
+    return this.mail.readLetter(...args)
+  }
+
+  get safeCode() {
+    return this.safeHeist.safeCode
+  }
+
+  startCracking(...args: Parameters<SafeHeist['startCracking']>): ReturnType<SafeHeist['startCracking']> {
+    return this.safeHeist.startCracking(...args)
+  }
+
+  talkTo(...args: Parameters<Talk['talkTo']>): ReturnType<Talk['talkTo']> {
+    return this.talk.talkTo(...args)
+  }
+
+  talkToChaplain(...args: Parameters<Characters['talkToChaplain']>): ReturnType<Characters['talkToChaplain']> {
+    return this.characters.talkToChaplain(...args)
+  }
+
+  talkToGovernor(...args: Parameters<Characters['talkToGovernor']>): ReturnType<Characters['talkToGovernor']> {
+    return this.characters.talkToGovernor(...args)
+  }
+
+  talkToGuard(...args: Parameters<Talk['talkToGuard']>): ReturnType<Talk['talkToGuard']> {
+    return this.talk.talkToGuard(...args)
+  }
+
+  talkToKeith(...args: Parameters<Characters['talkToKeith']>): ReturnType<Characters['talkToKeith']> {
+    return this.characters.talkToKeith(...args)
+  }
+
+  toggleDisguise(...args: Parameters<SillyExits['toggleDisguise']>): ReturnType<SillyExits['toggleDisguise']> {
+    return this.sillyExits.toggleDisguise(...args)
+  }
+
+  trySleep(...args: Parameters<PlayerActions['trySleep']>): ReturnType<PlayerActions['trySleep']> {
+    return this.actions.trySleep(...args)
+  }
+
+  tunnelFound(...args: Parameters<TunnelDig['tunnelFound']>): ReturnType<TunnelDig['tunnelFound']> {
+    return this.tunnelDig.tunnelFound(...args)
+  }
+
+  updateToilets(...args: Parameters<Toilets['updateToilets']>): ReturnType<Toilets['updateToilets']> {
+    return this.toilets.updateToilets(...args)
+  }
+
+  updateTrespass(...args: Parameters<Trespass['updateTrespass']>): ReturnType<Trespass['updateTrespass']> {
+    return this.trespass.updateTrespass(...args)
+  }
+
+  useItem(...args: Parameters<Pockets['useItem']>): ReturnType<Pockets['useItem']> {
+    return this.pockets.useItem(...args)
+  }
+
+  useKey(...args: Parameters<PlayerActions['useKey']>): ReturnType<PlayerActions['useKey']> {
+    return this.actions.useKey(...args)
+  }
 }
