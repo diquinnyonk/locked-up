@@ -113,7 +113,7 @@ export function buildPrison(grid: Grid): { group: Group; fixtures: Fixtures } {
     for (let tx = 0; tx < MAP_W; tx++) {
       if (grid.tile(tx, ty) !== Tile.Perimeter) continue
       add(...bandedBox(TILE, TILE, at(tx, ty), [[0.6, HEX.brickShade], [PERIMETER_H - 0.3, HEX.brick], [PERIMETER_H, HEX.wallCream]], HEX.wallCream))
-      const horizontal = ty === 5 || ty === 59
+      const horizontal = grid.tile(tx - 1, ty) === Tile.Perimeter || grid.tile(tx + 1, ty) === Tile.Perimeter
       add(ring(0.45, 0.04, { ...at(tx, ty, PERIMETER_H + 0.35), ry: horizontal ? 0 : Math.PI / 2 }, HEX.wire, 0))
       if ((tx + ty) % 7 === 0) add(cyl(0.12, 0.14, 2.2, at(tx, ty, PERIMETER_H), HEX.steel, 6))
     }

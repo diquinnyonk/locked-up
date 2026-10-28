@@ -15,6 +15,8 @@ export function mulberry32(seed: number): () => number {
 
 
 export const WALL_TOP = 2.75
+/** The player's body, for walking into walls, furniture and people. */
+export const PLAYER_RADIUS = 0.34
 /** How far apart two people stand to talk. */
 /** Metres from under your bunk to the allotments beyond the wall. */
 export const TUNNEL_LENGTH = 30

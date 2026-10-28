@@ -220,7 +220,7 @@ export class SillyExits {
     const m = this.game.clock.minuteOfDay
     const visiting = this.game.visitingTime
     const leaving = m >= 15 * 60 + 30
-    const gate = this.game.grid.doorAtTile(15, 59)
+    const gate = this.game.grid.doors.find((d) => d.kind === 'perimeter' && d.zones[0] === 'visits')
     if (visiting && leaving && gate) this.game.doors.hold(gate)
     for (const v of this.game.visitors) {
       const b = v.body

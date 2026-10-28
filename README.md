@@ -744,8 +744,9 @@ src/
               item models, the car and the fire engine
   shaders/    toon shader (Windward's, plus a shared day/night world tint)
   render/     cel post pipeline, the instanced crowd, the rigged people
-  world/      tile grid and layout, A* and collision, static build, moving parts,
+  world/      tile grid, A*, collision, static build, moving parts,
               Things (objects with a model, a place and prompts)
+  world/maps/ the prison layout as data (grim.json)
   npc/        behaviour trees, officers, prisoners, the prison's memory
   game/       the regime clock, doors, items and recipes, the phone, events,
               feuds, routes, secrets, basketball, records, saves, and the Game
@@ -774,6 +775,25 @@ do next to it, and optionally what it does each frame. Register one with
 `game.things.add({ id, model, place, prompts?, update? })` and the registry
 builds its mesh the first time it is shown, places it every frame and offers
 its prompts; nothing else needs to change.
+
+Everything that moves goes through one set of collision rules
+(`src/world/Collision.ts`): `walk` slides a person along walls, shut doors
+and furniture, `separate` keeps people from standing inside each other, and
+`bounce` flies a ball off walls (by their height) and the floor. A door open
+enough to let the player through lets an officer through, and a wall nobody
+can walk through is a wall the basketball comes back off.
+
+The prison itself is a map file, `src/world/maps/grim.json`: its size and
+outer wall, the cell wings (where each sits, whether it is mirrored, which
+corridor its gate opens onto, where its central officer stands), every room
+as rectangles of floor, every door and what it joins, the stretch of wall a
+grappling hook can go over, the vents and their grates. `Grid` builds the
+walkable world from it (`src/world/PrisonMap.ts` describes the format) and
+`npm test` checks it: doors between the rooms they name, no overlapping
+rooms, every room walkable from your cell, every grate on one vent network.
+Moving a room or adding a wing is an edit to that file. Furniture, and the
+spots secrets and routes use, are placed in code (`Build.ts`, `Furnish.ts`,
+`Solids.ts`, and each feature), so a new prison needs those dressed too.
 
 ## Recording the dialogue
 

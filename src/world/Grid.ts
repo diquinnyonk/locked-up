@@ -5,6 +5,9 @@
  * collision, pathfinding, vision, the minimap, the mesh builder: reads this
  * one grid, so the walls you see are exactly the walls the guards walk round.
  *
+ * The layout comes from the map file (maps/grim.json, see PrisonMap.ts);
+ * the sketch below is a guide to it.
+ *
  * Layout, north at the top:
  *
  *        [ Block A ][Showers][Laundry][ Block B ]
@@ -17,11 +20,18 @@
  *                   the road out
  */
 
+import { MAP, type PrisonMap } from './PrisonMap'
+
+/** How open a door must be to stand in it, or plan a route through it. */
+export const DOOR_STAND = 0.7
+/** How open a door must be to walk through it. */
+export const DOOR_WALK = 0.6
+
 export const TILE = 2
-export const MAP_W = 86
+export const MAP_W = MAP.size.w
 /** The east perimeter wall: the staff wing sits just inside it. */
-export const EAST_WALL = 80
-export const MAP_H = 72
+export const EAST_WALL = MAP.perimeter.x1
+export const MAP_H = MAP.size.h
 
 export const enum Tile {
   Solid = 0,
@@ -81,7 +91,7 @@ export interface CellInfo {
 
 export type BlockId = 'A' | 'B' | 'C' | 'D'
 
-export const BLOCKS: BlockId[] = ['A', 'B', 'C', 'D']
+export const BLOCKS: BlockId[] = MAP.wings.map((w) => w.id as BlockId)
 
 export interface Room {
   zone: string
@@ -92,7 +102,13 @@ export interface Room {
 }
 
 /** The cell the player is put in. Block A, south landing, third along. */
-export const PLAYER_CELL = 'cellA7'
+export const PLAYER_CELL = MAP.playerCell
+
+/** Where a wing's central officer is posted, out in the middle of the prison. */
+export function wingPost(block: BlockId): { tx: number; ty: number } {
+  const [tx, ty] = MAP.wings.find((w) => w.id === block)!.post
+  return { tx, ty }
+}
 
 export class Grid {
   readonly tiles = new Uint8Array(MAP_W * MAP_H)
@@ -116,8 +132,9 @@ export class Grid {
   constructor() {
     for (let y = 0; y < MAP_H; y++) {
       for (let x = 0; x < MAP_W; x++) {
-        const inside = x > 5 && x < EAST_WALL && y > 5 && y < 59
-        const ring = (x === 5 || x === EAST_WALL) && y >= 5 && y <= 59 || (y === 5 || y === 59) && x >= 5 && x <= EAST_WALL
+        const { x0, y0, x1, y1 } = MAP.perimeter
+        const inside = x > x0 && x < x1 && y > y0 && y < y1
+        const ring = ((x === x0 || x === x1) && y >= y0 && y <= y1) || ((y === y0 || y === y1) && x >= x0 && x <= x1)
         this.tiles[y * MAP_W + x] = ring ? Tile.Perimeter : inside ? Tile.Solid : Tile.Outside
         if (!ring && !inside) this.zoneOf[y * MAP_W + x] = 'outside'
       }
@@ -125,114 +142,26 @@ export class Grid {
     this.build()
   }
 
+  /** Lays out the map file: wings, rooms, doors, the climbable wall, the vents. */
   private build(): void {
-    for (const block of BLOCKS) this.buildBlock(block)
-
-    this.room('corridorN', 'North corridor', [{ x0: 32, y0: 13, x1: 47, y1: 15 }], 'floorLino')
-    this.room('corridorS', 'South corridor', [{ x0: 32, y0: 32, x1: 47, y1: 34 }], 'floorLino')
-    this.room('showers', 'Showers', [{ x0: 33, y0: 8, x1: 38, y1: 11 }], 'floorTile')
-    this.room('laundry', 'Laundry', [{ x0: 41, y0: 8, x1: 46, y1: 11 }], 'floorLaundry')
-    this.room('hub', 'Canteen & phones', [{ x0: 34, y0: 17, x1: 45, y1: 30 }], 'floorCanteen')
-    this.room('infirmary', 'Healthcare', [{ x0: 20, y0: 22, x1: 32, y1: 25 }], 'floorInfirmary')
-    this.room('solitary', 'Segregation', [{ x0: 9, y0: 22, x1: 18, y1: 25 }], 'floorSolitary')
-    this.room('games', 'Games room', [{ x0: 47, y0: 22, x1: 58, y1: 25 }], 'floorWood')
-    this.room('maint', 'Maintenance', [{ x0: 60, y0: 22, x1: 70, y1: 25 }], 'floorMaint')
-    this.room(
-      'yard',
-      'Exercise yard',
-      [
-        { x0: 33, y0: 36, x1: 46, y1: 41 },
-        { x0: 23, y0: 41, x1: 56, y1: 58 },
-      ],
-      'yardTarmac',
-      true,
-    )
-    // The annexes either side of the yard.
-    this.room('chapel', 'Chapel', [{ x0: 10, y0: 42, x1: 21, y1: 46 }], 'floorWood')
-    this.room('visits', 'Visiting hall', [{ x0: 10, y0: 49, x1: 21, y1: 58 }], 'floorCanteen')
-    this.room('gym', 'Gym', [{ x0: 58, y0: 42, x1: 69, y1: 46 }], 'floorGym')
-    this.room('library', 'Library', [{ x0: 58, y0: 49, x1: 63, y1: 52 }], 'floorWood')
-    this.room('mess', "Officers' mess", [{ x0: 65, y0: 49, x1: 69, y1: 52 }], 'floorCarpet')
-    this.room('bay', 'Loading bay', [{ x0: 58, y0: 54, x1: 69, y1: 58 }], 'floorMaint')
-    // The staff wing, off the mess and the bay: the Governor's office, and
-    // the changing room with the staff door out to the car park.
-    this.room('governor', "Governor's office", [{ x0: 71, y0: 49, x1: 79, y1: 52 }], 'floorWood')
-    this.room('changing', 'Staff changing room', [{ x0: 71, y0: 54, x1: 79, y1: 58 }], 'floorTile')
-
-    this.door('room', 36, 12, 'x', ['corridorN', 'showers'])
-    this.door('room', 43, 12, 'x', ['corridorN', 'laundry'])
-    this.door('gate', 39, 16, 'x', ['corridorN', 'hub'])
-    this.door('gate', 39, 31, 'x', ['hub', 'corridorS'])
-    this.door('gate', 39, 35, 'x', ['corridorS', 'yard'])
-    this.door('room', 33, 24, 'y', ['hub', 'infirmary'])
-    this.door('secure', 19, 24, 'y', ['infirmary', 'solitary'])
-    this.door('room', 46, 24, 'y', ['hub', 'games'])
-    this.door('secure', 59, 23, 'y', ['games', 'maint'])
-    this.door('room', 22, 44, 'y', ['yard', 'chapel'])
-    this.door('room', 22, 53, 'y', ['yard', 'visits'])
-    this.door('room', 57, 44, 'y', ['yard', 'gym'])
-    this.door('room', 57, 50, 'y', ['yard', 'library'])
-    this.door('secure', 67, 53, 'x', ['bay', 'mess'])
-    this.door('secure', 57, 56, 'y', ['yard', 'bay'])
-    this.door('secure', 70, 50, 'y', ['mess', 'governor'])
-    this.door('secure', 70, 56, 'y', ['bay', 'changing'])
-    // The vehicle gate from the loading bay, the staff door out of the
-    // changing room, and the visitors' gate.
-    this.door('perimeter', 64, 59, 'x', ['bay', 'outside'])
-    this.door('perimeter', EAST_WALL, 56, 'y', ['changing', 'outside'])
-    this.door('perimeter', 15, 59, 'x', ['visits', 'outside'])
-
-    for (let x = 24; x <= 55; x++) this.climbable.push({ tx: x, ty: 59 })
-
-    // The vents. One-tile crawlspaces above the ceilings, so walls do not
-    // matter to them: only the duct rectangles do.
-    const duct = (x0: number, y0: number, x1: number, y1: number) => this.ducts.push({ x0, y0, x1, y1 })
-    duct(10, 14, 69, 14)
-    duct(10, 33, 69, 33)
-    duct(40, 14, 40, 33)
-    duct(12, 24, 40, 24)
-    duct(40, 24, 68, 24)
-    duct(36, 9, 36, 14)
-    duct(44, 9, 44, 14)
-    duct(19, 14, 19, 19)
-    duct(16, 33, 16, 52)
-    duct(63, 33, 63, 56)
-    duct(63, 51, 75, 51)
-    duct(75, 51, 75, 56)
-
-    const grate = (id: string, tx: number, ty: number) =>
-      this.grates.push({ id, tx, ty, zone: this.zone(tx, ty), sealed: false, open: false })
-    grate('your cell', 19, 19)
-    grate('A landing', 12, 14)
-    grate('B landing', 68, 14)
-    grate('north corridor', 34, 14)
-    grate('showers', 36, 9)
-    grate('laundry', 44, 9)
-    grate('canteen', 40, 20)
-    grate('healthcare', 24, 24)
-    grate('games room', 52, 24)
-    grate('maintenance', 66, 24)
-    grate('south corridor', 44, 33)
-    grate('C landing', 12, 33)
-    grate('D landing', 68, 33)
-    grate('chapel', 16, 44)
-    grate('visiting hall', 16, 52)
-    grate('gym', 63, 44)
-    grate('library', 63, 50)
-    grate("officers' mess", 67, 51)
-    grate('loading bay', 63, 56)
-    grate("Governor's office", 75, 51)
-    grate('changing room', 75, 56)
+    for (const w of MAP.wings) this.buildWing(w)
+    for (const r of MAP.rooms) this.room(r.zone, r.name, r.rects.map(([x0, y0, x1, y1]) => ({ x0, y0, x1, y1 })), r.floor, r.outdoor)
+    for (const d of MAP.doors) this.door(d.kind, d.at[0], d.at[1], d.axis, d.between)
+    for (const c of MAP.climbable) {
+      for (let y = c.from[1]; y <= c.to[1]; y++) for (let x = c.from[0]; x <= c.to[0]; x++) this.climbable.push({ tx: x, ty: y })
+    }
+    for (const [x0, y0, x1, y1] of MAP.ducts) this.ducts.push({ x0, y0, x1, y1 })
+    for (const g of MAP.grates) this.grates.push({ id: g.id, tx: g.at[0], ty: g.at[1], zone: this.zone(g.at[0], g.at[1]), sealed: false, open: false })
   }
 
   /**
-   * A landing: a spine corridor with five cells either side, two to a cell.
-   * B and D are mirror images of A and C, so every gate faces the middle.
+   * A wing: a landing with five cells either side, two to a cell. Mirrored
+   * wings (B and D) are flipped east to west, so every gate faces the middle.
    */
-  private buildBlock(block: BlockId): void {
-    const ox = block === 'A' || block === 'C' ? 8 : 48
-    const oy = block === 'A' || block === 'B' ? 8 : 27
-    const flip = block === 'B' || block === 'D'
+  private buildWing(wing: PrisonMap['wings'][number]): void {
+    const block = wing.id as BlockId
+    const [ox, oy] = wing.origin
+    const flip = wing.mirror
     const wx = (lx: number) => (flip ? ox + (23 - lx) : ox + lx)
     const span = (a: number, b: number): [number, number] => {
       const p = wx(a)
@@ -269,7 +198,7 @@ export class Grid {
       this.cells.set(zone, { zone, block, index: i, rect, door, bunks })
     }
 
-    const gate = this.door('gate', wx(23), oy + 6, 'y', [`block${block}`, block === 'A' || block === 'B' ? 'corridorN' : 'corridorS'])
+    const gate = this.door('gate', wx(23), oy + 6, 'y', [`block${block}`, wing.corridor])
     this.blockGate.set(block, gate)
   }
 
@@ -396,7 +325,7 @@ export class Grid {
   passable(tx: number, ty: number): boolean {
     const t = this.tile(tx, ty)
     if (t === Tile.Floor || t === Tile.Outside) return true
-    if (t === Tile.Door) return (this.doorAt.get(ty * MAP_W + tx)?.openness ?? 0) > 0.7
+    if (t === Tile.Door) return (this.doorAt.get(ty * MAP_W + tx)?.openness ?? 0) > DOOR_STAND
     return false
   }
 

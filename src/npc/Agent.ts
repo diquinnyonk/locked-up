@@ -1,7 +1,7 @@
 import { castLine } from '../audio/cast'
 import { type Body } from '../render/Crowd'
-import { type Door, TILE, Tile, worldToTile } from '../world/Grid'
-import { findPath, moveCircle } from '../world/Nav'
+import { type Door, TILE, worldToTile } from '../world/Grid'
+import { findPath } from '../world/Nav'
 import type { Status } from './BehaviourTree'
 import type { World } from './World'
 
@@ -165,14 +165,7 @@ export abstract class Agent {
   /** Moves the body, sliding along walls and round furniture. Bumping
    *  into people goes through here too. */
   nudge(dx: number, dz: number): void {
-    const grid = this.world.grid
-    moveCircle(this.body, dx, dz, RADIUS, (tx, ty) => {
-      const t = grid.tile(tx, ty)
-      if (t === Tile.Floor || t === Tile.Outside) return false
-      if (t === Tile.Door) return (grid.doorAtTile(tx, ty)?.openness ?? 0) < 0.6
-      return true
-    })
-    grid.pushOutOfProps(this.body, RADIUS, this.heading)
+    this.world.collision.walk(this.body, dx, dz, RADIUS, this.heading)
   }
 
   /** Frame update: follow the path, open doors, avoid others. */

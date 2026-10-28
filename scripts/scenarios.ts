@@ -6,7 +6,9 @@
 import { Scene } from 'three'
 import { Game, type UiPort } from '../src/game/Game'
 import { screenCall } from '../src/game/Phone'
-import { EAST_WALL, MAP_H, MAP_W, TILE, Tile, tileCentre } from '../src/world/Grid'
+import { DOOR_STAND, DOOR_WALK, EAST_WALL, MAP_H, MAP_W, PLAYER_CELL, TILE, Tile, tileCentre } from '../src/world/Grid'
+import { PERSONAL_SPACE } from '../src/world/Collision'
+import { MAP } from '../src/world/PrisonMap'
 import { findPath } from '../src/world/Nav'
 import { keyFor } from '../src/audio/lineKeys'
 import { castLine, ownerOf, voiceFor } from '../src/audio/cast'
@@ -309,8 +311,15 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   const { game } = fresh()
   game.clock.skipTo(12 * 60)
   run(game, 0.5)
-  // A free seat on a canteen bench.
-  const seat = game.grid.seats.find((st) => game.grid.zoneAtWorld(st.x, st.z) === 'hub' && !game.prisoners.some((p) => Math.hypot(p.x - st.x, p.z - st.z) < 0.6))!
+  calm(game)
+  // A free seat on a canteen bench, with nothing dropped beside it (a loose
+  // fork there would take the key first).
+  const seat = game.grid.seats.find(
+    (st) =>
+      game.grid.zoneAtWorld(st.x, st.z) === 'hub' &&
+      !game.prisoners.some((p) => Math.hypot(p.x - st.x, p.z - st.z) < 0.6) &&
+      !game.dynamic.items.some((it) => Math.hypot(it.x - st.x, it.z - st.z) < 2.2),
+  )!
   game.player.body.x = seat.x
   game.player.body.z = seat.z + (seat.yaw === 0 ? -0.6 : 0.6)
   check('sit: offered at a canteen bench', prompt(game, 'Sit down'))
@@ -945,7 +954,7 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   run(game, 0.2)
   ;(game as any).rng = () => 0.999
   const guards = () => game.guards.filter((g) => g.reception)
-  for (let i = 0; i < 40 && ev.today !== 'intake'; i++) {
+  for (let i = 0; i < 400 && ev.today !== 'intake'; i++) {
     ev.today = 'quiet'
     ;(game as any).rng = (() => { const r = Math.random; return () => r() })()
     ev.newDay()
@@ -1193,7 +1202,8 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   game.goals.shown = true
   ;(game as any).talkTo(game.cellmate!)
   game.endConversation()
-  const fixer = game.prisoners.find((pr) => pr.sells.length)!
+  // Fixers are dealt at random: make sure there is one to find.
+  const fixer = game.prisoners.find((pr) => pr.sells.length) ?? Object.assign(game.prisoners[5], { sells: ['wire'] })
   ;(game as any).talkTo(fixer)
   game.endConversation()
   run(game, 0.1)
@@ -1745,6 +1755,8 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   }
   const atChapel = (game: Game, minute: number, secs: number) => {
     game.clock.skipTo(minute)
+    // Whatever else the day held (a lockdown, a drill), the cast turns up.
+    calm(game)
     put(game, 12, 45)
     run(game, secs)
   }
@@ -2155,6 +2167,93 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
     run(game, 0.2)
     check('basketball: it does not leave the yard with you', ball.held === null && game.grid.zoneAtWorld(ball.x, ball.z) === 'yard')
   }
+}
+
+// ---- The map file ----
+{
+  const { game } = fresh()
+  const grid = game.grid
+  const bad: string[] = []
+  for (const d of MAP.doors) {
+    const [tx, ty] = d.at
+    const sides = d.axis === 'x' ? [grid.zone(tx, ty - 1), grid.zone(tx, ty + 1)] : [grid.zone(tx - 1, ty), grid.zone(tx + 1, ty)]
+    if (!(sides.includes(d.between[0]) && sides.includes(d.between[1]))) bad.push(`${tx},${ty} has ${sides.join('/')}`)
+  }
+  check('map: every door sits between the two rooms it names', bad.length === 0, bad.join('; '))
+  const owner = new Map<number, string>()
+  const overlaps = new Set<string>()
+  const outsideWall: string[] = []
+  const { x0, y0, x1, y1 } = MAP.perimeter
+  for (const r of MAP.rooms) {
+    for (const [a, b, c, d] of r.rects) {
+      for (let ty = b; ty <= d; ty++) {
+        for (let tx = a; tx <= c; tx++) {
+          const o = owner.get(ty * MAP_W + tx)
+          if (o && o !== r.zone) overlaps.add(`${o}/${r.zone}`)
+          owner.set(ty * MAP_W + tx, r.zone)
+        }
+      }
+      if (a <= x0 || b <= y0 || c >= x1 || d >= y1) outsideWall.push(r.zone)
+    }
+  }
+  check('map: rooms sit inside the perimeter', outsideWall.length === 0, outsideWall.join(' '))
+  check('map: no two rooms overlap', overlaps.size === 0, [...overlaps].join(' '))
+  const ductAt = (tx: number, ty: number) => grid.ducts.some((r) => tx >= r.x0 && tx <= r.x1 && ty >= r.y0 && ty <= r.y1)
+  const loose = grid.grates.filter((g) => !ductAt(g.tx, g.ty) || !g.zone || g.zone === 'outside')
+  check('map: every grate is indoors, on a duct', loose.length === 0, loose.map((g) => g.id).join(', '))
+  // The vents are one network: crawl from your cell's grate to every other.
+  const seen = new Set<number>()
+  const todo = [[grid.grates[0].tx, grid.grates[0].ty]]
+  while (todo.length) {
+    const [tx, ty] = todo.pop()!
+    if (seen.has(ty * MAP_W + tx) || !ductAt(tx, ty)) continue
+    seen.add(ty * MAP_W + tx)
+    todo.push([tx + 1, ty], [tx - 1, ty], [tx, ty + 1], [tx, ty - 1])
+  }
+  const cutOff = grid.grates.filter((g) => !seen.has(g.ty * MAP_W + g.tx))
+  check('map: every grate is reachable through the vents', cutOff.length === 0, cutOff.map((g) => g.id).join(', '))
+  // Every room can be walked to from your cell, given every key.
+  const start = grid.cells.get(PLAYER_CELL)!.rect
+  const unreachable = [...grid.rooms.values()].filter((r) => {
+    const [a, b, c, d] = [r.rects[0].x0, r.rects[0].y0, r.rects[0].x1, r.rects[0].y1]
+    let to: { tx: number; ty: number } | null = null
+    for (let ty = b; ty <= d && !to; ty++) for (let tx = a; tx <= c && !to; tx++) if (grid.passable(tx, ty) && !grid.underProp(tx, ty)) to = { tx, ty }
+    return !to || !findPath(grid, { tx: start.x0, ty: start.y0 + 1 }, to, () => true)
+  })
+  check('map: every room can be walked to', unreachable.length === 0, unreachable.map((r) => r.zone).join(' '))
+  const posts = MAP.wings.filter((w) => !grid.passable(w.post[0], w.post[1]) || grid.underProp(w.post[0], w.post[1]))
+  check("map: every wing's central post is on the floor", posts.length === 0, posts.map((w) => w.id).join(' '))
+  check('map: the climbable wall is perimeter', grid.climbable.every((c) => grid.tile(c.tx, c.ty) === Tile.Perimeter))
+}
+
+// ---- Collision ----
+{
+  const { game } = fresh()
+  const col = game.collision
+  const door = game.grid.doors.find((d) => d.kind === 'room')!
+  door.openness = 0
+  check('collision: a shut door stops a walker', col.blocksWalker(door.tx, door.ty))
+  door.openness = DOOR_WALK + 0.01
+  check('collision: a door open enough lets a walker through', !col.blocksWalker(door.tx, door.ty))
+  check('collision: ...but is not yet open enough to stand in', !game.grid.passable(door.tx, door.ty) || DOOR_WALK + 0.01 > DOOR_STAND)
+  // A ball thrown at the yard's north wall comes back, and settles.
+  const yard = game.grid.rooms.get('yard')!.rects[1]
+  const ball = { x: (yard.x0 + 3) * TILE, y: 1.2, z: (yard.y0 + 0.5) * TILE, vx: 0, vy: 0, vz: -8 }
+  let wall = false
+  let floor = 0
+  for (let i = 0; i < 600; i++) {
+    const hit = col.bounce(ball, 0.19, 1 / 60)
+    wall ||= hit.wall
+    if (hit.floorImpact) floor++
+  }
+  check('collision: a ball bounces off a wall', wall && ball.vz >= 0 && ball.z >= yard.y0 * TILE - 0.2 * TILE)
+  check('collision: ...bounces on the floor, then settles', floor >= 2 && ball.y <= 0.19 + 0.001 && Math.hypot(ball.vx, ball.vz) < 0.5)
+  // Two people on the same spot are parted; one who never gives way stays put.
+  const mk = (x: number, give: number) => ({ x, z: 10, give, move(dx: number, dz: number) { this.x += dx; this.z += dz } })
+  const a = mk(10, 1)
+  const b = mk(10.1, 0)
+  col.separate([a, b])
+  check('collision: the one who gives way is pushed clear', Math.abs(b.x - a.x) >= PERSONAL_SPACE - 1e-6 && b.x === 10.1)
 }
 
 // ---- Things in the world ----

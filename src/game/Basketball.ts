@@ -4,7 +4,7 @@ import { ball, ring } from '../art/shapes'
 import type { Guard } from '../npc/Guard'
 import type { Placement, Thing } from '../world/Things'
 import type { Prisoner } from '../npc/Prisoner'
-import { TILE, Tile } from '../world/Grid'
+import { TILE } from '../world/Grid'
 import type { Game } from './Game'
 
 /**
@@ -217,11 +217,10 @@ export class Basketball implements Thing {
     const g = this.game
     const px = this.x
     const py = this.y
-    const pz = this.z
-    this.vy -= G * dt
-    this.x += this.vx * dt
-    this.y += this.vy * dt
-    this.z += this.vz * dt
+    // Gravity, walls and the floor: the same rules as everything else.
+    const hit = g.collision.bounce(this, R, dt)
+    if (hit.wall) this.thud(0.4)
+    if (hit.floorImpact) this.thud(Math.min(1, hit.floorImpact / 8))
     this.spin += dt * Math.hypot(this.vx, this.vz) * 2
     // The backboard.
     if (px > BOARD.x && this.x <= BOARD.x && this.y > BOARD.y0 && this.y < BOARD.y1 && this.z > BOARD.z0 && this.z < BOARD.z1) {
@@ -273,26 +272,8 @@ export class Basketball implements Thing {
         this.vy = 1.5
       }
     }
-    // Walls: bounce off anything solid below roof height.
-    const tile = g.grid.tile(Math.floor(this.x / TILE), Math.floor(this.z / TILE))
-    if (tile !== Tile.Floor && tile !== Tile.Outside && tile !== Tile.Door && this.y < 3.4) {
-      const tx = g.grid.tile(Math.floor(this.x / TILE), Math.floor(pz / TILE))
-      if (tx !== Tile.Floor && tx !== Tile.Outside && tx !== Tile.Door) this.vx = -this.vx * 0.5
-      else this.vz = -this.vz * 0.5
-      this.x = px
-      this.z = pz
-      this.thud(0.4)
-    }
-    // The ground.
-    if (this.y < R) {
-      this.y = R
-      if (this.vy < -0.8) {
-        this.thud(Math.min(1, -this.vy / 8))
-        this.vy = -this.vy * 0.62
-      } else this.vy = 0
-      const fr = this.vy === 0 ? 1 - 1.6 * dt : 0.86
-      this.vx *= fr
-      this.vz *= fr
+    // On the ground.
+    if (this.y <= R + 0.001) {
       if (this.vy === 0 && this.flight && this.flight.at === null) this.flight = null
       // Over the wall and gone.
       if (!this.inYard && !this.held) {

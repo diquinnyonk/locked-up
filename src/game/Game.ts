@@ -9,8 +9,8 @@ import { GANGS, GANG_IDS, type GangId, gangOfWing } from '../npc/Gangs'
 import type { Lure, Noise, PlayerView, Riot, SickCall, World } from '../npc/World'
 import { buildPrison, type Fixtures } from '../world/Build'
 import { CONE_FRONT_RAYS, CONE_RAYS, Dynamic } from '../world/Dynamic'
-import { BLOCKS, type BlockId, type Door, type Grate, Grid, PLAYER_CELL, TILE, Tile, blockOfZone, tileCentre, worldToTile } from '../world/Grid'
-import { moveCircle } from '../world/Nav'
+import { BLOCKS, type Door, type Grate, Grid, PLAYER_CELL, TILE, Tile, blockOfZone, tileCentre, wingPost, worldToTile } from '../world/Grid'
+import { Collision, type Separable } from '../world/Collision'
 import { Clock, RESTRICTED, allowedZones } from './Clock'
 import { type DayEvent, Events, type Weather, isVisitingDay, weatherSteps } from './Events'
 import type { EndingId } from './Records'
@@ -28,7 +28,7 @@ import { endingStory } from './EndingTexts'
 import { Routes } from './Routes'
 import { Things } from '../world/Things'
 import { Basketball } from './Basketball'
-import { PLAYER_SPEED, RUN_SPEED, SNEAK_SPEED, CRAWL_SPEED, mulberry32, WALL_TOP, TALK_GAP , HYMN_SPOTS } from './features/shared'
+import { PLAYER_SPEED, RUN_SPEED, SNEAK_SPEED, CRAWL_SPEED, mulberry32, WALL_TOP, TALK_GAP , HYMN_SPOTS, PLAYER_RADIUS } from './features/shared'
 export { TUNNEL_LENGTH } from './features/shared'
 import { Characters } from './features/Characters'
 import { SillyExits } from './features/SillyExits'
@@ -71,6 +71,8 @@ export class Game implements World {
   readonly grid = new Grid()
   readonly clock = new Clock()
   readonly memory = new PrisonMemory()
+  /** Walls, doors, furniture and each other: one set of rules for everything that moves. */
+  readonly collision = new Collision(this.grid)
   /** Things in the world with a model, a place and prompts (see src/world/Things.ts). */
   readonly things = new Things(() => this.dynamic.group)
   /** Set before building a game to rebuild a saved prison exactly. */
@@ -339,12 +341,6 @@ export class Game implements World {
     })
 
     // Officers: four per wing.
-    const central: Record<BlockId, { tx: number; ty: number }> = {
-      A: { tx: 39, ty: 15 },
-      B: { tx: 46, ty: 23 },
-      C: { tx: 40, ty: 32 },
-      D: { tx: 39, ty: 37 },
-    }
     let gi = 0
     for (const block of BLOCKS) {
       const gate = this.grid.blockGate.get(block)!
@@ -354,7 +350,7 @@ export class Game implements World {
         ['gate', { tx: gate.tx + inward, ty: gate.ty - 1 }],
         ['landing', { tx: Math.floor((landing.x0 + landing.x1) / 2), ty: landing.y0 + 1 }],
         ['escort', { tx: gate.tx + inward * 3, ty: gate.ty + 1 }],
-        ['central', central[block]],
+        ['central', wingPost(block)],
       ]
       for (const [duty, post] of duties) {
         const g = new Guard(gi++, block, duty, post, this)
@@ -754,8 +750,7 @@ export class Game implements World {
       const gap = Math.hypot(p.x - n.x, p.z - n.z)
       if (gap < TALK_GAP - 0.05 && gap > 1e-3) {
         const step = Math.min(TALK_GAP - gap, delta * 3)
-        moveCircle(p, ((p.x - n.x) / gap) * step, ((p.z - n.z) / gap) * step, 0.34, (tx, ty) => this.playerBlocked(tx, ty))
-        this.grid.pushOutOfProps(p, 0.34)
+        this.collision.walk(p, ((p.x - n.x) / gap) * step, ((p.z - n.z) / gap) * step, PLAYER_RADIUS)
       }
       p.yaw = Math.atan2(n.x - p.x, n.z - p.z)
       n.yaw = Math.atan2(p.x - n.x, p.z - n.z)
@@ -1088,8 +1083,8 @@ export class Game implements World {
       }
       const bx = b.x
       const bz = b.z
-      moveCircle(b, dx, dz, 0.34, (tx, ty) => this.playerBlocked(tx, ty))
-      if (!this.seated) this.grid.pushOutOfProps(b, 0.34)
+      // Seated, the seat you are on lets you in.
+      this.collision.walk(b, dx, dz, PLAYER_RADIUS, this.seated)
       this.doorAssist(bx, bz, mv, speed * delta)
     }
     const moving = face.x !== 0 || face.z !== 0
@@ -1196,7 +1191,7 @@ export class Game implements World {
       const ty = t.ty + Math.sign(mv.z)
       for (const side of [0, -1, 1]) {
         const tx = t.tx + side
-        if (this.playerBlocked(tx, ty)) continue
+        if (this.collision.blocksWalker(tx, ty)) continue
         const cx = (tx + 0.5) * TILE
         if (Math.abs(cx - b.x) < 3) b.x += Math.sign(cx - b.x) * Math.min(Math.abs(cx - b.x), step)
         return
@@ -1206,7 +1201,7 @@ export class Game implements World {
       const tx = t.tx + Math.sign(mv.x)
       for (const side of [0, -1, 1]) {
         const ty = t.ty + side
-        if (this.playerBlocked(tx, ty)) continue
+        if (this.collision.blocksWalker(tx, ty)) continue
         const cz = (ty + 0.5) * TILE
         if (Math.abs(cz - b.z) < 3) b.z += Math.sign(cz - b.z) * Math.min(Math.abs(cz - b.z), step)
         return
@@ -1226,61 +1221,33 @@ export class Game implements World {
    * crawling bodies, and anyone up in the ducts, are left out.
    */
   private separateBodies(agents: (Guard | Prisoner)[]): void {
-    const MIN = 0.68
-    const list: { b: Body; inv: number; move: (dx: number, dz: number) => void }[] = []
+    const crowd: Separable[] = []
     const upright = (b: Body) => b.visible && b.pose !== 'sleep' && b.pose !== 'down' && b.pose !== 'crawl' && Math.abs(b.y) < 0.3
+    const entry = (b: Body, give: number, move: (dx: number, dz: number) => void): Separable => ({
+      get x() {
+        return b.x
+      },
+      get z() {
+        return b.z
+      },
+      give,
+      move,
+    })
     const p = this.player
     const pb = p.body
     if (upright(pb) && !p.inVent && !this.climb) {
-      list.push({
-        b: pb,
-        inv: this.seated || this.talkingTo || this.punished ? 0 : 1,
-        move: (dx, dz) => {
-          moveCircle(pb, dx, dz, 0.34, (tx, ty) => this.playerBlocked(tx, ty))
-          this.grid.pushOutOfProps(pb, 0.34)
-        },
-      })
+      crowd.push(entry(pb, this.seated || this.talkingTo || this.punished ? 0 : 1, (dx, dz) => this.collision.walk(pb, dx, dz, PLAYER_RADIUS)))
     }
     for (const a of agents) {
       if (a.ko > 0 || !upright(a.body)) continue
       const still = a.body.pose === 'sit' || a.body === this.talkingTo
-      list.push({ b: a.body, inv: still ? 0 : 0.5, move: (dx, dz) => a.nudge(dx, dz) })
+      crowd.push(entry(a.body, still ? 0 : 0.5, (dx, dz) => a.nudge(dx, dz)))
     }
-    const fixed = () => {}
-    for (const b of [this.keith.body, this.chaplain.body, this.governor.body, ...this.visitors.map((v) => v.body)]) if (upright(b)) list.push({ b, inv: 0, move: fixed })
-
-    for (let i = 0; i < list.length; i++) {
-      const A = list[i]
-      for (let j = i + 1; j < list.length; j++) {
-        const B = list[j]
-        const w = A.inv + B.inv
-        if (w === 0) continue
-        let dx = B.b.x - A.b.x
-        let dz = B.b.z - A.b.z
-        if (Math.abs(dx) > MIN || Math.abs(dz) > MIN) continue
-        let d = Math.hypot(dx, dz)
-        if (d >= MIN) continue
-        const overlap = MIN - d
-        if (d < 1e-4) {
-          // Exactly on top of each other: part them along a fixed axis.
-          dx = 1
-          dz = 0
-          d = 1
-        }
-        const nx = dx / d
-        const nz = dz / d
-        if (A.inv) A.move(-nx * overlap * (A.inv / w), -nz * overlap * (A.inv / w))
-        if (B.inv) B.move(nx * overlap * (B.inv / w), nz * overlap * (B.inv / w))
-      }
-    }
+    // Keith, the Reverend, the Governor and visitors stand their ground.
+    for (const b of [this.keith.body, this.chaplain.body, this.governor.body, ...this.visitors.map((v) => v.body)]) if (upright(b)) crowd.push(entry(b, 0, () => {}))
+    this.collision.separate(crowd)
   }
 
-  private playerBlocked(tx: number, ty: number): boolean {
-    const t = this.grid.tile(tx, ty)
-    if (t === Tile.Floor || t === Tile.Outside) return false
-    if (t === Tile.Door) return (this.grid.doorAtTile(tx, ty)?.openness ?? 0) < 0.6
-    return true
-  }
 
   updateIllegal(): void {
     const p = this.player
@@ -1387,7 +1354,7 @@ export class Game implements World {
     this.business = null
     this.seated = null
     this.player.body.pose = 'stand'
-    this.grid.pushOutOfProps(this.player.body, 0.34)
+    this.grid.pushOutOfProps(this.player.body, PLAYER_RADIUS)
   }
 
   lastFightByPlayer = 0

@@ -1,3 +1,4 @@
+import type { Collision } from '../world/Collision'
 import type { DayEvent, Weather } from '../game/Events'
 import type { Mode } from './Memory'
 import type { Clock } from '../game/Clock'
@@ -80,6 +81,8 @@ export interface Lure {
 
 export interface World {
   grid: Grid
+  /** Walls, doors and furniture, for anyone walking (see src/world/Collision.ts). */
+  collision: Collision
   clock: Clock
   memory: PrisonMemory
   rng: () => number
