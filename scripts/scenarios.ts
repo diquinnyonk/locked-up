@@ -2069,6 +2069,94 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   }
 }
 
+// ---- Basketball ----
+{
+  const { RIM } = await import('../src/game/Basketball')
+  const begin = () => {
+    const f = fresh()
+    f.game.clock.minutes = 8 * 60 - 20
+    f.game.startSentence()
+    f.game.clock.skipTo(13 * 60)
+    run(f.game, 0.2)
+    calm(f.game)
+    return f
+  }
+  const stand = (game: Game, x: number, z: number, yaw: number) => {
+    const b = game.player.body
+    b.x = x
+    b.z = z
+    b.yaw = yaw
+    game.player.zone = game.grid.zoneAtWorld(x, z)
+  }
+  // Pick it up and sink one from close in.
+  {
+    const { game } = begin()
+    const ball = game.basketball
+    stand(game, ball.x + 0.8, ball.z, -Math.PI / 2)
+    check('basketball: pick it up in the yard', prompt(game, 'Pick up the basketball') && ball.held === 'player')
+    stand(game, RIM.x + 3.5, RIM.z, -Math.PI / 2)
+    ;(game as any).rng = () => 0
+    check('basketball: shoot when near the hoop', prompt(game, 'Shoot at the hoop'))
+    run(game, 4)
+    check('basketball: swish', ball.baskets === 1, `${ball.baskets} at ${ball.x.toFixed(1)},${ball.y.toFixed(1)},${ball.z.toFixed(1)}`)
+    check('basketball: and it ends up back on the ground', ball.y < 0.3 && !ball.held)
+  }
+  // A miss stays a miss.
+  {
+    const { game } = begin()
+    const ball = game.basketball
+    ball.held = 'player'
+    stand(game, RIM.x + 8, RIM.z, -Math.PI / 2)
+    ;(game as any).rng = () => 0.97
+    prompt(game, 'Shoot at the hoop')
+    run(game, 2.5)
+    check('basketball: a long bad shot misses', ball.baskets === 0 && !ball.held)
+  }
+  // Thrown at a prisoner who sees it coming: he comes for you.
+  {
+    const { game, log } = begin()
+    const ball = game.basketball
+    const pr = game.prisoners.find((x) => x.temperament !== 'old' && x.temperament !== 'snitch')!
+    stand(game, 80, 104, Math.PI / 2)
+    pr.body.x = 85
+    pr.body.z = 104
+    pr.body.yaw = -Math.PI / 2
+    for (const o of game.prisoners) if (o !== pr && o.distanceTo(85, 104) < 8) o.body.x += 20
+    ball.held = 'player'
+    check('basketball: throw it at someone', prompt(game, `Throw the ball at ${pr.name}`))
+    run(game, 0.6)
+    check('basketball: he saw it, and he is coming for you', pr.fighting && pr.fightTarget === 'player', `${pr.fighting} ${String(pr.fightTarget)} ${log.slice(-1)[0]}`)
+  }
+  // Back turned: he blames whoever is nearest.
+  {
+    const { game } = begin()
+    const ball = game.basketball
+    const fighters = game.prisoners.filter((x) => x.temperament !== 'old' && x.temperament !== 'snitch')
+    const pr = fighters[0]
+    const other = fighters[1]
+    for (const o of game.prisoners) if (o.distanceTo(85, 104) < 10) o.body.x += 30
+    stand(game, 80, 104, Math.PI / 2)
+    pr.body.x = 85
+    pr.body.z = 104
+    pr.body.yaw = Math.PI / 2
+    other.body.x = 87
+    other.body.z = 105
+    ball.held = 'player'
+    prompt(game, `Throw the ball at ${pr.name}`)
+    run(game, 0.6)
+    check('basketball: back turned, he blames the man next to him', pr.fighting && pr.fightTarget === other && other.fightTarget === pr, `${String((pr.fightTarget as any)?.name ?? pr.fightTarget)}`)
+  }
+  // Out of the yard, the ball stays behind.
+  {
+    const { game } = begin()
+    const ball = game.basketball
+    ball.held = 'player'
+    stand(game, 80, 60, 0)
+    run(game, 0.2)
+    check('basketball: it does not leave the yard with you', ball.held === null && game.grid.zoneAtWorld(ball.x, ball.z) === 'yard')
+  }
+}
+
 // ---- The secret's roll ----
 {
   const store = new Map<string, string>()

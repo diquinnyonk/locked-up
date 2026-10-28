@@ -5,7 +5,7 @@
  */
 import { type Scene, Soundscape, type Volumes, readVolumes } from './Soundscape'
 
-export type Sound = 'clank' | 'fight' | 'throw' | 'alarm' | 'shout' | 'buzz' | 'caught' | 'good'
+export type Sound = 'clank' | 'fight' | 'throw' | 'alarm' | 'shout' | 'buzz' | 'caught' | 'good' | 'bounce'
 
 export class Sfx {
   private ctx: AudioContext | null = null
@@ -106,6 +106,18 @@ export class Sfx {
         o.start(now)
         o.stop(now + 0.7)
         env(0.01, 0.65, 0.25)
+        break
+      }
+      case 'bounce': {
+        // A basketball on tarmac: a short, low, rubbery thump.
+        const o = ctx.createOscillator()
+        o.type = 'sine'
+        o.frequency.setValueAtTime(170, now)
+        o.frequency.exponentialRampToValueAtTime(85, now + 0.09)
+        o.connect(gain)
+        o.start(now)
+        o.stop(now + 0.14)
+        env(0.004, 0.11, 0.9)
         break
       }
       case 'good': {

@@ -25,11 +25,13 @@ export type AchievementId =
   | 'everything'
   | 'curtain'
   | 'topSecret'
+  | 'baller'
 
 export const ACHIEVEMENTS: { id: AchievementId; title: string; text: string }[] = [
   { id: 'settled', title: 'Settled in', text: 'Tick off every first-day goal.' },
   { id: 'nan', title: "Nan's favourite", text: 'Sit with your nan at visits.' },
   { id: 'governor', title: 'Tea with the Governor', text: 'Say hello to Rupert Pettigrew in person.' },
+  { id: 'baller', title: 'Buckets', text: 'Score a basket in the yard.' },
   { id: 'sausage', title: 'Sausage roll diplomacy', text: 'Send an officer to sleep with a sleepy sausage roll.' },
   { id: 'knockout', title: 'Lights out, guv', text: 'Knock an officer out cold.' },
   { id: 'dressed', title: 'Dressed for work', text: "Take an officer's uniform." },

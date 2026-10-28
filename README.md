@@ -188,6 +188,17 @@ Seven come when a sentence ends: any escape, a clean sheet, out by day two,
 an escape on Hardcore, a daily challenge beaten, every way out, and every
 ending. Each one shows once, in gold, and the records screen lists them all.
 
+## Basketball
+
+There is a ball on the yard's court (`src/game/Basketball.ts`). Pick it up
+(E) and it bounces along beside you. Near the hoop, E shoots on a real arc:
+the further out, the worse your odds, and running halves them. A miss
+rattles off the rim or the backboard. R throws it at whoever you are facing:
+a prisoner who sees it coming fights you, one with his back turned blames
+whoever is standing nearest to him and fights them instead, and an officer
+gives you a warning. Leave it lying about and someone else takes a shot.
+Baskets win a little goodwill from the yard, and the Buckets achievement.
+
 ## More ways out
 
 Six more routes in every sentence (`src/game/Routes.ts`), each one roll of

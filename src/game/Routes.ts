@@ -1,6 +1,7 @@
 import type { BufferGeometry } from 'three'
 import { HEX } from '../art/palette'
-import { ball, box, cyl } from '../art/shapes'
+import { fireEngineParts } from '../art/vehicles'
+import { box, cyl } from '../art/shapes'
 import { TILE } from '../world/Grid'
 import type { Game } from './Game'
 import type { ItemId } from './Items'
@@ -43,17 +44,7 @@ const binParts = (): BufferGeometry[] =>
     cyl(0.1, 0.1, 0.06, { x: dx + 0.24, y: 0.05, z: -0.38 }, HEX.ink, 10),
   ])
 
-const engineParts = (): BufferGeometry[] => [
-  box(2.3, 1.5, 6.4, { x: 0, y: 0.45, z: 0 }, HEX.clothesRed),
-  box(2.25, 0.9, 1.6, { x: 0, y: 1.95, z: 2.2 }, HEX.clothesRed),
-  box(2.0, 0.5, 0.05, { x: 0, y: 2.1, z: 3.02 }, HEX.ink),
-  box(0.5, 0.12, 0.2, { x: -0.5, y: 2.9, z: 2.3 }, HEX.stainedBlue),
-  box(0.5, 0.12, 0.2, { x: 0.5, y: 2.9, z: 2.3 }, HEX.stainedBlue),
-  box(0.5, 0.15, 4.4, { x: 0, y: 2.0, z: -1.0 }, HEX.metal),
-  box(2.32, 0.12, 6.0, { x: 0, y: 1.1, z: 0 }, HEX.gateYellow),
-  ...[-2.2, 2.0].flatMap((z) => [-1.05, 1.05].map((x) => cyl(0.45, 0.45, 0.3, { x, y: 0.45, z }, HEX.ink, 14))),
-  ball(0.3, { x: 0.8, y: 1.6, z: -2.6 }, HEX.paper, 1, 0.5, 1),
-]
+const engineParts = fireEngineParts
 
 export class Routes {
   /** Read up on appendicitis in the library. */
@@ -97,7 +88,7 @@ export class Routes {
     const g = this.game
     const m = this.m
     g.dynamic.setProp('bins', binParts, BINS.x, BINS.z, true)
-    g.dynamic.setProp('fireEngine', engineParts, FIRE_ENGINE.x, FIRE_ENGINE.z, this.engineHere || this.hiding === 'fireEngine', Math.PI / 2)
+    g.dynamic.setProp('fireEngine', engineParts, FIRE_ENGINE.x, FIRE_ENGINE.z, this.engineHere || this.hiding === 'fireEngine', -Math.PI / 2)
     if (this.hiding === 'bins') {
       if (m >= LORRY - 5 && !this.warned) {
         this.warned = true

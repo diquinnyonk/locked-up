@@ -16,10 +16,11 @@ import {
 import { HEX, color } from '../art/palette'
 import { mergePainted } from '../art/paint'
 import { toon } from '../art/toonMaterial'
-import { ball, box, cyl } from '../art/shapes'
+import { ball, box, cyl, ring } from '../art/shapes'
 import { SOLID_LAYER } from '../render/CelPipeline'
 import type { ItemId } from '../game/Items'
 import { itemGeometry } from '../art/itemModels'
+import { carParts } from '../art/vehicles'
 import { type Door, type Grate, type Grid, TILE } from './Grid'
 import { PERIMETER_H, WALL_H } from './Build'
 
@@ -201,14 +202,7 @@ export class Dynamic {
   }
 
   private buildCar(): void {
-    const parts: BufferGeometry[] = [
-      box(4.2, 0.8, 1.9, { x: 0, y: 0.35, z: 0 }, HEX.car),
-      box(2.4, 0.7, 1.7, { x: -0.3, y: 1.15, z: 0 }, HEX.carDark),
-      box(2.2, 0.55, 1.75, { x: -0.3, y: 1.2, z: 0 }, HEX.window),
-      box(0.1, 0.25, 0.4, { x: 2.1, y: 0.75, z: 0.6 }, HEX.torch),
-      box(0.1, 0.25, 0.4, { x: 2.1, y: 0.75, z: -0.6 }, HEX.torch),
-    ]
-    for (const sx of [-1.3, 1.3]) for (const sz of [-0.95, 0.95]) parts.push(cyl(0.38, 0.38, 0.3, { x: sx, y: 0.2, z: sz }, HEX.ink, 10))
+    const parts = carParts()
     const car = solid(mergePainted(parts))
     this.car.add(car)
     this.car.position.set(40 * TILE, 0, 65.6 * TILE)
@@ -403,6 +397,29 @@ export class Dynamic {
     m.visible = visible
     m.position.set(x, 0.01, z)
     m.rotation.y = ry
+  }
+
+  private ball: Mesh | null = null
+
+  /** The yard's basketball: orange, with its black seams, spinning as it goes. */
+  setBall(x: number, y: number, z: number, spin: number, visible: boolean): void {
+    if (!this.ball) {
+      const r = 0.19
+      this.ball = new Mesh(
+        mergePainted([
+          ball(r, { x: 0, y: 0, z: 0 }, 0xe8742c),
+          ring(r * 1.005, 0.012, { x: 0, y: 0, z: 0 }, HEX.ink, 0),
+          ring(r * 1.005, 0.012, { x: 0, y: 0, z: 0 }, HEX.ink, Math.PI / 2),
+          ring(r * 1.005, 0.012, { x: 0, y: 0, z: 0, ry: Math.PI / 2 }, HEX.ink, Math.PI / 2),
+        ]),
+        toon(0xffffff, { tinted: true }),
+      )
+      this.ball.layers.enable(SOLID_LAYER)
+      this.group.add(this.ball)
+    }
+    this.ball.visible = visible
+    this.ball.position.set(x, y, z)
+    this.ball.rotation.set(spin, spin * 0.3, 0)
   }
 
   private propsCrate: Mesh | null = null

@@ -28,6 +28,7 @@ import { makeSecret } from './secrets'
 import type { Secret } from './secrets/Secret'
 import { endingStory } from './EndingTexts'
 import { Routes } from './Routes'
+import { Basketball } from './Basketball'
 import { type AchievementId, unlock } from './Achievements'
 
 /** What the game needs from the interface. Implemented in ui/Ui.ts. */
@@ -150,6 +151,8 @@ export class Game implements World {
   readonly feuds = new Feuds(this)
   /** Bins, hospital, court, papers, fire engine, glider. */
   readonly routes = new Routes(this)
+  /** The ball in the yard. */
+  readonly basketball = new Basketball(this)
   /** The secret mission on this sentence, if any: about one sentence in ten. */
   secret: Secret | null = null
   /** The Governor's play, when that is the secret. */
@@ -390,7 +393,7 @@ export class Game implements World {
   }
 
   /** Sounds for the audio layer to play this frame. */
-  readonly sounds: { sound: 'clank' | 'fight' | 'throw' | 'alarm' | 'shout' | 'buzz' | 'caught' | 'good'; volume: number }[] = []
+  readonly sounds: { sound: 'clank' | 'fight' | 'throw' | 'alarm' | 'shout' | 'buzz' | 'caught' | 'good' | 'bounce'; volume: number }[] = []
 
   warn(by: Guard, text: string): void {
     by.say(text, 3)
@@ -775,6 +778,9 @@ export class Game implements World {
     this.feuds.update()
     this.secret?.update(delta)
     this.routes.update()
+    this.basketball.update(delta)
+    const bb = this.basketball
+    this.dynamic.setBall(bb.x, bb.y, bb.z, bb.spin, !bb.gone)
 
     this.doors.beginFrame()
     this.updatePlayer(delta)
@@ -912,6 +918,7 @@ export class Game implements World {
         this.feuds.newDay()
         this.secret?.newDay()
         this.routes.newDay()
+        this.basketball.newDay()
         if (this.contactNights > 0) this.contactNights--
         this.signalTonight = false
         this.flagUp = false
@@ -1519,6 +1526,7 @@ export class Game implements World {
         this.secret!.talkGuest!()
       })
       this.secret?.prompts(claim, near)
+      this.basketball.prompts(claim, near)
       this.routes.prompts(claim, near)
     }
     // Any bench, chair, pew, sofa or bunk edge. Lowest of all.
@@ -1922,7 +1930,7 @@ export class Game implements World {
     }
   }
 
-  private lastFightByPlayer = 0
+  lastFightByPlayer = 0
 
   private callSick(): void {
     const p = this.player
