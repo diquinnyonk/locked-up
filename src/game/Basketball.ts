@@ -1,4 +1,8 @@
+import type { BufferGeometry } from 'three'
+import { HEX } from '../art/palette'
+import { ball, ring } from '../art/shapes'
 import type { Guard } from '../npc/Guard'
+import type { Placement, Thing } from '../world/Things'
 import type { Prisoner } from '../npc/Prisoner'
 import { TILE, Tile } from '../world/Grid'
 import type { Game } from './Game'
@@ -25,7 +29,8 @@ const THROW_RANGE = 10
 
 type Thrower = 'player' | Prisoner
 
-export class Basketball {
+export class Basketball implements Thing {
+  readonly id = 'basketball'
   x = COURT.x + 2
   y = R
   z = COURT.z + 1.5
@@ -45,7 +50,23 @@ export class Basketball {
   baskets = 0
   spin = 0
 
-  constructor(private readonly game: Game) {}
+  constructor(private readonly game: Game) {
+    game.things.add(this)
+  }
+
+  /** Orange, with its black seams. */
+  model(): BufferGeometry[] {
+    return [
+      ball(R, { x: 0, y: 0, z: 0 }, 0xe8742c),
+      ring(R * 1.005, 0.012, { x: 0, y: 0, z: 0 }, HEX.ink, 0),
+      ring(R * 1.005, 0.012, { x: 0, y: 0, z: 0 }, HEX.ink, Math.PI / 2),
+      ring(R * 1.005, 0.012, { x: 0, y: 0, z: 0, ry: Math.PI / 2 }, HEX.ink, Math.PI / 2),
+    ]
+  }
+
+  place(): Placement {
+    return { x: this.x, y: this.y, z: this.z, rx: this.spin, ry: this.spin * 0.3, visible: !this.gone }
+  }
 
   private get inYard(): boolean {
     return this.game.grid.zoneAtWorld(this.x, this.z) === 'yard'

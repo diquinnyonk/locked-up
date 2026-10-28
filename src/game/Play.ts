@@ -1,6 +1,8 @@
+import { HEX } from '../art/palette'
+import { ball, box } from '../art/shapes'
 import { TILE } from '../world/Grid'
 import type { Game } from './Game'
-import { type Add, type Near, SECRET_IDS, type Secret, type SecretId } from './secrets/Secret'
+import { SECRET_IDS, type Secret, type SecretId } from './secrets/Secret'
 
 /**
  * A secret mission: the Governor's Players present The Count of Monte
@@ -50,7 +52,29 @@ export class Play implements Secret {
   /** Toasts already given today, so each is said once. */
   private said = new Set<string>()
 
-  constructor(private readonly game: Game) {}
+  constructor(private readonly game: Game) {
+    const on = () => this.stage === 'cast' || this.stage === 'opening'
+    // The Grimsby Rep's props crate by the altar, and the sack for Act Two.
+    game.things.add({
+      id: 'propsCrate',
+      model: () => [
+        box(1.2, 0.8, 0.8, { x: 0, y: 0, z: 0 }, HEX.wood),
+        box(1.26, 0.08, 0.86, { x: 0, y: 0.8, z: 0 }, HEX.brickShade),
+        // Stencilled on the side: GRIMSBY REP. PROPS. THIS WAY UP.
+        box(0.7, 0.16, 0.02, { x: 0, y: 0.42, z: 0.41 }, HEX.paper),
+        box(0.4, 0.08, 0.02, { x: -0.1, y: 0.22, z: 0.41 }, HEX.ink),
+      ],
+      place: () => ({ ...PROPS_CRATE, visible: on() }),
+      prompts: (add, near) => {
+        if (this.game.player.zone === 'chapel' && this.cue && near(PROPS_CRATE.x, PROPS_CRATE.z, 1.8)) add('E', 'Your cue: get in the sack', () => this.game.escapeBy('curtain'))
+      },
+    })
+    game.things.add({
+      id: 'sack',
+      model: () => [ball(0.36, { x: 0, y: 0.22, z: 0 }, HEX.prisonGreyDark, 2.6, 0.6, 1), ball(0.12, { x: 0.95, y: 0.34, z: 0 }, HEX.ink, 1, 1, 1)],
+      place: () => ({ x: PROPS_CRATE.x + 1.5, z: PROPS_CRATE.z, visible: on() && this.cue }),
+    })
+  }
 
   private get dayN(): number {
     return this.game.clock.day - this.startDay
@@ -124,11 +148,8 @@ export class Play implements Secret {
     return true
   }
 
-  prompts(add: Add, near: Near): void {
-    const g = this.game
-    g.dynamic.setPropsCrate(PROPS_CRATE.x, PROPS_CRATE.z, this.stage === 'cast' || this.stage === 'opening', this.cue)
-    if (g.player.zone === 'chapel' && this.cue && near(PROPS_CRATE.x, PROPS_CRATE.z, 1.8)) add('E', 'Your cue: get in the sack', () => g.escapeBy('curtain'))
-  }
+  /** The crate and sack are things in the world, with their own prompt. */
+  prompts(): void {}
 
   /** The cue: get in the sack. */
   get cue(): boolean {

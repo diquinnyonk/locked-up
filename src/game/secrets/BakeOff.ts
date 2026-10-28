@@ -2,7 +2,8 @@ import type { BufferGeometry } from 'three'
 import { HEX } from '../../art/palette'
 import { box, cyl } from '../../art/shapes'
 import type { ItemId } from '../Items'
-import { type Add, type Near, SecretBase, type Spot, tile } from './Secret'
+import type { Game } from '../Game'
+import { SecretBase, type Spot, tile } from './Secret'
 
 /**
  * The Great Grim Bake Off, filming in the canteen. Three rounds on three
@@ -33,6 +34,22 @@ const caseParts = (): BufferGeometry[] => [
 export class BakeOff extends SecretBase {
   readonly id = 'bakeoff'
   won = 0
+
+  constructor(game: Game) {
+    super(game)
+    // The camera flight cases, by the judge's table, for the whole contest.
+    game.things.add({
+      id: 'flightCase',
+      model: caseParts,
+      place: () => ({ ...CASE, visible: this.announced && this.dayN >= 1 && this.dayN <= FINAL }),
+      prompts: (add, near) => {
+        const g = this.game
+        if (this.dayN === FINAL && this.won === ROUNDS.length && g.player.zone === 'hub' && near(CASE.x, CASE.z, 1.8) && this.m >= PACK_FROM && this.m < TO) {
+          add('E', 'Climb into a camera flight case', () => g.escapeBy('bakeoff'))
+        }
+      },
+    })
+  }
 
   get status() {
     if (!this.announced || this.over) return null
@@ -66,8 +83,6 @@ export class BakeOff extends SecretBase {
   }
 
   protected tick(): void {
-    const g = this.game
-    g.dynamic.setProp('flightCase', caseParts, CASE.x, CASE.z, this.dayN >= 1 && this.dayN <= FINAL)
     if (this.dayN > FINAL || (this.dayN === FINAL && this.m >= TO)) {
       if (this.won === ROUNDS.length) this.fail('The crew drive off to Leeds with their flight cases, and without you. The trophy goes on the Governor\'s desk.')
     }
@@ -102,12 +117,8 @@ export class BakeOff extends SecretBase {
     ])
   }
 
-  prompts(add: Add, near: Near): void {
-    const g = this.game
-    if (this.dayN === FINAL && this.won === ROUNDS.length && g.player.zone === 'hub' && near(CASE.x, CASE.z, 1.8) && this.m >= PACK_FROM && this.m < TO) {
-      add('E', 'Climb into a camera flight case', () => g.escapeBy('bakeoff'))
-    }
-  }
+  /** The flight case is a thing in the world, with its own prompt. */
+  prompts(): void {}
 
   protected extra() {
     return { won: this.won }

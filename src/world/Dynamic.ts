@@ -16,7 +16,7 @@ import {
 import { HEX, color } from '../art/palette'
 import { mergePainted } from '../art/paint'
 import { toon } from '../art/toonMaterial'
-import { ball, box, cyl, ring } from '../art/shapes'
+import { ball, box, cyl } from '../art/shapes'
 import { SOLID_LAYER } from '../render/CelPipeline'
 import type { ItemId } from '../game/Items'
 import { itemGeometry } from '../art/itemModels'
@@ -379,77 +379,6 @@ export class Dynamic {
   }
 
   /** The hole under the loose tile by your bunk, open while you dig. */
-  private readonly props = new Map<string, Mesh>()
-
-  /**
-   * A one-off prop, built the first time it is wanted: the wheelie bins, the
-   * fire engine, a flight case. Shown or hidden, placed and turned.
-   */
-  setProp(id: string, build: () => BufferGeometry[], x: number, z: number, visible: boolean, ry = 0): void {
-    let m = this.props.get(id)
-    if (!m) {
-      if (!visible) return
-      m = new Mesh(mergePainted(build()), toon(0xffffff, { tinted: true }))
-      m.layers.enable(SOLID_LAYER)
-      this.group.add(m)
-      this.props.set(id, m)
-    }
-    m.visible = visible
-    m.position.set(x, 0.01, z)
-    m.rotation.y = ry
-  }
-
-  private ball: Mesh | null = null
-
-  /** The yard's basketball: orange, with its black seams, spinning as it goes. */
-  setBall(x: number, y: number, z: number, spin: number, visible: boolean): void {
-    if (!this.ball) {
-      const r = 0.19
-      this.ball = new Mesh(
-        mergePainted([
-          ball(r, { x: 0, y: 0, z: 0 }, 0xe8742c),
-          ring(r * 1.005, 0.012, { x: 0, y: 0, z: 0 }, HEX.ink, 0),
-          ring(r * 1.005, 0.012, { x: 0, y: 0, z: 0 }, HEX.ink, Math.PI / 2),
-          ring(r * 1.005, 0.012, { x: 0, y: 0, z: 0, ry: Math.PI / 2 }, HEX.ink, Math.PI / 2),
-        ]),
-        toon(0xffffff, { tinted: true }),
-      )
-      this.ball.layers.enable(SOLID_LAYER)
-      this.group.add(this.ball)
-    }
-    this.ball.visible = visible
-    this.ball.position.set(x, y, z)
-    this.ball.rotation.set(spin, spin * 0.3, 0)
-  }
-
-  private propsCrate: Mesh | null = null
-  private sack: Mesh | null = null
-
-  /** The Grimsby Rep's props crate in the chapel, and the sack for Act Two. */
-  setPropsCrate(x: number, z: number, visible: boolean, sack: boolean): void {
-    if (!this.propsCrate) {
-      this.propsCrate = new Mesh(
-        mergePainted([
-          box(1.2, 0.8, 0.8, { x: 0, y: 0, z: 0 }, HEX.wood),
-          box(1.26, 0.08, 0.86, { x: 0, y: 0.8, z: 0 }, HEX.brickShade),
-          // Stencilled on the side: GRIMSBY REP. PROPS. THIS WAY UP.
-          box(0.7, 0.16, 0.02, { x: 0, y: 0.42, z: 0.41 }, HEX.paper),
-          box(0.4, 0.08, 0.02, { x: -0.1, y: 0.22, z: 0.41 }, HEX.ink),
-        ]),
-        toon(0xffffff, { tinted: true }),
-      )
-      this.sack = new Mesh(mergePainted([ball(0.36, { x: 0, y: 0.22, z: 0 }, HEX.prisonGreyDark, 2.6, 0.6, 1), ball(0.12, { x: 0.95, y: 0.34, z: 0 }, HEX.ink, 1, 1, 1)]), toon(0xffffff, { tinted: true }))
-      for (const m of [this.propsCrate, this.sack]) {
-        m.layers.enable(SOLID_LAYER)
-        this.group.add(m)
-      }
-    }
-    this.propsCrate.visible = visible
-    this.propsCrate.position.set(x, 0.01, z)
-    this.sack!.visible = visible && sack
-    this.sack!.position.set(x + 1.5, 0.01, z)
-  }
-
   setTunnelHole(x: number, z: number, visible: boolean): void {
     if (!this.tunnelHole) {
       this.tunnelHole = new Mesh(

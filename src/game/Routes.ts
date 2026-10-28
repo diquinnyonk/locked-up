@@ -56,7 +56,48 @@ export class Routes {
   hiding: 'bins' | 'fireEngine' | null = null
   private warned = false
 
-  constructor(private readonly game: Game) {}
+  constructor(private readonly game: Game) {
+    // The kitchen bins, by the end of the servery, and you can get in one.
+    game.things.add({
+      id: 'bins',
+      model: binParts,
+      place: () => ({ ...BINS, visible: true }),
+      prompts: (add, near) => {
+        const g = this.game
+        const p = g.player
+        const m = this.m
+        if (p.zone === 'hub' && near(BINS.x, BINS.z, 1.9)) {
+          const open = this.binDay && g.clock.period === 'work' && m < LORRY - 5
+          add('E', g.memory.routeClosed('bins') ? 'Kitchen bins (padlocked now)' : open ? 'Climb into a wheelie bin (the lorry comes at 10:30)' : 'Kitchen wheelie bins (emptied Thursdays at 10:30)', () => {
+            if (g.memory.routeClosed('bins')) return g.toast('Padlocked, and labelled NOT YOU.', 'bad')
+            if (!open) return g.toast('Bin day is Thursday. The lorry comes at 10:30, during work.', 'neutral')
+            this.hiding = 'bins'
+            g.hide('wheelie bin')
+            g.toast(g.memory.used.bins ? 'You squeeze in under the chip papers. The kitchen tips the bins out by hand now, so pray they are busy.' : 'You squeeze in under a week of chip papers and a whole cold lasagne. Now wait for the lorry.', 'neutral')
+          })
+        }
+      },
+    })
+    // The fire engine, in the yard for most of a fire drill.
+    game.things.add({
+      id: 'fireEngine',
+      model: engineParts,
+      place: () => ({ ...FIRE_ENGINE, ry: -Math.PI / 2, visible: this.engineHere || this.hiding === 'fireEngine' }),
+      prompts: (add, near) => {
+        const g = this.game
+        const p = g.player
+        if (this.engineHere && p.zone === 'yard' && near(FIRE_ENGINE.x, FIRE_ENGINE.z, 4)) {
+          const t = this.engineLeaves
+          add('E', g.memory.routeClosed('fireEngine') ? 'The fire engine (searched at the gate now)' : `Hide in a hose locker on the fire engine (it leaves at ${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')})`, () => {
+            if (g.memory.routeClosed('fireEngine')) return g.toast('They search the engine at the gate now. The fire crew are furious about it.', 'bad')
+            this.hiding = 'fireEngine'
+            g.hide('hose locker')
+            g.toast('You fold yourself in between two hoses and a box of biscuits. Smells of smoke and custard creams.', 'neutral')
+          })
+        }
+      },
+    })
+  }
 
   private get m(): number {
     return this.game.clock.minuteOfDay
@@ -87,8 +128,6 @@ export class Routes {
   update(): void {
     const g = this.game
     const m = this.m
-    g.dynamic.setProp('bins', binParts, BINS.x, BINS.z, true)
-    g.dynamic.setProp('fireEngine', engineParts, FIRE_ENGINE.x, FIRE_ENGINE.z, this.engineHere || this.hiding === 'fireEngine', -Math.PI / 2)
     if (this.hiding === 'bins') {
       if (m >= LORRY - 5 && !this.warned) {
         this.warned = true
@@ -210,29 +249,7 @@ export class Routes {
     const g = this.game
     const p = g.player
     const inv = p.inventory
-    const m = this.m
     if (p.zone === 'library' && !g.clock.locked) add('R', 'The library: books, computer and printer', () => this.library())
-    // Bins.
-    if (p.zone === 'hub' && near(BINS.x, BINS.z, 1.9)) {
-      const open = this.binDay && g.clock.period === 'work' && m < LORRY - 5
-      add('E', g.memory.routeClosed('bins') ? 'Kitchen bins (padlocked now)' : open ? 'Climb into a wheelie bin (the lorry comes at 10:30)' : 'Kitchen wheelie bins (emptied Thursdays at 10:30)', () => {
-        if (g.memory.routeClosed('bins')) return g.toast('Padlocked, and labelled NOT YOU.', 'bad')
-        if (!open) return g.toast('Bin day is Thursday. The lorry comes at 10:30, during work.', 'neutral')
-        this.hiding = 'bins'
-        g.hide('wheelie bin')
-        g.toast(g.memory.used.bins ? 'You squeeze in under the chip papers. The kitchen tips the bins out by hand now, so pray they are busy.' : 'You squeeze in under a week of chip papers and a whole cold lasagne. Now wait for the lorry.', 'neutral')
-      })
-    }
-    // The fire engine.
-    if (this.engineHere && p.zone === 'yard' && near(FIRE_ENGINE.x, FIRE_ENGINE.z, 4)) {
-      const t = this.engineLeaves
-      add('E', g.memory.routeClosed('fireEngine') ? 'The fire engine (searched at the gate now)' : `Hide in a hose locker on the fire engine (it leaves at ${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')})`, () => {
-        if (g.memory.routeClosed('fireEngine')) return g.toast('They search the engine at the gate now. The fire crew are furious about it.', 'bad')
-        this.hiding = 'fireEngine'
-        g.hide('hose locker')
-        g.toast('You fold yourself in between two hoses and a box of biscuits. Smells of smoke and custard creams.', 'neutral')
-      })
-    }
     // The glider, off the south edge of the yard.
     const ty = Math.floor(p.body.z / TILE)
     if (p.zone === 'yard' && ty >= 56 && inv.has('glider')) {

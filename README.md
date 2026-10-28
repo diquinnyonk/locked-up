@@ -740,16 +740,40 @@ tabs.
 
 ```
 src/
-  art/        palette, toon ramp and material, ink outlines, painted primitives
+  art/        palette, toon ramp and material, ink outlines, painted primitives,
+              item models, the car and the fire engine
   shaders/    toon shader (Windward's, plus a shared day/night world tint)
-  render/     cel post pipeline, the instanced crowd
-  world/      tile grid and layout, A* and collision, static build, moving parts
+  render/     cel post pipeline, the instanced crowd, the rigged people
+  world/      tile grid and layout, A* and collision, static build, moving parts,
+              Things (objects with a model, a place and prompts)
   npc/        behaviour trees, officers, prisoners, the prison's memory
-  game/       the regime clock, doors, items and recipes, the phone, the game
-  ui/         HUD, minimap, panels, speech bubbles
-  audio/      synthesised sound
-scripts/      headless simulation and scenario checks
+  game/       the regime clock, doors, items and recipes, the phone, events,
+              feuds, routes, secrets, basketball, records, saves, and the Game
+  game/features/
+              the Game's feature modules (see below)
+  ui/         HUD, minimap, panels, speech bubbles, records
+  audio/      synthesised sound and music, recorded voices
+scripts/      headless scenario checks, the simulation, the dialogue script,
+              the trailer capture
 ```
+
+`Game.ts` holds the shared state and the frame loop: who is where, the clock,
+the prison's memory, being caught, the endings, saving and loading. The rest
+lives in feature modules in `src/game/features`, each a class that holds the
+game: `Characters` (the Governor, the Reverend, Keith, a secret's guest),
+`SillyExits` (disguises, the laundry, the visitors), `CellmateStory`,
+`TunnelDig`, `SafeHeist`, `Toilets`, `Trespass`, `Talk`, `PlayerActions`,
+`Disorder` (riots, noises, the alarm), `Mail`, `Pockets` and `PromptBuilder`.
+Self-contained systems sit beside them in `src/game`: `Events`, `Feuds`,
+`Routes`, `Basketball`, the secrets.
+
+Anything with a model in the world (the bins, the fire engine, the basketball,
+the play's props crate) is a **Thing** (`src/world/Things.ts`): it says what
+it looks like, where it is and whether it is there this frame, what you can
+do next to it, and optionally what it does each frame. Register one with
+`game.things.add({ id, model, place, prompts?, update? })` and the registry
+builds its mesh the first time it is shown, places it every frame and offers
+its prompts; nothing else needs to change.
 
 ## Recording the dialogue
 

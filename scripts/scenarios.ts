@@ -2157,6 +2157,32 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
   }
 }
 
+// ---- Things in the world ----
+{
+  const { BoxGeometry } = await import('three')
+  const { game } = fresh()
+  let shown = false
+  let ticks = 0
+  game.things.add({
+    id: 'testCrate',
+    model: () => [new BoxGeometry(1, 1, 1)],
+    place: () => ({ x: game.player.body.x + 1, z: game.player.body.z, visible: shown }),
+    update: () => ticks++,
+    prompts: (add) => add('E', 'Open the test crate', () => {}),
+  })
+  const meshes = () => (game.things as any).meshes as Map<string, unknown>
+  run(game, 0.2)
+  check('things: nothing is built until it is shown', !meshes().has('testCrate') && ticks > 0)
+  check('things: and it offers nothing while hidden', !prompt(game, 'test crate'))
+  shown = true
+  run(game, 0.2)
+  check('things: shown, its mesh is built and placed', meshes().has('testCrate'))
+  check('things: and its prompt appears', prompt(game, 'test crate'))
+  game.things.add({ id: 'testCrate', model: () => [new BoxGeometry(1, 1, 1)], place: () => ({ x: 0, z: 0, visible: false }) })
+  check('things: the same id replaces the old one', !prompt(game, 'test crate') && !meshes().has('testCrate'))
+  check('things: the bins, the fire engine and the ball are all things', !!game.things.get('bins') && !!game.things.get('fireEngine') && !!game.things.get('basketball'))
+}
+
 // ---- The secret's roll ----
 {
   const store = new Map<string, string>()

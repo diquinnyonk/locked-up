@@ -26,6 +26,7 @@ import { makeSecret } from './secrets'
 import type { Secret } from './secrets/Secret'
 import { endingStory } from './EndingTexts'
 import { Routes } from './Routes'
+import { Things } from '../world/Things'
 import { Basketball } from './Basketball'
 import { PLAYER_SPEED, RUN_SPEED, SNEAK_SPEED, CRAWL_SPEED, mulberry32, WALL_TOP, TALK_GAP , HYMN_SPOTS } from './features/shared'
 export { TUNNEL_LENGTH } from './features/shared'
@@ -70,6 +71,8 @@ export class Game implements World {
   readonly grid = new Grid()
   readonly clock = new Clock()
   readonly memory = new PrisonMemory()
+  /** Things in the world with a model, a place and prompts (see src/world/Things.ts). */
+  readonly things = new Things(() => this.dynamic.group)
   /** Set before building a game to rebuild a saved prison exactly. */
   static seedForNext: number | null = null
   /** What the prison was rolled from: the same seed, the same eighty faces. */
@@ -788,9 +791,7 @@ export class Game implements World {
     this.feuds.update()
     this.secret?.update(delta)
     this.routes.update()
-    this.basketball.update(delta)
-    const bb = this.basketball
-    this.dynamic.setBall(bb.x, bb.y, bb.z, bb.spin, !bb.gone)
+    this.things.update(delta)
 
     this.doors.beginFrame()
     this.updatePlayer(delta)

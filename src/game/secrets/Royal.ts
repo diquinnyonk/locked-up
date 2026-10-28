@@ -1,7 +1,8 @@
 import type { BufferGeometry } from 'three'
 import { HEX } from '../../art/palette'
 import { ball, box, cyl } from '../../art/shapes'
-import { type Add, type Near, type Option, SecretBase, type Spot, tile } from './Secret'
+import type { Game } from '../Game'
+import { type Option, SecretBase, type Spot, tile } from './Secret'
 
 /**
  * A royal visit: the Duke of Grimsby opens the new gym. Volunteer for the
@@ -29,6 +30,25 @@ export class Royal extends SecretBase {
   readonly id = 'royal'
   volunteered = false
 
+  constructor(game: Game) {
+    super(game)
+    // The florist's giant arrangement in the gym, on the day.
+    game.things.add({
+      id: 'royalFlowers',
+      model: flowerParts,
+      place: () => ({ ...FLOWERS, visible: this.announced && this.dayN === ROYAL_DAY && this.m < DUKE_TO + 30 }),
+      prompts: (add, near) => {
+        const g = this.game
+        if (this.volunteered && this.onTheDay && g.player.zone === 'gym' && near(FLOWERS.x, FLOWERS.z, 1.9) && this.m >= HIDE_FROM && this.m < DUKE_TO) {
+          add('E', 'Hide inside the giant floral arrangement', () => {
+            if (g.rng() < 0.8) g.escapeBy('royal')
+            else g.rumbled('stunt', 'Your Royal Highness, the chrysanthemums appear to have... feet.')
+          })
+        }
+      },
+    })
+  }
+
   get status() {
     if (!this.announced || this.over) return null
     if (!this.volunteered) return { title: 'A royal visit', text: `The Duke of Grimsby opens the new gym on ${this.day(ROYAL_DAY)} at 11:00. Volunteer for the guard of honour: ask the Governor or the Reverend.` }
@@ -53,8 +73,6 @@ export class Royal extends SecretBase {
   }
 
   protected tick(): void {
-    const g = this.game
-    g.dynamic.setProp('royalFlowers', flowerParts, FLOWERS.x, FLOWERS.z, this.dayN === ROYAL_DAY && this.m < DUKE_TO + 30)
     if (this.dayN > ROYAL_DAY || (this.dayN === ROYAL_DAY && this.m >= DUKE_TO)) {
       this.fail(this.volunteered ? "The ribbon is cut, the Duke has gone, and the florist's van drives off without you." : 'The Duke has been and gone. He said the gym was "very gym-like".')
     }
@@ -106,15 +124,8 @@ export class Royal extends SecretBase {
     return true
   }
 
-  prompts(add: Add, near: Near): void {
-    const g = this.game
-    if (this.volunteered && this.onTheDay && g.player.zone === 'gym' && near(FLOWERS.x, FLOWERS.z, 1.9) && this.m >= HIDE_FROM && this.m < DUKE_TO) {
-      add('E', 'Hide inside the giant floral arrangement', () => {
-        if (g.rng() < 0.8) g.escapeBy('royal')
-        else g.rumbled('stunt', 'Your Royal Highness, the chrysanthemums appear to have... feet.')
-      })
-    }
-  }
+  /** The flowers are a thing in the world, with their own prompt. */
+  prompts(): void {}
 
   protected extra() {
     return { volunteered: this.volunteered }

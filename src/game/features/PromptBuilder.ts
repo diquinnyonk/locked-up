@@ -188,7 +188,7 @@ export class PromptBuilder {
         this.game.secret!.talkGuest!()
       })
       this.game.secret?.prompts(claim, near)
-      this.game.basketball.prompts(claim, near)
+      this.game.things.prompts(claim, near)
       this.game.routes.prompts(claim, near)
     }
     // Any bench, chair, pew, sofa or bunk edge. Lowest of all.
