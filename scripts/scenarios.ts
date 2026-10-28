@@ -13,6 +13,8 @@ import { findPath } from '../src/world/Nav'
 import { keyFor } from '../src/audio/lineKeys'
 import { castLine, ownerOf, voiceFor } from '../src/audio/cast'
 import script from '../dialogue/script.json'
+import { readFileSync, readdirSync, statSync } from 'node:fs'
+const readdirDeep = (dir: string): string[] => readdirSync(dir).flatMap((f) => (statSync(`${dir}/${f}`).isDirectory() ? readdirDeep(`${dir}/${f}`) : [`${dir}/${f}`]))
 
 ;(globalThis as unknown as { window: unknown }).window = globalThis
 ;(globalThis as unknown as { addEventListener: unknown }).addEventListener = () => {}
@@ -2167,6 +2169,30 @@ check('phone: "soon" flagged once they learn', !screenCall('see you soon bruv lo
     run(game, 0.2)
     check('basketball: it does not leave the yard with you', ball.held === null && game.grid.zoneAtWorld(ball.x, ball.z) === 'yard')
   }
+}
+
+// ---- Same seed, same prison, same day ----
+{
+  // Two prisons from one seed, played with the same inputs, stay identical:
+  // the daily challenge is fair, and a run could be replayed from its inputs.
+  const play = () => {
+    Game.seedForNext = 4242
+    const { game } = fresh()
+    Game.seedForNext = null
+    const trace: string[] = []
+    for (let i = 0; i < 30 * 90; i++) {
+      game.input.forced = i % 300 < 150 ? { x: 1, z: 0 } : { x: 0, z: 1 }
+      game.update(1 / 30)
+      if (i % 150 === 0) trace.push([...game.bodies].map((b) => `${b.x.toFixed(3)},${b.z.toFixed(3)},${b.pose},${b.height.toFixed(3)}`).join(';') + `|${game.clock.minuteOfDay}|${game.dynamic.items.length}`)
+    }
+    game.input.forced = null
+    return trace
+  }
+  const a = play()
+  const b = play()
+  const at = a.findIndex((t, i) => t !== b[i])
+  check('replay: the same seed and inputs give the same day', at < 0, at < 0 ? '' : `differs from step ${at * 150}`)
+  check('replay: no bare Math.random outside core/random.ts', !readdirDeep('src').some((f) => !f.endsWith('core/random.ts') && /Math\.random/.test(readFileSync(f, 'utf8'))))
 }
 
 // ---- The map file ----

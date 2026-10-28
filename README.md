@@ -755,7 +755,7 @@ src/
   ui/         HUD, minimap, panels, speech bubbles, records
   audio/      synthesised sound and music, recorded voices
 scripts/      headless scenario checks, the simulation, the dialogue script,
-              the trailer capture
+              the trailer capture, the phone benchmark (perf/)
 ```
 
 `Game.ts` holds the shared state and the frame loop: who is where, the clock,
@@ -794,6 +794,36 @@ rooms, every room walkable from your cell, every grate on one vent network.
 Moving a room or adding a wing is an edit to that file. Furniture, and the
 spots secrets and routes use, are placed in code (`Build.ts`, `Furnish.ts`,
 `Solids.ts`, and each feature), so a new prison needs those dressed too.
+
+**Randomness** comes in two kinds (`src/core/random.ts`). Anything that
+changes what happens uses the prison's seeded generator (`game.rng`, or
+`world.rng` for officers and prisoners), and everyone's height and build
+come from a second stream seeded the same way. So a prison from the same
+seed, played with the same inputs, plays out exactly the same: `npm test`
+runs two side by side for 90 seconds and checks every body matches. Rain,
+snow, sounds and mouths use `cosmetic()`, which is not seeded and never
+touches the game's dice. A bare `Math.random` anywhere else fails the tests.
+
+**Speed on cheap phones.** `npm run perf` opens the built game in Chromium at
+phone size with the processor slowed six times (Chrome's low-end mobile
+setting), puts you in the canteen at lunch, the yard and a landing, and
+reports the processor time per frame, draw calls, triangles and the hottest
+functions. (The headless browser draws in software, so it cannot speak for
+a real phone's graphics chip; the triangle count stands in for that.) What
+keeps it quick:
+
+- Only the people the camera can see are posed and drawn (`People.cull`).
+  The rest are taken out of the scene, skeletons and all, and catch up the
+  animation they missed when they come back into view. Anyone far from you
+  animates less often too.
+- The prison is merged in 16 metre squares, not one mesh, so the parts out
+  of view are never sent to the graphics chip.
+- Furniture is filed by tile, so a walker only checks the tables near them.
+- Resolution steps down when frames run slow (`Engine.adaptResolution`).
+
+At six times slower, a frame's processor time went from 120 to 170 ms (6 to 8
+frames a second) to 40 to 50 ms (20 to 25), and triangles from about 540,000
+to 40,000 to 90,000. It has still not been tried on a real low-end Android.
 
 ## Recording the dialogue
 

@@ -22,6 +22,7 @@ import { noteStarted, readRecords, recordDaily, recordEnding } from './game/Reco
 import { dailyFor, dailyMet, describeDaily, prettyDate, todayKey } from './game/Daily'
 import { showRecords } from './ui/RecordsView'
 import { type SaveFile, clearSave, downloadSave, pickSaveFile, readSave, writeSave } from './game/Save'
+import { cosmetic } from './core/random'
 
 /**
  * Locked Up. A UK prison break, drawn in Windward's cel style: banded toon
@@ -52,8 +53,10 @@ game.season = new Date().getMonth() === 11 || new URLSearchParams(location.searc
 const fogEl = document.getElementById('fog') as HTMLElement
 // Rigged, animated characters in place of the jointed figures. If anything
 // about them fails to build, the jointed crowd simply stays.
+let people: People | null = null
 try {
-  game.useCrowd(new People(game.bodies.length))
+  people = new People(game.bodies.length)
+  game.useCrowd(people)
 } catch (e) {
   console.warn('Rigged characters unavailable, keeping the jointed crowd.', e)
 }
@@ -129,7 +132,7 @@ function begin(save: SaveFile | null): void {
     game.startSentence()
     // The secret play: one sentence in ten, once per browser, never in a
     // daily (that has to be the same prison for everyone).
-    const secret = game.daily ? null : rollSecret(Math.random, params.get('secret'))
+    const secret = game.daily ? null : rollSecret(cosmetic, params.get('secret'))
     if (secret) game.secret = makeSecret(secret, game)
   }
   game.input.enabled = true
@@ -240,7 +243,7 @@ const pad = new Pad(game.input)
 const SURNAMES = ['Barraclough', 'Higgins', 'Pickles', 'Shufflebottom', 'Entwistle', 'Ramsbottom', 'Clegg', 'Haworth']
 pad.onFirstUse = () => {
   // Nobody types a name with a thumb stick.
-  if (!started && !nameInput.value) nameInput.value = SURNAMES[Math.floor(Math.random() * SURNAMES.length)]
+  if (!started && !nameInput.value) nameInput.value = SURNAMES[Math.floor(cosmetic() * SURNAMES.length)]
   ui.toast('Controller ready. Stick or d-pad to move round menus, A to press, B to go back.', 'good')
 }
 const overlayUp = () =>
@@ -389,6 +392,8 @@ engine.onUpdate((delta) => {
     cam.lookAt(camTarget)
   }
   document.body.classList.toggle('talking', !!game.talkingTo)
+  // Now the camera is placed: nobody it cannot see is posed or drawn.
+  people?.cull(game.bodies, cam)
   ui.update(delta, cam)
 })
 

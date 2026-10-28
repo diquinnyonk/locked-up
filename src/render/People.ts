@@ -7,8 +7,10 @@ import {
   BoxGeometry,
   BufferAttribute,
   BufferGeometry,
+  type Camera,
   Color,
   CylinderGeometry,
+  Frustum,
   LoopOnce,
   Matrix4,
   Mesh,
@@ -18,6 +20,7 @@ import {
   ShaderMaterial,
   Skeleton,
   SkinnedMesh,
+  Sphere,
   SphereGeometry,
   TorusGeometry,
   Vector3,
@@ -34,6 +37,7 @@ import { SOLID_LAYER } from './CelPipeline'
 import type { Body } from './Crowd'
 import { BODY_HEIGHT } from './Crowd'
 import data from './people.json'
+import { cosmetic } from '../core/random'
 
 /**
  * Everybody in the prison as proper rigged characters: the KayKit
@@ -355,6 +359,7 @@ const tmpQ = new Quaternion()
 const qParent = new Quaternion()
 const qDelta = new Quaternion()
 const axisW = new Vector3()
+const m4 = new Matrix4()
 const AXIS_X = new Vector3(1, 0, 0)
 const AXIS_Z = new Vector3(0, 0, 1)
 /** Where the clips put the body relative to its spot, per pose: sitting
@@ -379,7 +384,10 @@ export class Person {
   private look = ''
   /** A little dark mouth on the face, open and shut while they talk. */
   private readonly mouth: Mesh
-  private mouthTime = Math.random() * 10
+  private mouthTime = cosmetic() * 10
+  /** In the camera's view as of the last cull; out of it, nothing is posed. */
+  seen = true
+  /** Animation time not yet given to the mixer. */
 
   constructor() {
     const rig = new Object3D()
@@ -541,13 +549,34 @@ export class Person {
         this.play('Idle')
         break
     }
-    this.owed += delta
-    if (!animate && !crawl) return
+    // Banked, up to a second: clips loop or hold, so more makes no difference.
+    this.owed = Math.min(1, this.owed + delta)
+    if (!this.seen || (!animate && !crawl)) return
+    this.pose(b)
+  }
+
+  /** Brings the skeleton up to date: the mixer, then any hand posing. */
+  private pose(b: Body): void {
     for (const [bone, q] of this.posed) bone.quaternion.copy(q)
     this.posed.clear()
     this.mixer.update(this.owed)
     this.owed = 0
-    if (crawl) this.crawl(b)
+    if (b.pose === 'crawl') this.crawl(b)
+  }
+
+  /**
+   * Shows or hides them for this frame's camera. Hidden, they are taken out
+   * of the scene, so neither the renderer nor the scene's matrix update
+   * walks their skeleton (some forty bones). Coming back into view, they
+   * catch up the animation they missed.
+   */
+  setSeen(b: Body, seen: boolean, group: Object3D): void {
+    const show = b.visible && seen
+    if (show && this.root.parent !== group) group.add(this.root)
+    else if (!show && this.root.parent) this.root.removeFromParent()
+    const was = this.seen
+    this.seen = seen
+    if (seen && !was && b.visible) this.pose(b)
   }
 
   /** Shut, a thin line; talking, it opens and closes in uneven bursts with
@@ -639,5 +668,26 @@ export class People {
       this.people[i].update(b, delta, every === 1 || (this.frame + i) % every === 0)
     }
     for (let i = count; i < this.capacity; i++) this.people[i].root.visible = false
+  }
+
+  private readonly frustum = new Frustum()
+  private readonly sphere = new Sphere()
+
+  /**
+   * After the camera is placed for the frame: hides everyone it cannot see.
+   * On a phone in portrait that is most of the prison, and it is the
+   * biggest saving there is (see scripts/perf/phone.cjs).
+   */
+  cull(bodies: Body[], camera: Camera): void {
+    camera.updateMatrixWorld()
+    this.frustum.setFromProjectionMatrix(m4.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse))
+    const count = Math.min(bodies.length, this.capacity)
+    for (let i = 0; i < count; i++) {
+      const b = bodies[i]
+      // Round the whole person, lying down or arms out, with a little to spare.
+      this.sphere.center.set(b.x, b.y + 0.9, b.z)
+      this.sphere.radius = 1.8 * b.height
+      this.people[i].setSeen(b, this.frustum.intersectsSphere(this.sphere), this.group)
+    }
   }
 }

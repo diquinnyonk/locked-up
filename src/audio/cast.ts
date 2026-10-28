@@ -1,5 +1,6 @@
 import script from '../../dialogue/script.json'
 import { keyFor } from './lineKeys'
+import { cosmetic } from '../core/random'
 
 /**
  * Who says what. Every line an officer or a prisoner might say belongs to
@@ -42,7 +43,7 @@ export function ownerOf(key: string | null): string | null {
  * own alternative from the same list when the line belongs to somebody else
  * and they have one, otherwise the line as it was.
  */
-export function castLine(who: string | null, text: string, random: () => number = Math.random): string {
+export function castLine(who: string | null, text: string, random: () => number = cosmetic): string {
   if (!who) return text
   const key = keyFor(text)
   const entry = key ? byKey.get(key) : undefined

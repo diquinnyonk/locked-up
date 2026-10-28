@@ -67,7 +67,10 @@ export class Guard extends Agent {
   readonly trait: Trait
   /** Chatty: seconds left in a chat, and till the next one. */
   chatting = 0
-  private chatIn = 30 + Math.random() * 60
+  // Staggered by officer, not rolled: rolling here would shift the prison's
+  // seeded stream for everything built after the officers.
+  private chatIn = 30
+
   /** Soft touch: the day the warning was last used. */
   private warnedDay = -1
   private sticklerCooldown = 0
@@ -104,6 +107,7 @@ export class Guard extends Agent {
     this.name = NAMES[index]
     this.voiceId = voiceSlug(this.name)
     this.trait = OFFICER_TRAITS[index] ?? 'ordinary'
+    this.chatIn = 30 + ((index * 23) % 60)
     this.block = block
     this.duty = duty
     this.post = post

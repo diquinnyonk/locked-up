@@ -23,6 +23,7 @@ import { itemGeometry } from '../art/itemModels'
 import { carParts } from '../art/vehicles'
 import { type Door, type Grate, type Grid, TILE } from './Grid'
 import { PERIMETER_H, WALL_H } from './Build'
+import { cosmetic } from '../core/random'
 
 /**
  * Everything in the prison that moves or changes: doors and gates, vent
@@ -328,11 +329,11 @@ export class Dynamic {
       const far = Math.abs(d[i * 3] - x) > R || Math.abs(d[i * 3 + 2] - z) > R
       if (d[i * 3 + 1] < 0 || far) {
         // Somewhere new above open ground, or nowhere this frame.
-        const nx = x + (Math.random() * 2 - 1) * R
-        const nz = z + (Math.random() * 2 - 1) * R
+        const nx = x + (cosmetic() * 2 - 1) * R
+        const nz = z + (cosmetic() * 2 - 1) * R
         d[i * 3] = nx
         d[i * 3 + 2] = nz
-        d[i * 3 + 1] = open(nx, nz) ? (far ? Math.random() * 12 : 12) : -100
+        d[i * 3 + 1] = open(nx, nz) ? (far ? cosmetic() * 12 : 12) : -100
       }
     }
     if (kind === 'rain') {

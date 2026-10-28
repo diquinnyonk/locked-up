@@ -4,6 +4,7 @@
  * starts after a user gesture, so `unlock` is called from the title screen.
  */
 import { type Scene, Soundscape, type Volumes, readVolumes } from './Soundscape'
+import { cosmetic } from '../core/random'
 
 export type Sound = 'clank' | 'fight' | 'throw' | 'alarm' | 'shout' | 'buzz' | 'caught' | 'good' | 'bounce'
 
@@ -56,7 +57,7 @@ export class Sfx {
         for (const f of [420, 1130, 1870]) {
           const o = ctx.createOscillator()
           o.type = 'square'
-          o.frequency.value = f * (0.9 + Math.random() * 0.2)
+          o.frequency.value = f * (0.9 + cosmetic() * 0.2)
           o.connect(gain)
           o.start(now)
           o.stop(now + 0.25)

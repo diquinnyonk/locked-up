@@ -103,6 +103,7 @@ export interface Room {
 
 /** The cell the player is put in. Block A, south landing, third along. */
 export const PLAYER_CELL = MAP.playerCell
+const NONE: Grid['props'] = []
 
 /** Where a wing's central officer is posted, out in the middle of the prison. */
 export function wingPost(block: BlockId): { tx: number; ty: number } {
@@ -120,6 +121,8 @@ export class Grid {
   readonly seats: { x: number; z: number; yaw: number; toilet?: string }[] = []
   /** Furniture nobody walks through, as world rectangles. */
   readonly props: { x0: number; z0: number; x1: number; z1: number; enter: boolean }[] = []
+  /** Props by nearby tile, in the order they were added. */
+  private readonly propsNear = new Map<number, Grid['props']>()
   /** Tiles whose middle a prop covers: paths go round them. */
   private readonly propTiles = new Set<number>()
   readonly cells = new Map<string, CellInfo>()
@@ -262,6 +265,16 @@ export class Grid {
   addProp(x: number, z: number, w: number, d: number, nav = true, enter = false): void {
     const p = { x0: x - w / 2, z0: z - d / 2, x1: x + w / 2, z1: z + d / 2, enter }
     this.props.push(p)
+    // Filed under every tile within a tile of it, so a walker only checks
+    // the furniture near them (see pushOutOfProps).
+    for (let ty = Math.floor(p.z0 / TILE) - 1; ty <= Math.floor(p.z1 / TILE) + 1; ty++) {
+      for (let tx = Math.floor(p.x0 / TILE) - 1; tx <= Math.floor(p.x1 / TILE) + 1; tx++) {
+        const k = ty * MAP_W + tx
+        const list = this.propsNear.get(k)
+        if (list) list.push(p)
+        else this.propsNear.set(k, [p])
+      }
+    }
     if (!nav) return
     for (let ty = Math.floor(p.z0 / TILE); ty <= Math.floor(p.z1 / TILE); ty++) {
       for (let tx = Math.floor(p.x0 / TILE); tx <= Math.floor(p.x1 / TILE); tx++) {
@@ -290,7 +303,10 @@ export class Grid {
    * to sit on, the bed it is about to lie in) lets it in.
    */
   pushOutOfProps(pos: { x: number; z: number }, r: number, except?: { x: number; z: number } | null): void {
-    for (const p of this.props) {
+    // Only the furniture filed near this tile: anything else is over a tile
+    // away. (A body wider than a tile checks the lot.)
+    const near = r < TILE / 2 ? (this.propsNear.get(Math.floor(pos.z / TILE) * MAP_W + Math.floor(pos.x / TILE)) ?? NONE) : this.props
+    for (const p of near) {
       if (except && p.enter && except.x > p.x0 - 0.05 && except.x < p.x1 + 0.05 && except.z > p.z0 - 0.05 && except.z < p.z1 + 0.05) continue
       const nx = Math.max(p.x0, Math.min(pos.x, p.x1))
       const nz = Math.max(p.z0, Math.min(pos.z, p.z1))

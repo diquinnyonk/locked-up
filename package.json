@@ -12,7 +12,8 @@
     "sim": "tsx scripts/sim.ts",
     "dialogue": "tsx scripts/dialogue.ts",
     "pages": "node scripts/pages.mjs",
-    "heard": "tsx scripts/heard.ts"
+    "heard": "tsx scripts/heard.ts",
+    "perf": "node scripts/perf/phone.cjs"
   },
   "dependencies": {
     "three": "^0.185.1"

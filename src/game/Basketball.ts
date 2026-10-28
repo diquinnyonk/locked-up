@@ -244,8 +244,8 @@ export class Basketball implements Thing {
       const nx = (this.x - RIM.x) / Math.max(0.01, dr)
       const nz = (this.z - RIM.z) / Math.max(0.01, dr)
       const out = dr > RIM_R ? 1 : -1
-      this.vx = nx * out * (1.2 + Math.random() * 1.2)
-      this.vz = nz * out * (1.2 + Math.random() * 1.2)
+      this.vx = nx * out * (1.2 + this.game.rng() * 1.2)
+      this.vz = nz * out * (1.2 + this.game.rng() * 1.2)
       this.vy = Math.abs(this.vy) * 0.5 + 1
       this.bounceCooldown = 0.15
       this.clank(0.6)

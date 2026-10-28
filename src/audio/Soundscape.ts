@@ -1,3 +1,4 @@
+import { cosmetic } from '../core/random'
 /**
  * The sound of the place, synthesised like everything else: no files.
  *
@@ -102,7 +103,7 @@ export class Soundscape {
     const b = this.brown.getChannelData(0)
     let last = 0
     for (let i = 0; i < len; i++) {
-      w[i] = Math.random() * 2 - 1
+      w[i] = cosmetic() * 2 - 1
       last = (last + 0.02 * w[i]) / 1.02
       b[i] = last * 3.5
     }
@@ -149,7 +150,7 @@ export class Soundscape {
       depth.connect(inner.gain)
       lfo.start()
     }
-    src.start(0, Math.random() * 2)
+    src.start(0, cosmetic() * 2)
     this.beds.set(name, gain)
   }
 
@@ -188,7 +189,7 @@ export class Soundscape {
 
     // Something off in the distance.
     if (t > this.nextEvent) {
-      this.nextEvent = t + 6 + Math.random() * 10
+      this.nextEvent = t + 6 + cosmetic() * 10
       if (!scene.title) this.distant(outdoors)
     }
   }
@@ -218,13 +219,13 @@ export class Soundscape {
       o.stop(at + dur + 0.1)
     }
     // A melody note now and then, on top.
-    if (this.mood === 'day' && Math.random() < 0.6) {
+    if (this.mood === 'day' && cosmetic() < 0.6) {
       const o = ctx.createOscillator()
       o.type = 'sine'
-      const top = chord[Math.floor(Math.random() * chord.length)] + 12
+      const top = chord[Math.floor(cosmetic() * chord.length)] + 12
       o.frequency.value = D3 * Math.pow(2, top / 12)
       const g = ctx.createGain()
-      const start = at + 1 + Math.random() * 2
+      const start = at + 1 + cosmetic() * 2
       g.gain.setValueAtTime(0.0001, start)
       g.gain.exponentialRampToValueAtTime(0.025, start + 0.08)
       g.gain.exponentialRampToValueAtTime(0.0001, start + 1.6)
@@ -258,17 +259,17 @@ export class Soundscape {
     const ctx = this.ctx
     const t = ctx.currentTime
     const night = this.scene.night
-    const pick = Math.random()
+    const pick = cosmetic()
     const out = ctx.createGain()
     out.connect(this.ambience)
     if (outdoors && !night && pick < 0.6) {
       // A bird on the wall.
-      for (let k = 0; k < 2 + Math.floor(Math.random() * 3); k++) {
+      for (let k = 0; k < 2 + Math.floor(cosmetic() * 3); k++) {
         const o = ctx.createOscillator()
         o.type = 'sine'
         const s = t + k * 0.14
-        o.frequency.setValueAtTime(2600 + Math.random() * 900, s)
-        o.frequency.exponentialRampToValueAtTime(3800 + Math.random() * 600, s + 0.08)
+        o.frequency.setValueAtTime(2600 + cosmetic() * 900, s)
+        o.frequency.exponentialRampToValueAtTime(3800 + cosmetic() * 600, s + 0.08)
         const g = ctx.createGain()
         g.gain.setValueAtTime(0.0001, s)
         g.gain.exponentialRampToValueAtTime(0.03, s + 0.02)
@@ -320,7 +321,7 @@ export class Soundscape {
       src.connect(bp)
       bp.connect(g)
       g.connect(out)
-      src.start(t, Math.random() * 2, 1.5)
+      src.start(t, cosmetic() * 2, 1.5)
       return
     }
     // A shout down a corridor: a filtered swell.
@@ -338,6 +339,6 @@ export class Soundscape {
     src.connect(bp)
     bp.connect(g)
     g.connect(out)
-    src.start(t, Math.random() * 2, 0.8)
+    src.start(t, cosmetic() * 2, 0.8)
   }
 }

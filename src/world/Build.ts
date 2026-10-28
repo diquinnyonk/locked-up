@@ -3,6 +3,7 @@ import {
   Group,
   Mesh,
   PlaneGeometry,
+  Vector3,
 } from 'three'
 import { HEX } from '../art/palette'
 import { paint, mergePainted } from '../art/paint'
@@ -48,8 +49,12 @@ export interface Fixtures extends AnnexFixtures {
 
 /**
  * Builds the static prison: walls, floors, perimeter, furniture. All of it is
- * merged into a few geometries sharing one vertex-tinted toon material.
+ * merged into a few dozen chunks sharing one vertex-tinted toon material.
  */
+/** The static prison is merged in squares this many metres across. */
+const CHUNK = 16
+const centre = new Vector3()
+
 export function buildPrison(grid: Grid): { group: Group; fixtures: Fixtures } {
   const group = new Group()
   const statics: BufferGeometry[] = []
@@ -272,11 +277,26 @@ export function buildPrison(grid: Grid): { group: Group; fixtures: Fixtures } {
 
   registerSolids(grid)
 
-  const merged = mergePainted(statics)
-  const mesh = new Mesh(merged, toon(0xffffff, { tinted: true }))
-  mesh.layers.enable(SOLID_LAYER)
-  mesh.matrixAutoUpdate = false
-  group.add(mesh)
+  // Merged in chunks of the map, not one mesh: the camera only ever sees a
+  // corner of the prison, and a chunk out of view is never sent to the GPU.
+  // One mesh covering everything could never be culled (half a million
+  // triangles a frame, everywhere).
+  const material = toon(0xffffff, { tinted: true })
+  const chunks = new Map<number, BufferGeometry[]>()
+  for (const part of statics) {
+    part.computeBoundingBox()
+    const c = part.boundingBox!.getCenter(centre)
+    const key = Math.floor(c.z / CHUNK) * 1000 + Math.floor(c.x / CHUNK)
+    const list = chunks.get(key)
+    if (list) list.push(part)
+    else chunks.set(key, [part])
+  }
+  for (const parts of chunks.values()) {
+    const mesh = new Mesh(mergePainted(parts), material)
+    mesh.layers.enable(SOLID_LAYER)
+    mesh.matrixAutoUpdate = false
+    group.add(mesh)
+  }
 
   return { group, fixtures }
 }

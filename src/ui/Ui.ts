@@ -749,10 +749,22 @@ export class Ui implements UiPort {
 
   private readonly bubblePool: HTMLDivElement[] = []
 
+  /** The screen size, read on resize: reading it every frame, after the
+   *  prompts have changed, makes the browser lay the page out again. */
+  private screen = { w: window.innerWidth, h: window.innerHeight, watched: false }
+  /** Where each bubble was last put, so an unmoved one is not written again. */
+  private readonly bubbleAt: string[] = []
+
   private drawBubbles(g: Game, camera: Camera): void {
     const v = new Vector3()
-    const w = window.innerWidth
-    const h = window.innerHeight
+    if (!this.screen.watched) {
+      this.screen.watched = true
+      window.addEventListener('resize', () => {
+        this.screen.w = window.innerWidth
+        this.screen.h = window.innerHeight
+      })
+    }
+    const { w, h } = this.screen
     let i = 0
     for (const b of g.bubbles.slice(0, 10)) {
       v.set(b.body.x, b.body.y + 2.7, b.body.z).project(camera)
@@ -764,8 +776,13 @@ export class Ui implements UiPort {
         this.bubbles.append(el)
         this.bubblePool.push(el)
       }
-      el.style.display = 'block'
-      el.style.transform = `translate(${((v.x + 1) / 2) * w}px, ${((1 - v.y) / 2) * h}px) translate(-50%, -100%)`
+      // Whole pixels, and only when it moves: a style write costs a phone.
+      const t = `translate(${Math.round(((v.x + 1) / 2) * w)}px, ${Math.round(((1 - v.y) / 2) * h)}px) translate(-50%, -100%)`
+      if (this.bubbleAt[i] !== t) {
+        if (this.bubbleAt[i] === undefined || this.bubbleAt[i] === '') el.style.display = 'block'
+        el.style.transform = t
+        this.bubbleAt[i] = t
+      }
       if (el.textContent !== b.text) {
         el.textContent = b.text
         // Said within earshot, and not over a conversation: voice it.
@@ -773,7 +790,11 @@ export class Ui implements UiPort {
       }
       i++
     }
-    for (; i < this.bubblePool.length; i++) this.bubblePool[i].style.display = 'none'
+    for (; i < this.bubblePool.length; i++) {
+      if (this.bubbleAt[i] === '') continue
+      this.bubblePool[i].style.display = 'none'
+      this.bubbleAt[i] = ''
+    }
   }
 
   private drawMapBase(g: Game): HTMLCanvasElement {

@@ -18,6 +18,7 @@ import { paint, paintBy } from '../art/paint'
 import { createToonMaterial } from '../art/toonMaterial'
 import { createOutlineMaterial, instancedOutline } from '../art/outlineMaterial'
 import { SOLID_LAYER } from './CelPipeline'
+import { mulberry32 } from '../core/random'
 
 /**
  * Everybody in the prison, drawn as one crowd.
@@ -83,6 +84,16 @@ export interface Body {
   talking?: boolean
 }
 
+let looks = mulberry32(1)
+/**
+ * Seeds the small differences between people (height, build, the phase of
+ * their stride) from the prison's seed: the same prison, the same people.
+ * Its own stream, so it never shifts the game's.
+ */
+export function seedLooks(seed: number): void {
+  looks = mulberry32(seed ^ 0x9e3779b9)
+}
+
 export function makeBody(style: Partial<Body>): Body {
   return {
     x: 0,
@@ -105,10 +116,10 @@ export function makeBody(style: Partial<Body>): Body {
     tache: false,
     tuft: false,
     skirt: null,
-    height: 0.92 + Math.random() * 0.16,
-    build: 0.92 + Math.random() * 0.26,
+    height: 0.92 + looks() * 0.16,
+    build: 0.92 + looks() * 0.26,
     visible: true,
-    stride: Math.random() * 10,
+    stride: looks() * 10,
     ...style,
   }
 }

@@ -1,7 +1,7 @@
 import { type Object3D, type Scene } from 'three'
 import { HEX } from '../art/palette'
 import { Input } from '../core/Input'
-import { type Body, Crowd, makeBody } from '../render/Crowd'
+import { type Body, Crowd, makeBody, seedLooks } from '../render/Crowd'
 import { Guard, type GuardRole } from '../npc/Guard'
 import { ATTEMPTS_PER_ROUND, METHOD_NAMES, type Method, type Mode, PrisonMemory, ROUNDS } from '../npc/Memory'
 import { Prisoner } from '../npc/Prisoner'
@@ -79,7 +79,9 @@ export class Game implements World {
   static seedForNext: number | null = null
   /** What the prison was rolled from: the same seed, the same eighty faces. */
   readonly seed = Game.seedForNext ?? (Date.now() & 0xffff)
-  readonly rng = mulberry32(this.seed)
+  /** The prison's dice. Seeding it also seeds everyone's height and build
+   *  (see Crowd.seedLooks), before the first body below is made. */
+  readonly rng = (seedLooks(this.seed), mulberry32(this.seed))
   readonly input = new Input()
   readonly post = new Post(this.rng)
   readonly fixtures: Fixtures
