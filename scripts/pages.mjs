@@ -1,7 +1,7 @@
 /**
- * Builds the GitHub Pages site into pages/: the game at index.html and the
- * voice studio at recorder.html (a normal web page, so it may use the
- * microphone).
+ * Builds the GitHub Pages site into pages/: the game at index.html, the
+ * website about it at site/, and the voice studio at recorder.html (a
+ * normal web page, so it may use the microphone).
  *
  *   npm run pages
  */
@@ -22,5 +22,7 @@ writeFileSync('pages/recorder.html', page)
 cpSync('recorder/recorder.js', 'pages/recorder.js')
 mkdirSync('pages/vendor', { recursive: true })
 cpSync('recorder/vendor', 'pages/vendor', { recursive: true })
+// The website: one static page and its pictures (the game's own frames).
+cpSync('site', 'pages/site', { recursive: true })
 writeFileSync('pages/.nojekyll', '')
-console.log('pages/ ready: index.html (the game) and recorder.html (the voice studio)')
+console.log('pages/ ready: index.html (the game), site/ (the website) and recorder.html (the voice studio)')

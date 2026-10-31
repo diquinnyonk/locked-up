@@ -825,6 +825,17 @@ At six times slower, a frame's processor time went from 120 to 170 ms (6 to 8
 frames a second) to 40 to 50 ms (20 to 25), and triangles from about 540,000
 to 40,000 to 90,000. It has still not been tried on a real low-end Android.
 
+## The website
+
+`site/index.html` is the game's website, published beside it at
+`/locked-up/site/`: one static page, no build step. Its pictures are the
+game's own frames, captured clean by `node scripts/trailer/stills.cjs` (dev
+server on 5173) into `site/img/`, plus ten seconds of the trailer as a muted
+loop. Type a name and it books you in the way the game does; the form at the
+end opens the game with that name and difficulty filled in
+(`?name=Higgins&mode=hard`). Today's challenge on the page is worked out the
+same way as `src/game/Daily.ts`. `npm run pages` copies it into `pages/site/`.
+
 ## Recording the dialogue
 
 `recorder.html` on the project's GitHub Pages site is the voice studio: every

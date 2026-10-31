@@ -239,6 +239,15 @@ let snap = false
 let talkCam = false
 
 // A game controller: it walks you in play and drives whatever menu is up.
+// Arriving from the website with a name and a difficulty already chosen
+// (?name=Higgins&mode=hard): filled in, ready to begin.
+{
+  const from = params.get('name')?.trim().slice(0, 18)
+  if (from && !nameInput.value) nameInput.value = from
+  const mode = params.get('mode')
+  const pick = mode ? document.querySelector<HTMLInputElement>(`#difficulty input[value="${CSS.escape(mode)}"]`) : null
+  if (pick) pick.checked = true
+}
 const pad = new Pad(game.input)
 const SURNAMES = ['Barraclough', 'Higgins', 'Pickles', 'Shufflebottom', 'Entwistle', 'Ramsbottom', 'Clegg', 'Haworth']
 pad.onFirstUse = () => {
