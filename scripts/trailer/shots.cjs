@@ -123,7 +123,7 @@ const SHOTS = {
     setup: `S.calm(); S.at(14 * 60)`,
     cam: { from: { x: 70, y: 90, z: 190 }, to: { x: 100, y: 80, z: 180 }, lookFrom: { x: 86, y: 0, z: 76 }, lookTo: { x: 90, y: 0, z: 76 }, fov: 40 },
     mark: false,
-    end: `<h1>Locked<br>Up</h1><div class="tag">A UK prison break in your browser</div><div class="play">Play free</div><div class="url">diquinnyonk.github.io/locked-up</div><div class="small">Desktop · Phone · Controller</div>`,
+    end: `<h1>Locked<br>Up</h1><div class="tag">A UK prison break in your browser</div><div class="play">Play free</div><div class="url">locked-up.netlify.app</div><div class="small">Desktop · Phone · Controller</div>`,
     endAt: 0.15,
   },
 }

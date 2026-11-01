@@ -1,0 +1,13 @@
+# Netlify (locked-up.netlify.app): the website at /, the game at /play/,
+# the voice studio at /recorder.html. See scripts/pages.mjs.
+[build]
+  command = "npm run pages"
+  publish = "pages"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[[redirects]]
+  from = "/site/*"
+  to = "/"
+  status = 301

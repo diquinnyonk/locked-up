@@ -827,14 +827,20 @@ to 40,000 to 90,000. It has still not been tried on a real low-end Android.
 
 ## The website
 
-`site/index.html` is the game's website, published beside it at
-`/locked-up/site/`: one static page, no build step. Its pictures are the
-game's own frames, captured clean by `node scripts/trailer/stills.cjs` (dev
-server on 5173) into `site/img/`, plus ten seconds of the trailer as a muted
-loop. Type a name and it books you in the way the game does; the form at the
-end opens the game with that name and difficulty filled in
-(`?name=Higgins&mode=hard`). Today's challenge on the page is worked out the
-same way as `src/game/Daily.ts`. `npm run pages` copies it into `pages/site/`.
+The site lives at **https://locked-up.netlify.app**: the website is the
+front page and the game is at `/play/` (the voice studio stays at
+`/recorder.html`). `netlify.toml` has Netlify run `npm run pages` and
+publish `pages/`; the same folder is pushed to the `gh-pages` branch, which
+carries its own `netlify.toml` so it can be published as it is.
+
+`site/index.html` is the website: one static page, no build step. Its
+pictures are the game's own frames, captured clean by
+`node scripts/trailer/stills.cjs` (dev server on 5173) into `site/img/`,
+plus ten seconds of the trailer as a muted loop. Type a name and it books
+you in the way the game does; the form at the end opens the game with that
+name and difficulty filled in (`play/?name=Higgins&mode=hard`). Today's
+challenge on the page is worked out the same way as `src/game/Daily.ts`.
+The old address `/site/` sends people to the front page.
 
 ## Recording the dialogue
 
@@ -843,8 +849,8 @@ spoken line with a Record button that uses the phone's microphone (the
 browser's own MediaRecorder), trims the silence, encodes an MP3 with lamejs
 and keeps each take on the device in IndexedDB until you are done. **Download
 all takes** bundles them with JSZip as `voices/<key>.mp3`, ready for
-`public/voices/`. `npm run pages` builds the site into `pages/` (the game at
-`index.html`, the studio at `recorder.html`); it is published from the
+`public/voices/`. `npm run pages` builds the site into `pages/` (the website at
+`index.html`, the game at `play/`, the studio at `recorder.html`); it is published from the
 `gh-pages` branch.
 
 Every officer and every prisoner has a voice of their own. Prisoners keep

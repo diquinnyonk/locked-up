@@ -7,7 +7,8 @@
     <meta name="description" content="Locked Up is a free prison break in your browser. You robbed a Greggs; now get out of HMP Grim-on-the-Moor. Eighteen ways out, sixteen officers who remember." />
     <meta property="og:title" content="Locked Up: break out of Grim" />
     <meta property="og:description" content="A free prison break in your browser. Eighteen ways out. Sixteen officers who remember." />
-    <meta property="og:image" content="img/aerial.jpg" />
+    <meta property="og:image" content="https://locked-up.netlify.app/img/aerial.jpg" />
+    <meta property="og:url" content="https://locked-up.netlify.app/" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Rokkitt:wght@800&family=Literata:wght@400;600&display=swap" rel="stylesheet" />
@@ -472,12 +473,12 @@
       <div class="talk">
         <a class="wordmark" href="#top">Locked Up</a>
         <p class="after">You robbed a Greggs. In Grim-on-the-Moor that is worse than murder.</p>
-        <a class="button after" href="../">Play free in your browser</a>
+        <a class="button after" href="play/">Play free in your browser</a>
         <small class="after">No install, no account. Phone, keyboard or controller.</small>
       </div>
       <div class="wide">
         <nav aria-label="On this page">
-          <a class="first" href="../">Play</a>
+          <a class="first" href="play/">Play</a>
           <a href="#day">The day</a>
           <a href="#ways">Ways out</a>
           <a href="#questions">Questions</a>
@@ -520,7 +521,7 @@
           <button type="button" data-name="Higgins">Higgins</button>
           <button type="button" data-name="Pickles">Pickles</button>
           <button type="button" data-name="Ramsbottom">Ramsbottom</button>
-          <a class="go" href="../?name=Shufflebottom">Begin your sentence as <span class="r-name">Shufflebottom</span></a>
+          <a class="go" href="play/?name=Shufflebottom">Begin your sentence as <span class="r-name">Shufflebottom</span></a>
         </div>
       </section>
 
@@ -685,7 +686,7 @@
         </div>
         <div class="sheet rise" data-ui>
           <h3>Locked Up</h3>
-          <form id="begin" action="../" method="get">
+          <form id="begin" action="play/" method="get">
             <label class="name" for="name">Your name, for the record</label>
             <input id="name" name="name" type="text" maxlength="18" value="Shufflebottom" autocomplete="off" required />
             <fieldset>
@@ -708,9 +709,9 @@
         <p>Free on any recent browser: desktop, phone or controller.</p>
         <a class="up" href="#top">Back to the top</a>
       </div>
-      <a class="way" href="../"><span>diquinnyonk.github.io</span><span>/locked-up</span></a>
+      <a class="way" href="https://locked-up.netlify.app/"><span>locked-up</span><span>.netlify.app</span></a>
       <div class="meta">
-        <span><a href="../">Play</a> · <a href="#ways">Ways out</a> · <a href="#questions">Questions</a></span>
+        <span><a href="play/">Play</a> · <a href="#ways">Ways out</a> · <a href="#questions">Questions</a></span>
         <span>Pictures are the game's own frames. Set in Rokkitt and Literata.</span>
         <span>Grim-on-the-Moor, 2026</span>
       </div>
@@ -745,7 +746,7 @@
         const [w, l] = LINES[h % LINES.length]
         $('.r-who').textContent = w
         $('.r-line').textContent = l
-        $('.booking .go').href = '../?name=' + encodeURIComponent(name)
+        $('.booking .go').href = 'play/?name=' + encodeURIComponent(name)
         if (from !== formName) formName.value = clean(v)
         if (from !== who) who.value = clean(v)
         place()
@@ -847,7 +848,7 @@
       $('#begin').addEventListener('submit', (e) => {
         e.preventDefault()
         const f = new FormData(e.target)
-        location.href = '../?name=' + encodeURIComponent(clean(String(f.get('name')))) + '&mode=' + encodeURIComponent(String(f.get('mode')))
+        location.href = 'play/?name=' + encodeURIComponent(clean(String(f.get('name')))) + '&mode=' + encodeURIComponent(String(f.get('mode')))
       })
     </script>
   </body>

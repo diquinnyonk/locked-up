@@ -1,16 +1,19 @@
 /**
- * Builds the GitHub Pages site into pages/: the game at index.html, the
- * website about it at site/, and the voice studio at recorder.html (a
- * normal web page, so it may use the microphone).
+ * Builds the published site into pages/ (Netlify, locked-up.netlify.app,
+ * and the gh-pages branch): the website at index.html, the game at play/,
+ * and the voice studio at recorder.html (a normal web page, so it may use
+ * the microphone).
  *
  *   npm run pages
  */
 import { execSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { cpSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 
 execSync('npx tsx scripts/dialogue.ts', { stdio: 'inherit' })
-execSync('npx vite build --base ./ --outDir pages --emptyOutDir', { stdio: 'inherit' })
+rmSync('pages', { recursive: true, force: true })
+// The game, in its own folder. Everything it loads is relative (voices/ too).
+execSync('npx vite build --base ./ --outDir pages/play --emptyOutDir', { stdio: 'inherit' })
 // Each line with how often players hear it (npm run heard), for the
 // studio's "most heard first" order.
 const heard = JSON.parse(readFileSync('dialogue/heard.json', 'utf8'))
@@ -22,7 +25,14 @@ writeFileSync('pages/recorder.html', page)
 cpSync('recorder/recorder.js', 'pages/recorder.js')
 mkdirSync('pages/vendor', { recursive: true })
 cpSync('recorder/vendor', 'pages/vendor', { recursive: true })
-// The website: one static page and its pictures (the game's own frames).
-cpSync('site', 'pages/site', { recursive: true })
+// The website is the front page: one static page and its pictures (the
+// game's own frames).
+cpSync('site', 'pages', { recursive: true })
+// Where the website used to live: send people to the front page.
+mkdirSync('pages/site', { recursive: true })
+writeFileSync('pages/site/index.html', '<!doctype html><meta charset="utf-8"><title>Locked Up</title><meta http-equiv="refresh" content="0; url=../"><a href="../">Locked Up</a>\n')
+writeFileSync('pages/_redirects', '/site /  301\n/site/* /  301\n')
+// Netlify publishing the built branch as it is: nothing to build.
+writeFileSync('pages/netlify.toml', '[build]\n  publish = "."\n  command = ""\n')
 writeFileSync('pages/.nojekyll', '')
-console.log('pages/ ready: index.html (the game), site/ (the website) and recorder.html (the voice studio)')
+console.log('pages/ ready: index.html (the website), play/ (the game) and recorder.html (the voice studio)')
