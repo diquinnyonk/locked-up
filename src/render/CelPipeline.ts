@@ -17,6 +17,7 @@ import {
   WebGLRenderer,
 } from 'three'
 import { HEX, color } from '../art/palette'
+import { GHIBLI } from '../art/style'
 
 /**
  * Objects on this layer are drawn into the normal/depth prepass and receive
@@ -53,6 +54,7 @@ uniform float uNormalThreshold;
 uniform float uVignette;
 uniform vec3 uFlash;
 uniform float uFlashAmount;
+uniform float uPaint;
 
 varying vec2 vUv;
 
@@ -87,7 +89,34 @@ void main() {
     step(uNormalThreshold, normalEdge) * hasGeometry
   );
 
-  vec3 colour = mix(scene.rgb, uInk, edge);
+  vec3 colour = mix(scene.rgb, uInk, edge * (1.0 - uPaint * 0.3));
+
+  if (uPaint > 0.5) {
+    // A soft glow off anything bright, as if the light were bleeding into
+    // the paper: eight taps on two rings, only the brightest let through.
+    vec3 glow = vec3(0.0);
+    for (int i = 0; i < 8; i++) {
+      float a = float(i) * 0.785398;
+      float rr = (i % 2 == 0) ? 5.0 : 11.0;
+      vec3 t = texture2D(tScene, vUv + vec2(cos(a), sin(a)) * texel * rr).rgb;
+      glow += max(t - 0.82, 0.0);
+    }
+    colour += glow * 0.1;
+    // Grade: lift the darks toward a warm blue, warm the lights, a little
+    // more colour everywhere.
+    float l = dot(colour, vec3(0.299, 0.587, 0.114));
+    colour = mix(vec3(l), colour, 1.05);
+    colour = colour * vec3(1.01, 1.0, 0.97) + vec3(0.025, 0.03, 0.05) * (1.0 - l);
+    // Painted paper: a slow grain in the wash and a fine tooth.
+    vec2 px = vUv * uResolution;
+    float wash = fract(sin(dot(floor(px / 3.0), vec2(12.9898, 78.233))) * 43758.5453);
+    float tooth = fract(sin(dot(px, vec2(39.346, 11.135))) * 24634.6345);
+    colour *= 0.985 + wash * 0.02 + (tooth - 0.5) * 0.02;
+    // A soft warm vignette, like the edge of a painted frame.
+    vec2 cv = vUv - 0.5;
+    float rv = length(cv * vec2(uResolution.x / uResolution.y, 1.0));
+    colour *= mix(vec3(1.0), vec3(0.88, 0.84, 0.8), smoothstep(0.45, 0.95, rv));
+  }
 
   // A hard-stepped vignette, not a soft one: two flat rings of ink at the
   // corners, so the alert state reads as graphic rather than as a lens.
@@ -127,8 +156,10 @@ export class CelPipeline {
         uInk: { value: color(HEX.ink) },
         uNear: { value: 0.5 },
         uFar: { value: 600 },
-        uDepthThreshold: { value: 0.035 },
-        uNormalThreshold: { value: 0.6 },
+        uDepthThreshold: { value: GHIBLI ? 0.06 : 0.035 },
+        // Painted: only the strongest creases get a line.
+        uNormalThreshold: { value: GHIBLI ? 0.95 : 0.6 },
+        uPaint: { value: GHIBLI ? 1 : 0 },
         uVignette: { value: 0 },
         uFlash: { value: color(HEX.visionAlert).clone() },
         uFlashAmount: { value: 0 },

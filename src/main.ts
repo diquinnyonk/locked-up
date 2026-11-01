@@ -1,6 +1,6 @@
 import { Color, Vector3 } from 'three'
 import { HEX, SUN_DIRECTION, color } from './art/palette'
-import { setToonSunDirection, setWorldTint } from './art/toonMaterial'
+import { setToonSunDirection, setToonTime, setWorldTint } from './art/toonMaterial'
 import { Engine } from './core/Engine'
 import { Pad } from './core/Pad'
 import { rollSecret } from './game/Play'
@@ -258,7 +258,11 @@ pad.onFirstUse = () => {
 const overlayUp = () =>
   [...document.querySelectorAll<HTMLElement>('#tour, #story:not([hidden]), #records:not([hidden]), #end.show')].some((el) => el.getBoundingClientRect().width > 0)
 
+let paintClock = 0
 engine.onUpdate((delta) => {
+  // The painted style's cloud shadows drift on this.
+  paintClock += delta
+  setToonTime(paintClock)
   pad.poll(delta, !started || ui.panelOpen || ui.paused || game.over || overlayUp())
   // Keys that work whatever is going on.
   if (started) {

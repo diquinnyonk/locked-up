@@ -2,6 +2,7 @@ import { Color, ShaderMaterial, Vector3 } from 'three'
 import { HEX, color } from './palette'
 import { diffuseRamp } from './ramp'
 import { TOON_FRAGMENT, TOON_VERTEX } from '../shaders/toon'
+import { GHIBLI } from './style'
 
 export interface ToonOptions {
   albedo: Color
@@ -22,6 +23,14 @@ export interface ToonOptions {
  *  never disagree between two surfaces. */
 const sharedSunDirection = new Vector3(0, 1, 0)
 const sharedWorldTint = new Color(1, 1, 1)
+/** The painted style's switch and its clock (cloud shadows drift on it). */
+const sharedPaint = { value: GHIBLI ? 1 : 0 }
+const sharedTime = { value: 0 }
+
+/** Seconds of world time, for anything that drifts (the cloud shadows). */
+export function setToonTime(seconds: number): void {
+  sharedTime.value = seconds
+}
 
 export function setToonSunDirection(direction: Vector3): void {
   sharedSunDirection.copy(direction)
@@ -51,6 +60,8 @@ export function createToonMaterial(options: ToonOptions): ShaderMaterial {
       uSpecStrength: { value: options.specStrength ?? 0.1 },
       uEmissive: { value: options.emissive ?? 0 },
       uRamp: { value: diffuseRamp },
+      uPaint: sharedPaint,
+      uTime: sharedTime,
     },
   })
 }

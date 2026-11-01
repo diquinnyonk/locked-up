@@ -58,3 +58,31 @@ float fresnel(vec3 normal, vec3 viewDir, float power) {
   return pow(1.0 - clamp(dot(normalize(normal), normalize(viewDir)), 0.0, 1.0), power);
 }
 `
+
+/**
+ * The painted style's light (see art/style.ts), used after the ramp when
+ * uPaint is on. Needs NOISE. Sunlit faces warm, shade sides the soft violet
+ * of the shade tint, a breath of sky blue on anything facing up, a gentle
+ * watercolour mottle in the paint, and big soft cloud shadows drifting
+ * across the whole prison on the breeze.
+ */
+export const PAINT = /* glsl */ `
+uniform float uPaint;
+uniform float uTime;
+
+float cloudShade(vec3 p) {
+  vec2 q = p.xz * 0.016 + vec2(uTime * 0.011, uTime * 0.004);
+  return smoothstep(0.52, 0.7, fbm(q));
+}
+
+vec3 painted(vec3 albedo, float light, vec3 shade, vec3 normal, vec3 p, float mottle) {
+  float m = fbm(p.xz * 0.12 + p.y * 0.1) - 0.5;
+  float g = valueNoise(p.xz * 3.3 + p.y * 2.1) - 0.5;
+  albedo *= 1.0 + (m * 0.09 + g * 0.03) * mottle;
+  float cloud = cloudShade(p) * smoothstep(-0.2, 0.6, normal.y);
+  light *= 1.0 - cloud * 0.32;
+  vec3 colour = albedo * mix(shade, vec3(1.04, 1.0, 0.92), light);
+  colour += vec3(0.04, 0.06, 0.1) * clamp(normal.y, 0.0, 1.0) * (1.0 - light);
+  return colour;
+}
+`

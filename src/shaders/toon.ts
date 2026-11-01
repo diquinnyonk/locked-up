@@ -1,4 +1,4 @@
-import { BANDING, FRESNEL } from './chunks'
+import { BANDING, FRESNEL, NOISE, PAINT } from './chunks'
 
 /**
  * The Windward toon shader, carried over nearly verbatim, with one addition:
@@ -52,6 +52,8 @@ void main() {
 export const TOON_FRAGMENT = /* glsl */ `
 ${BANDING}
 ${FRESNEL}
+${NOISE}
+${PAINT}
 
 uniform vec3 uAlbedo;
 uniform vec3 uShadeTint;
@@ -90,10 +92,11 @@ void main() {
 
   // Shadow side tinted toward the cool shade colour rather than to black.
   vec3 colour = albedo * mix(uShadeTint, vec3(1.0), light);
+  if (uPaint > 0.5) colour = painted(albedo, light, uShadeTint, normal, vWorldPos, 1.0);
 
   vec3 halfVector = normalize(uSunDirection + viewDir);
   float spec = pow(max(dot(normal, halfVector), 0.0), 32.0);
-  colour += uRimColour * crispStep(0.55, spec) * uSpecStrength;
+  colour += uRimColour * crispStep(0.55, spec) * uSpecStrength * (1.0 - uPaint * 0.7);
 
   float rim = fresnel(normal, viewDir, uRimPower);
   colour += uRimColour * rim * uRimStrength;

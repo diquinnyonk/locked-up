@@ -32,7 +32,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { HEX, color } from '../art/palette'
 import { paint } from '../art/paint'
 import { createToonMaterial, toon } from '../art/toonMaterial'
-import { BANDING, FRESNEL } from '../shaders/chunks'
+import { BANDING, FRESNEL, NOISE, PAINT } from '../shaders/chunks'
 import { SOLID_LAYER } from './CelPipeline'
 import type { Body } from './Crowd'
 import { BODY_HEIGHT } from './Crowd'
@@ -168,6 +168,8 @@ void main() {
 const FRAGMENT = /* glsl */ `
 ${BANDING}
 ${FRESNEL}
+${NOISE}
+${PAINT}
 uniform vec3 uShadeTint;
 uniform vec3 uRimColour;
 uniform vec3 uSunDirection;
@@ -180,6 +182,7 @@ void main() {
   vec3 viewDir = normalize(cameraPosition - vWorldPos);
   float light = bandedDiffuse(normal, uSunDirection);
   vec3 colour = vAlbedo * mix(uShadeTint, vec3(1.0), light);
+  if (uPaint > 0.5) colour = painted(vAlbedo, light, uShadeTint, normal, vWorldPos, 0.0);
   colour += uRimColour * fresnel(normal, viewDir, 3.0) * 0.18;
   gl_FragColor = vec4(colour * uWorldTint, 1.0);
 }
@@ -199,6 +202,8 @@ function personMaterial(): ShaderMaterial {
       uSunDirection: SHARED.uniforms.uSunDirection,
       uWorldTint: SHARED.uniforms.uWorldTint,
       uRamp: SHARED.uniforms.uRamp,
+      uPaint: SHARED.uniforms.uPaint,
+      uTime: SHARED.uniforms.uTime,
     },
   })
 }

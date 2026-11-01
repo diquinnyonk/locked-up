@@ -1,4 +1,5 @@
 import { Color, ColorManagement } from 'three'
+import { GHIBLI } from './style'
 
 /**
  * Colour management is off deliberately, for the same reason as in Windward:
@@ -45,6 +46,8 @@ export const HEX = {
   /** Bars, gates and doors. Gates are painted the classic safety yellow. */
   steel: 0x5d6b73,
   steelDark: 0x2f3a40,
+  /** The tops of the walls, seen from above: most of the aerial view. */
+  wallTop: 0x2f3a40,
   gateYellow: 0xf2c14e,
   doorBlue: 0x3f6a8f,
   doorRed: 0xb5473f,
@@ -146,6 +149,43 @@ export const HEX = {
   ink: 0x12222b,
   paper: 0xf2fbfa,
 } as const
+
+/**
+ * The painted style (see style.ts): the same prison in the colours of a
+ * hand-painted film. Sunlit yellow-greens, warm brick and plaster, dusty
+ * paths, a cerulean sky, shadows of pale violet rather than grey, and line
+ * work in sepia instead of ink. Everything else keeps its colour, so people
+ * and props still read the same.
+ */
+const PAINTED: Partial<Record<keyof typeof HEX, number>> = {
+  brick: 0xc46e4e,
+  brickShade: 0x7e4c48,
+  wallCream: 0xf4ead2,
+  wallGreen: 0x8dbb98,
+  wallShade: 0x7d8fb0,
+  floorLino: 0xbac7b9,
+  floorCell: 0xdccfac,
+  floorTile: 0xe2eee8,
+  floorWood: 0xd2a46a,
+  floorCanteen: 0xd2c9a2,
+  yardTarmac: 0xaaa392,
+  yardGrass: 0x8fbe5a,
+  yardLines: 0xfbf2cc,
+  outsideGrass: 0x7cb04a,
+  road: 0x7a746c,
+  steel: 0x6c7c86,
+  steelDark: 0x3f4d58,
+  wallTop: 0x6b7a94,
+  wood: 0x8c5e36,
+  sky: 0x8ccdf0,
+  night: 0x2b3c78,
+  window: 0xa8e0f2,
+  shade: 0x8f95c8,
+  shadeWarm: 0xa07c8a,
+  ink: 0x4d3a30,
+  paper: 0xfff8e8,
+}
+if (GHIBLI) Object.assign(HEX as Record<string, number>, PAINTED)
 
 export type PaletteKey = keyof typeof HEX
 

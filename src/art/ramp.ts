@@ -1,4 +1,5 @@
-import { ClampToEdgeWrapping, DataTexture, NearestFilter, RGBAFormat, UnsignedByteType } from 'three'
+import { ClampToEdgeWrapping, DataTexture, LinearFilter, NearestFilter, RGBAFormat, UnsignedByteType } from 'three'
+import { GHIBLI } from './style'
 
 /**
  * A band in a quantised lighting ramp. `upTo` is the NdotL value at which this
@@ -57,5 +58,44 @@ export function makeRampTexture(bands: Band[] = DIFFUSE_BANDS): DataTexture {
   return texture
 }
 
+/**
+ * The painted style's light: shadows stay light and coloured (the shade tint
+ * does the work, not darkness), and each band melts into the next over a
+ * short soft edge, like a wash laid with a wet brush, instead of stepping.
+ */
+export const PAINTED_BANDS: Band[] = [
+  { upTo: 0.3, value: 0.5 },
+  { upTo: 0.47, value: 0.74 },
+  { upTo: 0.68, value: 0.9 },
+  { upTo: 1.0, value: 1.0 },
+]
+
+export function makeSoftRampTexture(bands: Band[] = PAINTED_BANDS, soft = 0.05): DataTexture {
+  const data = new Uint8Array(RAMP_WIDTH * 4)
+  for (let i = 0; i < RAMP_WIDTH; i++) {
+    const t = (i + 0.5) / RAMP_WIDTH
+    let value = bands[0].value
+    for (let b = 1; b < bands.length; b++) {
+      const edge = bands[b - 1].upTo
+      const k = Math.min(1, Math.max(0, (t - (edge - soft)) / (2 * soft)))
+      const e = k * k * (3 - 2 * k)
+      value += (bands[b].value - bands[b - 1].value) * e
+    }
+    const byte = Math.round(value * 255)
+    data[i * 4 + 0] = byte
+    data[i * 4 + 1] = byte
+    data[i * 4 + 2] = byte
+    data[i * 4 + 3] = 255
+  }
+  const texture = new DataTexture(data, RAMP_WIDTH, 1, RGBAFormat, UnsignedByteType)
+  texture.magFilter = LinearFilter
+  texture.minFilter = LinearFilter
+  texture.wrapS = ClampToEdgeWrapping
+  texture.wrapT = ClampToEdgeWrapping
+  texture.generateMipmaps = false
+  texture.needsUpdate = true
+  return texture
+}
+
 /** Shared instance: one ramp lights everything, same as one palette colours everything. */
-export const diffuseRamp = makeRampTexture()
+export const diffuseRamp = GHIBLI ? makeSoftRampTexture() : makeRampTexture()

@@ -43,8 +43,8 @@ export function cylX(r: number, length: number, at: Place, hex: number, segments
   return paint(g, hex)
 }
 
-export function ball(r: number, at: Place, hex: number, sx = 1, sy = 1, sz = 1): BufferGeometry {
-  const g = new SphereGeometry(r, 16, 12)
+export function ball(r: number, at: Place, hex: number, sx = 1, sy = 1, sz = 1, detail = 1): BufferGeometry {
+  const g = new SphereGeometry(r, Math.max(5, Math.round(16 * detail)), Math.max(4, Math.round(12 * detail)))
   g.scale(sx, sy, sz)
   g.translate(at.x, at.y, at.z)
   return paint(g, hex)

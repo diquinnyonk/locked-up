@@ -13,6 +13,7 @@ import { SOLID_LAYER } from '../render/CelPipeline'
 import { EAST_WALL, type Grid, MAP_H, MAP_W, PLAYER_CELL, type Rect, TILE, Tile } from './Grid'
 import { type AnnexFixtures, detailPass, furnishAnnexes } from './Furnish'
 import { registerSolids } from './Solids'
+import { GHIBLI } from '../art/style'
 
 export const WALL_H = 2.6
 export const PERIMETER_H = 5.2
@@ -76,6 +77,7 @@ export function buildPrison(grid: Grid): { group: Group; fixtures: Fixtures } {
   for (let i = 0; i < 12; i++) tree(add, 2 * TILE + ((i * 17) % 5), 10 + i * 9, 1.1)
   // Stopping short of the staff car park.
   for (let i = 0; i < 10; i++) tree(add, (EAST_WALL + 3) * TILE + ((i * 11) % 5), 14 + i * 9, 1.0)
+  if (GHIBLI) moor(add)
 
   // ---- Floors, one painted quad per tile, with a faint chequer ----
   for (let ty = 0; ty < MAP_H; ty++) {
@@ -107,8 +109,8 @@ export function buildPrison(grid: Grid): { group: Group; fixtures: Fixtures } {
       while (end + 1 < MAP_W && grid.tile(end + 1, ty) === Tile.Solid && insideFootprint(end + 1, ty) && touchesOutdoor(grid, end + 1, ty) === exterior) end++
       const w = (end - tx + 1) * TILE
       const place = { x: (tx + (end - tx + 1) / 2) * TILE, y: 0, z: (ty + 0.5) * TILE }
-      if (exterior) add(...bandedBox(w, TILE, place, [[0.5, HEX.brickShade], [WALL_H, HEX.brick]], HEX.steelDark))
-      else add(...bandedBox(w, TILE, place, [[1.15, HEX.wallGreen], [1.25, HEX.ink], [WALL_H, HEX.wallCream]], HEX.steelDark))
+      if (exterior) add(...bandedBox(w, TILE, place, [[0.5, HEX.brickShade], [WALL_H, HEX.brick]], HEX.wallTop))
+      else add(...bandedBox(w, TILE, place, [[1.15, HEX.wallGreen], [1.25, HEX.ink], [WALL_H, HEX.wallCream]], HEX.wallTop))
       tx = end + 1
     }
   }
@@ -272,7 +274,7 @@ export function buildPrison(grid: Grid): { group: Group; fixtures: Fixtures } {
   add(ball(0.18, { ...pole, y: 6.6 }, HEX.gateYellow))
 
   // ---- Gatehouse beyond the perimeter gate ----
-  add(...bandedBox(6, 4, at(64, 62.5), [[2.8, HEX.brick]], HEX.steelDark))
+  add(...bandedBox(6, 4, at(64, 62.5), [[2.8, HEX.brick]], HEX.wallTop))
   add(box(1.6, 0.9, 0.1, { ...at(64, 62.5, 1.4), z: at(64, 62.5).z - 2.02 }, HEX.window))
 
   registerSolids(grid)
@@ -330,9 +332,63 @@ function table(add: (...g: BufferGeometry[]) => void, p: Place, w: number, d: nu
 }
 
 function tree(add: (...g: BufferGeometry[]) => void, x: number, z: number, s: number): void {
+  if (GHIBLI) return paintedTree(add, x, z, s)
   add(cyl(0.18 * s, 0.24 * s, 1.6 * s, { x, y: 0, z }, HEX.wood, 6))
   add(ball(1.3 * s, { x, y: 2.2 * s, z }, HEX.outsideGrass, 1, 0.9, 1))
   add(ball(0.9 * s, { x: x + 0.5 * s, y: 3.0 * s, z: z - 0.3 * s }, HEX.yardGrass, 1, 0.9, 1))
+}
+
+/** The painted style's trees: big, soft heaps of leaf in three greens,
+ *  darkest low and inside, sunlit on top, like clouds that grew roots. */
+const LEAF = [0x4f8a3a, 0x6fa846, 0x9ccc5e, 0xc2e07a]
+function paintedTree(add: (...g: BufferGeometry[]) => void, x: number, z: number, s: number): void {
+  const k = Math.abs(Math.sin(x * 12.9898 + z * 78.233))
+  s *= 1.15 + k * 0.5
+  add(cyl(0.2 * s, 0.3 * s, 2.0 * s, { x, y: 0, z }, HEX.wood, 7))
+  const clumps: [number, number, number, number, number][] = [
+    [0, 2.2, 0, 1.5, 0],
+    [0.9, 2.5, 0.4, 1.1, 1],
+    [-0.8, 2.6, -0.3, 1.15, 1],
+    [0.2, 3.3, -0.5, 1.05, 2],
+    [-0.3, 3.0, 0.7, 0.95, 2],
+    [0.35, 3.9, 0.1, 0.75, 3],
+  ]
+  for (const [dx, dy, dz, r, c] of clumps) add(ball(r * s, { x: x + dx * s, y: dy * s, z: z + dz * s }, LEAF[c], 1, 0.85, 1, 0.75))
+}
+
+/** Outside the wall in the painted style: heather and wildflowers on the
+ *  moor, and long grass along the verges. Laid out from a fixed sequence, so
+ *  it is the same moor every time. */
+function moor(add: (...g: BufferGeometry[]) => void): void {
+  let seed = 7
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646
+  const w = MAP_W * TILE
+  const h = MAP_H * TILE
+  const outside = (x: number, z: number) => x < 5 * TILE - 3 || x > (EAST_WALL + 1) * TILE + 3 || z < 5 * TILE - 3 || z > 60 * TILE + 3
+  const offRoad = (z: number) => Math.abs(z - 66 * TILE) > 6
+  // Heather in soft drifts.
+  for (let i = 0; i < 70; i++) {
+    const x = -50 + rnd() * (w + 100)
+    const z = -50 + rnd() * (h + 100)
+    if (!outside(x, z) || !offRoad(z)) continue
+    const r = 1.2 + rnd() * 2.4
+    add(ball(r, { x, y: -0.1, z }, rnd() < 0.5 ? 0xa784b8 : 0x8f6fa8, 1, 0.18, 1, 0.6))
+  }
+  // Wildflowers: white, butter yellow and a few poppies.
+  const FLOWERS = [0xfff8e8, 0xfff8e8, 0xf6d860, 0xf6d860, 0xe8604f]
+  for (let i = 0; i < 520; i++) {
+    const x = -45 + rnd() * (w + 90)
+    const z = -45 + rnd() * (h + 90)
+    if (!outside(x, z) || !offRoad(z)) continue
+    add(ball(0.16 + rnd() * 0.1, { x, y: 0.12, z }, FLOWERS[Math.floor(rnd() * FLOWERS.length)], 1, 0.7, 1, 0.35))
+  }
+  // Long grass tufts.
+  for (let i = 0; i < 260; i++) {
+    const x = -45 + rnd() * (w + 90)
+    const z = -45 + rnd() * (h + 90)
+    if (!outside(x, z) || !offRoad(z)) continue
+    add(ball(0.5 + rnd() * 0.4, { x, y: 0.1, z }, rnd() < 0.5 ? 0x6fa846 : 0x9ccc5e, 1, 0.55, 1, 0.4))
+  }
 }
 
 /**

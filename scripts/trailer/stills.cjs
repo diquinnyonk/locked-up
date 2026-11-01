@@ -1,6 +1,7 @@
 // Clean stills for the website (site/img), from the trailer's shots: no
 // captions, no watermark. Needs the dev server on 5173.
 //   node scripts/trailer/stills.cjs [shot,shot,...]
+// STYLE=cel|ghibli picks the art style, OUT=<dir> writes somewhere else.
 const { chromium } = require('playwright')
 const fs = require('fs')
 const path = require('path')
@@ -12,7 +13,7 @@ const FPS = 30
 const LIST = (process.argv[2] ?? 'aerial,cell,yard,talk,riot,vents,safe,engine,ghost,disguise,chase,sneak').split(',')
 
 ;(async () => {
-  const out = path.join(__dirname, '..', '..', 'site', 'img')
+  const out = process.env.OUT ?? path.join(__dirname, '..', '..', 'site', 'img')
   fs.mkdirSync(out, { recursive: true })
   const b = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'] })
   const p = await b.newPage({ viewport: { width: W, height: H } })
@@ -23,7 +24,7 @@ const LIST = (process.argv[2] ?? 'aerial,cell,yard,talk,riot,vents,safe,engine,g
     localStorage.setItem('locked-up.tour', '1')
     localStorage.setItem('locked-up.audio', JSON.stringify({ music: 0, ambience: 0, effects: 0 }))
   })
-  await p.goto('http://localhost:5173/?secret=greylady')
+  await p.goto(`http://localhost:5173/?secret=greylady${process.env.STYLE ? `&style=${process.env.STYLE}` : ''}`)
   await p.waitForFunction(() => window.__lockedUp, null, { timeout: 90000 })
   await p.waitForTimeout(500)
   await p.fill('#name', 'Bandit')
